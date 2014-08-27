@@ -44,12 +44,16 @@ int spi_open(unsigned int bus, unsigned int *tris, unsigned int pin)
         case 2:
             spi_devices[dno].bus = (struct spireg *)&SPI2CON;
             break;
+#ifdef SPI3CON
         case 3:
             spi_devices[dno].bus = (struct spireg *)&SPI3CON;
             break;
+#endif
+#ifdef SPI4CON
         case 4:
             spi_devices[dno].bus = (struct spireg *)&SPI4CON;
             break;
+#endif
         default:
             return -1;
     }
@@ -624,11 +628,14 @@ char *spi_name(int dno)
     if(spi_devices[dno].bus == (struct spireg *)&SPI2CON)
         return "SPI2";
 
+#ifdef SPI3CON
     if(spi_devices[dno].bus == (struct spireg *)&SPI3CON)
         return "SPI3";
-
+#endif
+#ifdef SPI4CON
     if(spi_devices[dno].bus == (struct spireg *)&SPI4CON)
         return "SPI4";
+#endif
 
     return "SPI?";
 }
