@@ -58,13 +58,13 @@ int RE_start[9],		/* start of substitute argument */
 extern
 struct undostack undo;		/* To undo a command */
 		/* R A N D O M   S T R I N G S */
-		
+
 extern
 char instring[],		/* Latest input */
      filenm[],			/* Filename */
      altnm[],			/* Alternate filename */
      gcb[];			/* Command buffer for mutations of insert */
-	
+
 extern
 char undobuf[],
      undotmp[],
@@ -76,7 +76,7 @@ int uread,			/* reading from the undo stack */
 extern
 char rcb[], *rcp,		/* last modification command */
      core[];			/* data space */
-		    
+
 extern
 struct ybuf yank;		/* last deleted/yanked text */
 /* STATIC INITIALIZATIONS: */
@@ -115,7 +115,7 @@ extern
 char codeversion[],		/* Editor version */
      fismod[],			/* File is modified message */
      fisro[];			/* permission denied message */
-     
+
 extern
 char *excmds[],
      wordset[],
@@ -135,7 +135,7 @@ int autowrite,
     wrapscan,
     bell,
     magic;
-/*extern 
+/*extern
 char *suffix;	*/
 /* For movement routines */
 extern
@@ -143,7 +143,7 @@ int setstep[];
 /* Where the last diddling left us */
 extern
 struct coord curpos;
-    
+
     /* initialize the buffer */
 extern
 int curr,		/* Global cursor pos */
@@ -165,7 +165,7 @@ bool modified,		/* File has been modified */
      lineonly,		/* Dumb terminal? */
      zotscreen,		/* do more after command in execmode */
      diddled;		/* force redraw when I enter editcore */
-     
+
 extern
 int macro;    /* Index into MCR macro execution stack */
 extern
@@ -197,7 +197,7 @@ extern exec_type PROC editcore();
 extern char PROC line(), peekc(), readchar();
 extern char PROC *findparse(),*makepat();
 
-extern bool PROC getline();
+extern bool PROC getlin();
 extern bool PROC putfile();
 extern bool PROC doyank(), deletion(), putback();
 extern bool PROC pushb(),pushi(),pushmem(),uputcmd(), delete_to_undo();
