@@ -1,40 +1,40 @@
-# makefile for Levee
+#
+# Public Domain.  1995/03/13 - Steven Schultz
+#
+TOPSRC		= $(shell cd ../../..; pwd)
+include $(TOPSRC)/target.mk
 
-exedir=/usr/local/bin
-mandir=/usr/local/man
-CC=cc
+#CFLAGS		+= -Werror
+LIBS            += -ltermcap
 
-CFLAGS=-g
-LDFLAGS=-g
+OBJS            = blockio.o display.o editcor.o exec.o find.o \
+                  unixcall.o globals.o insert.o main.o misc.o \
+                  modify.o move.o ucsd.o undo.o wildargs.o \
+                  version.o
+MAN             = lv.0
 
-OBJS = blockio.o display.o editcor.o exec.o find.o \
-    unixcall.o globals.o insert.o main.o misc.o \
-    modify.o move.o ucsd.o undo.o wildargs.o \
-    version.o
+all:            lv ${MAN}
 
-lev: $(OBJS)
-	$(CC) $(LDFLAGS) -o lev $(OBJS) -lcurses
+lv:             ${OBJS}
+		${CC} ${LDFLAGS} -o lv.elf ${OBJS} ${LIBS}
+		${OBJDUMP} -S lv.elf > lv.dis
+		${SIZE} lv.elf
+		${ELF2AOUT} lv.elf $@ && rm lv.elf
 
 version.o: version.c VERSION
-	$(CC) $(CFLAGS) -c -DVERSION=\"`cat VERSION`\" version.c
+		$(CC) $(CFLAGS) -c -DVERSION=\"`cat VERSION`\" version.c
+
+.SUFFIXES:      .0 .1
+
+.1.0:
+		${MANROFF} $*.1 > $@
 
 clean:
-	rm -f *.o lev
+		rm -f *.o *.elf ${MAN} lv *.elf *.dis tags *~
 
-distclean spotless: clean
-	rm -f Makefile config.cmd config.sub config.h config.mak config.log config.md
-
-install: install.bin install.man
-
-install.bin: lev
-	/home/sergev/Daily/workdir-2015-01-06/levee-3.5a/config.md $(PREFIX)$(exedir)
-	/usr/bin/install -s -m 755 lev $(PREFIX)$(exedir)/levee
-	/bin/ln -s -f levee $(PREFIX)$(exedir)/lv
-
-install.man:
-	/home/sergev/Daily/workdir-2015-01-06/levee-3.5a/config.md $(PREFIX)$(mandir)/man1
-	/usr/bin/install -m 444 lv.1 $(PREFIX)$(mandir)/man1/levee.1
-	echo ".so man1/levee.1" > $(PREFIX)$(mandir)/man1/lv.1
+install:        all
+		install lv ${DESTDIR}/bin/
+		cp lv.0 ${DESTDIR}/share/man/cat1/
 
 # Dependencies
 

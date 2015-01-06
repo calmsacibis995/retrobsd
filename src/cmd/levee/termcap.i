@@ -216,7 +216,11 @@ tc_init()
 #else
 
 #include <stdlib.h>
-#include <termcap.h>
+#ifdef HAVE_TERMCAP_H
+#   include <termcap.h>
+#else
+#   include <term.h>
+#endif
 #include <string.h>
 #include <sys/ioctl.h>
 

@@ -25,16 +25,14 @@
 #ifdef OS_UNIX
 
 #include "extern.h"
-#include <termios.h>
+#ifdef HAVE_TERMIOS_H
+#   include <termios.h>
+#endif
 #include <string.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-
-#if USE_TERMCAP
-#include <termcap.h>
-#endif
 
 int
 min(a,b)
@@ -53,13 +51,8 @@ int a, b;
 void strput(s)
 char *s;
 {
-#if USE_TERMCAP
-    if (s)
-	tputs(s, 1, putchar);
-#else
     if (s)
 	write(1, s, strlen(s));
-#endif
 }
 
 #if !HAVE_BASENAME
@@ -76,6 +69,9 @@ char *s;
 }
 #endif
 
+static int ioset = 0;
+
+#ifdef HAVE_TERMIOS_H
 
 #if !HAVE_TCGETATTR
 #define tcgetattr(fd,t)	ioctl(fd, TCGETS, t)
@@ -83,8 +79,6 @@ char *s;
 #define TCSANOW	TCSETAF
 #endif
 
-
-static int ioset = 0;
 static struct termios old;
 
 void
@@ -117,6 +111,65 @@ fixcon()
          ioset = 0;
     }
 }
+
+#else /* HAVE_TERMIOS_H */
+
+static struct sgttyb old;
+static struct tchars oldtchars;
+static struct ltchars oldltchars;
+
+void
+initcon()
+{
+    struct tchars new_tc;
+    struct ltchars new_ltc;
+    struct sgttyb new;
+
+    if (!ioset) {
+        ioctl(0, TIOCGETC, &oldtchars);
+        ioctl(0, TIOCGLTC, &oldltchars);
+
+        /* get editing keys */
+        Erasechar = 0177;
+        eraseline = 'U' & 037;
+
+        new_tc = oldtchars;
+        new_tc.t_eofc = -1;         /* end-of-file */
+        new_tc.t_quitc = -1;        /* quit */
+        new_tc.t_intrc = -1;        /* interrupt */
+        new_ltc = oldltchars;
+        new_ltc.t_suspc = -1;       /* stop process */
+        new_ltc.t_dsuspc = -1;      /* delayed stop process */
+        new_ltc.t_rprntc = -1;      /* reprint line */
+        new_ltc.t_flushc = -1;      /* flush output */
+        new_ltc.t_werasc = -1;      /* word erase */
+        new_ltc.t_lnextc = -1;      /* literal next character */
+        ioctl(0, TIOCSETC, &new_tc);
+        ioctl(0, TIOCSLTC, &new_ltc);
+
+        ioctl(0, TIOCGETP, &old);
+        new = old;
+
+        new.sg_flags &= ~(ECHO | CRMOD | XTABS | RAW);
+        new.sg_flags |= CBREAK;
+
+        ioctl(0, TIOCSETP, &new);
+        ioset = 1;
+    }
+}
+
+void
+fixcon()
+{
+    if (ioset) {
+        ioctl(0, TIOCSETP, &old);
+        ioctl(0, TIOCSETC, &oldtchars);
+        ioctl(0, TIOCSLTC, &oldltchars);
+        ioset = 0;
+    }
+}
+
+#endif /* HAVE_TERMIOS_H */
 
 int
 getKey()

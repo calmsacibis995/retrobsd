@@ -241,6 +241,7 @@ file /bin/login
 mode 04755
 file /bin/lol
 file /bin/ls
+file /bin/lv
 file /bin/mail
 mode 04755
 file /bin/make
@@ -781,6 +782,7 @@ file /share/man/cat1/id.0
 file /share/man/cat1/la.0
 file /share/man/cat1/lcc.0
 file /share/man/cat1/ld.0
+file /share/man/cat1/lv.0
 file /share/man/cat1/passwd.0
 file /share/man/cat1/printf.0
 file /share/man/cat1/ranlib.0
