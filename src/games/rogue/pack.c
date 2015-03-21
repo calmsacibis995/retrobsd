@@ -11,72 +11,16 @@
 
 char *curse_message = "you can't, it appears to be cursed";
 
-static int
-next_avail_ichar()
-{
-	register object *obj;
-	register int i;
-	boolean ichars[26];
-
-	for (i = 0; i < 26; i++) {
-		ichars[i] = 0;
-	}
-	obj = rogue.pack.next_object;
-	while (obj) {
-		ichars[(obj->ichar - 'a')] = 1;
-		obj = obj->next_object;
-	}
-	for (i = 0; i < 26; i++) {
-		if (!ichars[i]) {
-			return(i + 'a');
-		}
-	}
-	return('?');
-}
-
-static object *
-check_duplicate(obj, pack)
-        object *obj, *pack;
-{
-	object *op;
-
-	if (!(obj->what_is & (WEAPON | FOOD | SCROL | POTION))) {
-		return(0);
-	}
-	if ((obj->what_is == FOOD) && (obj->which_kind == FRUIT)) {
-		return(0);
-	}
-	op = pack->next_object;
-
-	while (op) {
-		if ((op->what_is == obj->what_is) &&
-			(op->which_kind == obj->which_kind)) {
-
-			if ((obj->what_is != WEAPON) ||
-			((obj->what_is == WEAPON) &&
-			((obj->which_kind == ARROW) ||
-			(obj->which_kind == DAGGER) ||
-			(obj->which_kind == DART) ||
-			(obj->which_kind == SHURIKEN)) &&
-			(obj->quiver == op->quiver))) {
-				op->quantity += obj->quantity;
-				return(op);
-			}
-		}
-		op = op->next_object;
-	}
-	return(0);
-}
+extern short levitate;
 
 object *
 add_to_pack(obj, pack, condense)
-        object *obj, *pack;
+object *obj, *pack;
 {
 	object *op;
 
 	if (condense) {
-	        op = check_duplicate(obj, pack);
-		if (op) {
+		if (op = check_duplicate(obj, pack)) {
 			free_object(obj);
 			return(op);
 		} else {
@@ -97,9 +41,8 @@ add_to_pack(obj, pack, condense)
 	return(obj);
 }
 
-void
 take_from_pack(obj, pack)
-        object *obj, *pack;
+object *obj, *pack;
 {
 	while (pack->next_object != obj) {
 		pack = pack->next_object;
@@ -110,9 +53,10 @@ take_from_pack(obj, pack)
 /* Note: *status is set to 0 if the rogue attempts to pick up a scroll
  * of scare-monster and it turns to dust.  *status is otherwise set to 1.
  */
+
 object *
 pick_up(row, col, status)
-        int *status;
+short *status;
 {
 	object *obj;
 
@@ -157,11 +101,10 @@ pick_up(row, col, status)
 	return(obj);
 }
 
-void
 drop()
 {
 	object *obj, *new;
-	int ch;
+	short ch;
 	char desc[DCOLS];
 
 	if (dungeon[rogue.row][rogue.col] & (OBJECT | STAIRS | TRAP)) {
@@ -172,12 +115,10 @@ drop()
 		message("you have nothing to drop", 0);
 		return;
 	}
-	ch = pack_letter("drop what?", ALL_OBJECTS);
-	if (ch == CANCEL) {
+	if ((ch = pack_letter("drop what?", ALL_OBJECTS)) == CANCEL) {
 		return;
 	}
-	obj = get_letter_object(ch);
-	if (! obj) {
+	if (!(obj = get_letter_object(ch))) {
 		message("no such item.", 0);
 		return;
 	}
@@ -222,16 +163,300 @@ drop()
 	(void) reg_move();
 }
 
-void
+object *
+check_duplicate(obj, pack)
+object *obj, *pack;
+{
+	object *op;
+
+	if (!(obj->what_is & (WEAPON | FOOD | SCROL | POTION))) {
+		return(0);
+	}
+	if ((obj->what_is == FOOD) && (obj->which_kind == FRUIT)) {
+		return(0);
+	}
+	op = pack->next_object;
+
+	while (op) {
+		if ((op->what_is == obj->what_is) &&
+			(op->which_kind == obj->which_kind)) {
+
+			if ((obj->what_is != WEAPON) ||
+			((obj->what_is == WEAPON) &&
+			((obj->which_kind == ARROW) ||
+			(obj->which_kind == DAGGER) ||
+			(obj->which_kind == DART) ||
+			(obj->which_kind == SHURIKEN)) &&
+			(obj->quiver == op->quiver))) {
+				op->quantity += obj->quantity;
+				return(op);
+			}
+		}
+		op = op->next_object;
+	}
+	return(0);
+}
+
+next_avail_ichar()
+{
+	register object *obj;
+	register i;
+	boolean ichars[26];
+
+	for (i = 0; i < 26; i++) {
+		ichars[i] = 0;
+	}
+	obj = rogue.pack.next_object;
+	while (obj) {
+		ichars[(obj->ichar - 'a')] = 1;
+		obj = obj->next_object;
+	}
+	for (i = 0; i < 26; i++) {
+		if (!ichars[i]) {
+			return(i + 'a');
+		}
+	}
+	return('?');
+}
+
 wait_for_ack()
 {
 	while (rgetchar() != ' ') ;
 }
 
-static int
+pack_letter(prompt, mask)
+char *prompt;
+unsigned short mask;
+{
+	short ch;
+	unsigned short tmask = mask;
+
+	if (!mask_pack(&rogue.pack, mask)) {
+		message("nothing appropriate", 0);
+		return(CANCEL);
+	}
+	for (;;) {
+
+		message(prompt, 0);
+
+		for (;;) {
+			ch = rgetchar();
+			if (!is_pack_letter(&ch, &mask)) {
+				sound_bell();
+			} else {
+				break;
+			}
+		}
+
+		if (ch == LIST) {
+			check_message();
+			inventory(&rogue.pack, mask);
+		} else {
+			break;
+		}
+		mask = tmask;
+	}
+	check_message();
+	return(ch);
+}
+
+take_off()
+{
+	char desc[DCOLS];
+	object *obj;
+
+	if (rogue.armor) {
+		if (rogue.armor->is_cursed) {
+			message(curse_message, 0);
+		} else {
+			mv_aquatars();
+			obj = rogue.armor;
+			unwear(rogue.armor);
+			(void) strcpy(desc, "was wearing ");
+			get_desc(obj, desc+12);
+			message(desc, 0);
+			print_stats(STAT_ARMOR);
+			(void) reg_move();
+		}
+	} else {
+		message("not wearing any", 0);
+	}
+}
+
+wear()
+{
+	short ch;
+	register object *obj;
+	char desc[DCOLS];
+
+	if (rogue.armor) {
+		message("your already wearing some", 0);
+		return;
+	}
+	ch = pack_letter("wear what?", ARMOR);
+
+	if (ch == CANCEL) {
+		return;
+	}
+	if (!(obj = get_letter_object(ch))) {
+		message("no such item.", 0);
+		return;
+	}
+	if (obj->what_is != ARMOR) {
+		message("you can't wear that", 0);
+		return;
+	}
+	obj->identified = 1;
+	(void) strcpy(desc, "wearing ");
+	get_desc(obj, desc + 8);
+	message(desc, 0);
+	do_wear(obj);
+	print_stats(STAT_ARMOR);
+	(void) reg_move();
+}
+
+unwear(obj)
+object *obj;
+{
+	if (obj) {
+		obj->in_use_flags &= (~BEING_WORN);
+	}
+	rogue.armor = (object *) 0;
+}
+
+do_wear(obj)
+object *obj;
+{
+	rogue.armor = obj;
+	obj->in_use_flags |= BEING_WORN;
+	obj->identified = 1;
+}
+
+wield()
+{
+	short ch;
+	register object *obj;
+	char desc[DCOLS];
+
+	if (rogue.weapon && rogue.weapon->is_cursed) {
+		message(curse_message, 0);
+		return;
+	}
+	ch = pack_letter("wield what?", WEAPON);
+
+	if (ch == CANCEL) {
+		return;
+	}
+	if (!(obj = get_letter_object(ch))) {
+		message("No such item.", 0);
+		return;
+	}
+	if (obj->what_is & (ARMOR | RING)) {
+		sprintf(desc, "you can't wield %s",
+			((obj->what_is == ARMOR) ? "armor" : "rings"));
+		message(desc, 0);
+		return;
+	}
+	if (obj->in_use_flags & BEING_WIELDED) {
+		message("in use", 0);
+	} else {
+		unwield(rogue.weapon);
+		(void) strcpy(desc, "wielding ");
+		get_desc(obj, desc + 9);
+		message(desc, 0);
+		do_wield(obj);
+		(void) reg_move();
+	}
+}
+
+do_wield(obj)
+object *obj;
+{
+	rogue.weapon = obj;
+	obj->in_use_flags |= BEING_WIELDED;
+}
+
+unwield(obj)
+object *obj;
+{
+	if (obj) {
+		obj->in_use_flags &= (~BEING_WIELDED);
+	}
+	rogue.weapon = (object *) 0;
+}
+
+call_it()
+{
+	short ch;
+	register object *obj;
+	struct id *id_table;
+	char buf[MAX_TITLE_LENGTH+2];
+
+	ch = pack_letter("call what?", (SCROL | POTION | WAND | RING));
+
+	if (ch == CANCEL) {
+		return;
+	}
+	if (!(obj = get_letter_object(ch))) {
+		message("no such item.", 0);
+		return;
+	}
+	if (!(obj->what_is & (SCROL | POTION | WAND | RING))) {
+		message("surely you already know what that's called", 0);
+		return;
+	}
+	id_table = get_id_table(obj);
+
+	if (get_input_line("call it:","",buf,id_table[obj->which_kind].title,1,1)) {
+		id_table[obj->which_kind].id_status = CALLED;
+		(void) strcpy(id_table[obj->which_kind].title, buf);
+	}
+}
+
+pack_count(new_obj)
+object *new_obj;
+{
+	object *obj;
+	short count = 0;
+
+	obj = rogue.pack.next_object;
+
+	while (obj) {
+		if (obj->what_is != WEAPON) {
+			count += obj->quantity;
+		} else if (!new_obj) {
+			count++;
+		} else if ((new_obj->what_is != WEAPON) ||
+			((obj->which_kind != ARROW) &&
+			(obj->which_kind != DAGGER) &&
+			(obj->which_kind != DART) &&
+			(obj->which_kind != SHURIKEN)) ||
+			(new_obj->which_kind != obj->which_kind) ||
+			(obj->quiver != new_obj->quiver)) {
+			count++;
+		}
+		obj = obj->next_object;
+	}
+	return(count);
+}
+
+boolean
+mask_pack(pack, mask)
+object *pack;
+unsigned short mask;
+{
+	while (pack->next_object) {
+		pack = pack->next_object;
+		if (pack->what_is & mask) {
+			return(1);
+		}
+	}
+	return(0);
+}
+
 is_pack_letter(c, mask)
-        int *c;
-        unsigned *mask;
+short *c;
+unsigned short *mask;
 {
 	if (((*c == '?') || (*c == '!') || (*c == ':') || (*c == '=') ||
 		(*c == ')') || (*c == ']') || (*c == '/') || (*c == ','))) {
@@ -267,264 +492,21 @@ is_pack_letter(c, mask)
 	return(((*c >= 'a') && (*c <= 'z')) || (*c == CANCEL) || (*c == LIST));
 }
 
-static boolean
-mask_pack(pack, mask)
-        object *pack;
-        unsigned mask;
-{
-	while (pack->next_object) {
-		pack = pack->next_object;
-		if (pack->what_is & mask) {
-			return(1);
-		}
-	}
-	return(0);
-}
-
-int
-pack_letter(prompt, mask)
-        char *prompt;
-        unsigned mask;
-{
-	int ch;
-	unsigned tmask = mask;
-
-	if (!mask_pack(&rogue.pack, mask)) {
-		message("nothing appropriate", 0);
-		return(CANCEL);
-	}
-	for (;;) {
-
-		message(prompt, 0);
-
-		for (;;) {
-			ch = rgetchar();
-			if (!is_pack_letter(&ch, &mask)) {
-				sound_bell();
-			} else {
-				break;
-			}
-		}
-
-		if (ch == LIST) {
-			check_message();
-			inventory(&rogue.pack, mask);
-		} else {
-			break;
-		}
-		mask = tmask;
-	}
-	check_message();
-	return(ch);
-}
-
-void
-take_off()
-{
-	char desc[DCOLS];
-	object *obj;
-
-	if (rogue.armor) {
-		if (rogue.armor->is_cursed) {
-			message(curse_message, 0);
-		} else {
-			mv_aquatars();
-			obj = rogue.armor;
-			unwear(rogue.armor);
-			(void) strcpy(desc, "was wearing ");
-			get_desc(obj, desc+12);
-			message(desc, 0);
-			print_stats(STAT_ARMOR);
-			(void) reg_move();
-		}
-	} else {
-		message("not wearing any", 0);
-	}
-}
-
-void
-wear()
-{
-	int ch;
-	register object *obj;
-	char desc[DCOLS];
-
-	if (rogue.armor) {
-		message("your already wearing some", 0);
-		return;
-	}
-	ch = pack_letter("wear what?", ARMOR);
-
-	if (ch == CANCEL) {
-		return;
-	}
-	if (!(obj = get_letter_object(ch))) {
-		message("no such item.", 0);
-		return;
-	}
-	if (obj->what_is != ARMOR) {
-		message("you can't wear that", 0);
-		return;
-	}
-	obj->identified = 1;
-	(void) strcpy(desc, "wearing ");
-	get_desc(obj, desc + 8);
-	message(desc, 0);
-	do_wear(obj);
-	print_stats(STAT_ARMOR);
-	(void) reg_move();
-}
-
-void
-unwear(obj)
-        object *obj;
-{
-	if (obj) {
-		obj->in_use_flags &= (~BEING_WORN);
-	}
-	rogue.armor = (object *) 0;
-}
-
-void
-do_wear(obj)
-        object *obj;
-{
-	rogue.armor = obj;
-	obj->in_use_flags |= BEING_WORN;
-	obj->identified = 1;
-}
-
-void
-wield()
-{
-	int ch;
-	register object *obj;
-	char desc[DCOLS];
-
-	if (rogue.weapon && rogue.weapon->is_cursed) {
-		message(curse_message, 0);
-		return;
-	}
-	ch = pack_letter("wield what?", WEAPON);
-
-	if (ch == CANCEL) {
-		return;
-	}
-	if (!(obj = get_letter_object(ch))) {
-		message("No such item.", 0);
-		return;
-	}
-	if (obj->what_is & (ARMOR | RING)) {
-		sprintf(desc, "you can't wield %s",
-			((obj->what_is == ARMOR) ? "armor" : "rings"));
-		message(desc, 0);
-		return;
-	}
-	if (obj->in_use_flags & BEING_WIELDED) {
-		message("in use", 0);
-	} else {
-		unwield(rogue.weapon);
-		(void) strcpy(desc, "wielding ");
-		get_desc(obj, desc + 9);
-		message(desc, 0);
-		do_wield(obj);
-		(void) reg_move();
-	}
-}
-
-void
-do_wield(obj)
-        object *obj;
-{
-	rogue.weapon = obj;
-	obj->in_use_flags |= BEING_WIELDED;
-}
-
-void
-unwield(obj)
-        object *obj;
-{
-	if (obj) {
-		obj->in_use_flags &= (~BEING_WIELDED);
-	}
-	rogue.weapon = (object *) 0;
-}
-
-void
-call_it()
-{
-	int ch;
-	register object *obj;
-	struct id *id_table;
-	char buf[MAX_TITLE_LENGTH+2];
-
-	ch = pack_letter("call what?", (SCROL | POTION | WAND | RING));
-
-	if (ch == CANCEL) {
-		return;
-	}
-	if (!(obj = get_letter_object(ch))) {
-		message("no such item.", 0);
-		return;
-	}
-	if (!(obj->what_is & (SCROL | POTION | WAND | RING))) {
-		message("surely you already know what that's called", 0);
-		return;
-	}
-	id_table = get_id_table(obj);
-
-	if (get_input_line("call it:","",buf,id_table[obj->which_kind].title,1,1)) {
-		id_table[obj->which_kind].id_status = CALLED;
-		(void) strcpy(id_table[obj->which_kind].title, buf);
-	}
-}
-
-int
-pack_count(new_obj)
-        object *new_obj;
-{
-	object *obj;
-	int count = 0;
-
-	obj = rogue.pack.next_object;
-
-	while (obj) {
-		if (obj->what_is != WEAPON) {
-			count += obj->quantity;
-		} else if (!new_obj) {
-			count++;
-		} else if ((new_obj->what_is != WEAPON) ||
-			((obj->which_kind != ARROW) &&
-			(obj->which_kind != DAGGER) &&
-			(obj->which_kind != DART) &&
-			(obj->which_kind != SHURIKEN)) ||
-			(new_obj->which_kind != obj->which_kind) ||
-			(obj->quiver != new_obj->quiver)) {
-			count++;
-		}
-		obj = obj->next_object;
-	}
-	return(count);
-}
-
-int
 has_amulet()
 {
 	return(mask_pack(&rogue.pack, AMULET));
 }
 
-void
 kick_into_pack()
 {
 	object *obj;
 	char desc[DCOLS];
-	int n, stat;
+	short n, stat;
 
 	if (!(dungeon[rogue.row][rogue.col] & OBJECT)) {
 		message("nothing here", 0);
 	} else {
-	        obj = pick_up(rogue.row, rogue.col, &stat);
-		if (obj) {
+		if (obj = pick_up(rogue.row, rogue.col, &stat)) {
 			get_desc(obj, desc);
 			if (obj->what_is == GOLD) {
 				message(desc, 0);

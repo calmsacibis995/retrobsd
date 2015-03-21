@@ -12,18 +12,73 @@
 char login_name[MAX_OPT_LEN];
 char *nick_name = (char *) 0;
 char *rest_file = 0;
-char cant_int = 0;
-char did_int = 0;
-char score_only;
-char init_curses = 0;
-char save_is_interactive = 1;
-char ask_quit = 1;
-char no_skull = 0;
-char passgo = 0;
+boolean cant_int = 0;
+boolean did_int = 0;
+boolean score_only;
+boolean init_curses = 0;
+boolean save_is_interactive = 1;
+boolean ask_quit = 1;
+boolean no_skull = 0;
+boolean passgo = 0;
 char *error_file = "rogue.esave";
 char *byebye_string = "Okay, bye bye!";
 
-static void
+extern char *fruit;
+extern char *save_file;
+extern short party_room;
+extern boolean jump;
+
+init(argc, argv)
+int argc;
+char *argv[];
+{
+	char *pn;
+	int seed;
+
+	pn = md_gln();
+	if ((!pn) || (strlen(pn) >= MAX_OPT_LEN)) {
+		clean_up("Hey!  Who are you?");
+	}
+	(void) strcpy(login_name, pn);
+
+	do_args(argc, argv);
+	do_opts();
+
+	if (!score_only && !rest_file) {
+		printf("Hello %s, just a moment while I dig the dungeon...",
+			nick_name);
+		fflush(stdout);
+	}
+
+	initscr();
+	if ((LINES < DROWS) || (COLS < DCOLS)) {
+		clean_up("must be played on 24 x 80 screen");
+	}
+	start_window();
+	init_curses = 1;
+
+	md_heed_signals();
+
+	if (score_only) {
+		put_scores((object *) 0, 0);
+	}
+	seed = md_gseed();
+	(void) srrandom(seed);
+	if (rest_file) {
+		restore(rest_file);
+		return(1);
+	}
+	mix_colors();
+	get_wand_and_ring_materials();
+	make_scroll_titles();
+
+	level_objects.next_object = (object *) 0;
+	level_monsters.next_monster = (object *) 0;
+	player_init();
+	ring_stats(0);
+	return(0);
+}
+
 player_init()
 {
 	object *obj;
@@ -72,12 +127,74 @@ player_init()
 	(void) add_to_pack(obj, &rogue.pack, 1);
 }
 
-static void
-do_args(argc, argv)
-        int argc;
-        char *argv[];
+clean_up(estr)
+char *estr;
 {
-	int i, j;
+	if (save_is_interactive) {
+		if (init_curses) {
+			move(DROWS-1, 0);
+			refresh();
+			stop_window();
+		}
+		printf("\n%s\n", estr);
+	}
+	md_exit(0);
+}
+
+start_window()
+{
+	crmode();
+	noecho();
+#ifndef BAD_NONL
+	nonl();
+#endif
+	md_control_keybord(0);
+}
+
+stop_window()
+{
+	endwin();
+	md_control_keybord(1);
+}
+
+void
+byebye(int sig)
+{
+	md_ignore_signals();
+	if (ask_quit) {
+		quit(1);
+	} else {
+		clean_up(byebye_string);
+	}
+	md_heed_signals();
+}
+
+void
+onintr(int sig)
+{
+	md_ignore_signals();
+	if (cant_int) {
+		did_int = 1;
+	} else {
+		check_message();
+		message("interrupt", 1);
+	}
+	md_heed_signals();
+}
+
+void
+error_save(int sig)
+{
+	save_is_interactive = 0;
+	save_into_file(error_file);
+	clean_up("");
+}
+
+do_args(argc, argv)
+int argc;
+char *argv[];
+{
+	short i, j;
 
 	for (i = 1; i < argc; i++) {
 		if (argv[i][0] == '-') {
@@ -94,50 +211,11 @@ do_args(argc, argv)
 	}
 }
 
-static void
-env_get_value(s, e, add_blank)
-        char **s, *e;
-        boolean add_blank;
-{
-	int i = 0;
-	char *t;
-
-	t = e;
-
-	while ((*e) && (*e != ',')) {
-		if (*e == ':') {
-			*e = ';';		/* ':' reserved for score file purposes */
-		}
-		e++;
-		if (++i >= MAX_OPT_LEN) {
-			break;
-		}
-	}
-	*s = md_malloc(MAX_OPT_LEN + 2);
-	(void) strncpy(*s, t, i);
-	if (add_blank) {
-		(*s)[i++] = ' ';
-	}
-	(*s)[i] = '\0';
-}
-
-static void
-init_str(str, dflt)
-        char **str, *dflt;
-{
-	if (!(*str)) {
-		*str = md_malloc(MAX_OPT_LEN + 2);
-		(void) strcpy(*str, dflt);
-	}
-}
-
-static void
 do_opts()
 {
 	char *eptr;
 
-	eptr = md_getenv("ROGUEOPTS");
-	if (eptr) {
+	if (eptr = md_getenv("ROGUEOPTS")) {
 		for (;;) {
 			while ((*eptr) == ' ') {
 				eptr++;
@@ -180,121 +258,37 @@ do_opts()
 	init_str(&fruit, "slime-mold");
 }
 
-int
-init(argc, argv)
-        int argc;
-        char *argv[];
+env_get_value(s, e, add_blank)
+char **s, *e;
+boolean add_blank;
 {
-	char *pn;
-	int seed;
+	short i = 0;
+	char *t;
 
-	pn = md_gln();
-	if ((!pn) || (strlen(pn) >= MAX_OPT_LEN)) {
-		clean_up("Hey!  Who are you?");
-	}
-	(void) strcpy(login_name, pn);
+	t = e;
 
-	do_args(argc, argv);
-	do_opts();
-
-	if (!score_only && !rest_file) {
-		printf("Hello %s, just a moment while I dig the dungeon...",
-			nick_name);
-		fflush(stdout);
-		md_sleep(1);
-	}
-
-	initscr();
-	if ((LINES < DROWS) || (COLS < DCOLS)) {
-		clean_up("must be played on 24 x 80 screen");
-	}
-	start_window();
-	init_curses = 1;
-
-	md_heed_signals();
-
-	if (score_only) {
-		put_scores((object *) 0, 0);
-	}
-	seed = md_gseed();
-	(void) srrandom(seed);
-	if (rest_file) {
-		restore(rest_file);
-		return(1);
-	}
-	mix_colors();
-	get_wand_and_ring_materials();
-	make_scroll_titles();
-
-	level_objects.next_object = (object *) 0;
-	level_monsters.next_monster = (object *) 0;
-	player_init();
-	ring_stats(0);
-	return(0);
-}
-
-void
-clean_up(estr)
-        char *estr;
-{
-	if (save_is_interactive) {
-		if (init_curses) {
-			move(DROWS-1, 0);
-			refresh();
-			stop_window();
+	while ((*e) && (*e != ',')) {
+		if (*e == ':') {
+			*e = ';';		/* ':' reserved for score file purposes */
 		}
-		printf("\n%s\n", estr);
+		e++;
+		if (++i >= MAX_OPT_LEN) {
+			break;
+		}
 	}
-	md_exit(0);
-}
-
-void
-start_window()
-{
-	crmode();
-	noecho();
-#ifndef BAD_NONL
-	nonl();
-#endif
-	md_control_keybord(0);
-}
-
-void
-stop_window()
-{
-	endwin();
-	md_control_keybord(1);
-}
-
-void
-byebye(int sig)
-{
-	md_ignore_signals();
-	if (ask_quit) {
-		quit(1);
-	} else {
-		clean_up(byebye_string);
+	*s = md_malloc(MAX_OPT_LEN + 2);
+	(void) strncpy(*s, t, i);
+	if (add_blank) {
+		(*s)[i++] = ' ';
 	}
-	md_heed_signals();
+	(*s)[i] = '\0';
 }
 
-void
-onintr(int sig)
+init_str(str, dflt)
+char **str, *dflt;
 {
-	md_ignore_signals();
-	if (cant_int) {
-		did_int = 1;
-	} else {
-		check_message();
-		message("interrupt", 1);
+	if (!(*str)) {
+		*str = md_malloc(MAX_OPT_LEN + 2);
+		(void) strcpy(*str, dflt);
 	}
-	md_heed_signals();
-}
-
-void
-error_save(int sig)
-{
-	save_is_interactive = 0;
-	save_into_file(error_file);
-	clean_up("");
 }

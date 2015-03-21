@@ -3,14 +3,18 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include <signal.h>
-#include "curses.ext"
+
+#if !defined(lint) && !defined(NOSCCS)
+static char sccsid[] = "@(#)tstp.c	5.1.1 (2.11BSD) 1999/10/24";
+#endif
+
+#include	<signal.h>
+#include	"curses.ext"
 
 /*
  * handle stop and start signals
  */
-void tstp(sig)
-{
+tstp() {
 	SGTTY	tty;
 	sigset_t oset, set;
 #ifdef DEBUG
@@ -46,7 +50,7 @@ void tstp(sig)
 	signal(SIGTSTP, (sig_t)tstp);
 
 	_tty = tty;
-	ioctl(_tty_ch, TIOCSETP, &_tty);
+	stty(_tty_ch, &_tty);
 
 	/* Repaint the screen. */
 	wrefresh(curscr);

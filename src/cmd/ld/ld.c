@@ -22,28 +22,18 @@
  * this software.
  */
 #ifdef CROSS
-#   include <sys/types.h>
-#   include <sys/select.h>
-#   include <sys/stat.h>
-#   include <sys/time.h>
-#   include <sys/fcntl.h>
-#   include <sys/signal.h>
-#   include <stdio.h>
-#   include <string.h>
-#   include <stdlib.h>
-#   include <unistd.h>
-#   define MAXNAMLEN 63
+#   include </usr/include/stdio.h>
 #else
-#   include <sys/types.h>
-#   include <sys/stat.h>
-#   include <sys/dir.h>
 #   include <stdio.h>
-#   include <stdlib.h>
-#   include <string.h>
-#   include <signal.h>
-#   include <unistd.h>
 #endif
+#include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
+#include <signal.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/dir.h>
 #include <a.out.h>
 #include <ar.h>
 #include <ranlib.h>
@@ -84,16 +74,16 @@ struct local {
 #define NLIBS           256
 #define RANTABSZ        500
 
-struct nlist cursym;            /* current symbol */
-struct nlist symtab [NSYM];     /* table of symbols */
-struct nlist **symhash [NSYM];  /* pointers to hash table */
-struct nlist *lastsym;          /* last entered symbol */
-struct nlist *hshtab [NSYM+2];  /* hash table for symbols */
+struct nlist cursym;            /* текущий символ */
+struct nlist symtab [NSYM];     /* собственно символы */
+struct nlist **symhash [NSYM];  /* указатели на хэш-таблицу */
+struct nlist *lastsym;          /* последний введенный символ */
+struct nlist *hshtab [NSYM+2];  /* хэш-таблица для символов */
 struct local local [NSYMPR];
-int symindex;                   /* next free entry of symbol table */
+int symindex;                   /* следующий свободный вход таб. символов */
 unsigned basaddr = BADDR;       /* base address of loading */
 struct ranlib rantab [RANTABSZ];
-int rancount;                   /* number of elements in rantab */
+int tnum;                       /* number of elements in rantab */
 
 /*
  * library management
@@ -103,7 +93,7 @@ unsigned liblist [NLIBS], *libp;
 /*
  * internal symbols
  */
-struct nlist *p_etext, *p_edata, *p_end, *p_gp, *entrypt;
+struct nlist *p_etext, *p_edata, *p_end, *entrypt;
 
 /*
  * options
@@ -113,7 +103,7 @@ int     xflag;                  /* discard local symbols */
 int     Xflag;                  /* discard locals starting with 'L' or '.' */
 int     Sflag;                  /* discard all except locals and globals*/
 int     rflag;                  /* preserve relocation bits, don't define commons */
-int     output_relinfo;
+int     arflag;                 /* original copy of rflag */
 int     sflag;                  /* discard all symbols */
 int     dflag;                  /* define common even with rflag */
 int     verbose;                /* verbose mode */
@@ -132,10 +122,6 @@ unsigned ctrel, cdrel, cbrel;
  * used after pass 1
  */
 unsigned torigin, dorigin, borigin;
-
-/* gp control, MIPS specific */
-unsigned gpoffset = 0x8000;     /* offset from data start */
-unsigned gp;                    /* allocated address */
 
 int	ofilfnd;
 char	*ofilename = "l.out";
@@ -172,7 +158,7 @@ int fgethdr (text, h)
         register FILE *text;
         register struct exec *h;
 {
-        h->a_midmag   = fgetword (text);
+        h->a_magic   = fgetword (text);
         h->a_text    = fgetword (text);
         h->a_data    = fgetword (text);
         h->a_bss     = fgetword (text);
@@ -198,55 +184,44 @@ void fputhdr (hdr, coutb)
 }
 
 /*
- * Read a relocation record: 1 to 6 bytes.
+ * Read a relocation record: 1 or 4 bytes.
  */
-void fgetrel (f, r)
+unsigned int fgetrel (f)
         register FILE *f;
-        register struct reloc *r;
 {
-        r->flags = getc (f);
-        if ((r->flags & RSMASK) == REXT) {
-                r->index = getc (f);
-                r->index |= getc (f) << 8;
-                r->index |= getc (f) << 16;
+        register unsigned int r;
+
+        r = getc (f);
+        if ((r & RSMASK) == REXT) {
+                r |= getc (f) << 8;
+                r |= getc (f) << 16;
+                r |= getc (f) << 24;
         }
-        if ((r->flags & RFMASK) == RHIGH16 ||
-            (r->flags & RFMASK) == RHIGH16S) {
-                r->offset = getc (f);
-                r->offset |= getc (f) << 8;
-        }
+        return r;
 }
 
 /*
- * Emit a relocation record: 1 to 6 bytes.
+ * Emit a relocation record: 1 or 4 bytes.
  * Return a written length.
  */
-unsigned fputrel (r, f)
-        register struct reloc *r;
+unsigned int fputrel (r, f)
+        register unsigned int r;
         register FILE *f;
 {
-        register unsigned nbytes = 1;
-
-        putc (r->flags, f);
-        if ((r->flags & RSMASK) == REXT) {
-                putc (r->index, f);
-                putc (r->index >> 8, f);
-                putc (r->index >> 16, f);
-                nbytes += 3;
+        putc (r, f);
+        if ((r & RSMASK) != REXT) {
+                return 1;
         }
-        if ((r->flags & RFMASK) == RHIGH16 ||
-            (r->flags & RFMASK) == RHIGH16S) {
-                putc (r->offset, f);
-                putc (r->offset >> 8, f);
-                nbytes += 2;
-        }
-        return nbytes;
+        putc (r >> 8, f);
+        putc (r >> 16, f);
+        putc (r >> 24, f);
+        return 4;
 }
 
 void delexit (int sig)
 {
 	unlink ("l.out");
-	if (! delarg && ! rflag)
+	if (! delarg && !arflag)
                 chmod (ofilename, 0777 & ~umask(0));
 	exit (delarg);
 }
@@ -279,8 +254,10 @@ int fgetsym (text, sym)
 		return 0;
 	sym->n_len = c;
 	sym->n_name = malloc (sym->n_len + 1);
-	if (! sym->n_name)
+	if (! sym->n_name) {
 		error (2, "out of memory");
+		return 0;
+        }
 	sym->n_type = getc (text);
 	sym->n_value = fgetword (text);
 	for (c=0; c<sym->n_len; c++)
@@ -401,7 +378,7 @@ void freerantab ()
 {
 	register struct ranlib *p;
 
-	for (p=rantab; p<rantab+rancount; ++p)
+	for (p=rantab; p<rantab+tnum; ++p)
 		free (p->ran_name);
 }
 
@@ -416,14 +393,14 @@ int fgetran (text, sym)
 	/* 4 bytes - seek in archive */
 	/* 'len' bytes - symbol name */
 	/* if len == 0 then eof */
-	/* return 1 if ok, 0 on eof */
+	/* return 1 if ok, 0 if eof, -1 if out of memory */
 
 	sym->ran_len = getc (text);
 	if (sym->ran_len <= 0)
 		return (0);
 	sym->ran_name = malloc (sym->ran_len + 1);
 	if (! sym->ran_name)
-		error (2, "out of memory");
+		return (-1);
 	sym->ran_off = fgetword (text);
 	for (c=0; c<sym->ran_len; c++)
 		sym->ran_name [c] = getc (text);
@@ -434,10 +411,14 @@ int fgetran (text, sym)
 void getrantab ()
 {
 	register struct ranlib *p;
+	register int n;
 
 	for (p=rantab; p<rantab+RANTABSZ; ++p) {
-		if (! fgetran (text, p)) {
-			rancount = p - rantab;
+		n = fgetran (text, p);
+		if (n < 0)
+			error (2, "out of memory");
+		if (n == 0) {
+			tnum = p-rantab;
 			return;
 		}
 	}
@@ -507,73 +488,45 @@ struct nlist *lookloc (lp, sn)
 	return 0;
 }
 
-void printrel (word, rel)
-        register unsigned word;
-        register struct reloc *rel;
-{
-	printf ("%08x %02x ", word, rel->flags);
-
-        if ((rel->flags & RSMASK) == REXT)
-                printf ("%-3d ", rel->index);
-        else
-                printf ("    ");
-
-        if ((rel->flags & RFMASK) == RHIGH16 ||
-            (rel->flags & RFMASK) == RHIGH16S)
-                printf ("%08x", rel->offset);
-        else
-                printf ("        ");
-}
-
-/*
- * Relocate the word by a given offset.
- * Return the new value of word and update rel.
- */
-unsigned relword (lp, word, rel, offset)
+void relword (lp, t, r, pt, pr, offset)
         struct local *lp;
-        register unsigned word;
-        register struct reloc *rel;
-        unsigned offset;
+        register unsigned t, r;
+        unsigned *pt, *pr, offset;
 {
-	register unsigned addr, delta;
+	register unsigned a, delta;
 	register struct nlist *sp = 0;
 
 	if (trace > 2)
-                printrel (word, rel);
-	/*
-         * Extract an address field from the instruction.
-         */
-	switch (rel->flags & RFMASK) {
-	case RBYTE16:
-		addr = word & 0xffff;
-		break;
-	case RBYTE32:
-		addr = word;
+		printf ("%08x %08x", t, r);
+
+	/* extract address from command */
+
+	switch (r & RFMASK) {
+	case 0:
+		a = t & 0xffff;
 		break;
 	case RWORD16:
-		addr = (word & 0xffff) << 2;
+		a = t & 0xffff;
+		a <<= 2;
 		break;
 	case RWORD26:
-		addr = (word & 0x3ffffff) << 2;
+		a = t & 0x3ffffff;
+		a <<= 2;
 		break;
 	case RHIGH16:
-		addr = (word & 0xffff) << 16;
-	        addr += rel->offset;
-		break;
-	case RHIGH16S:
-		addr = (word & 0xffff) << 16;
-	        addr += (signed short) rel->offset;
+		a = t & 0xffff;
+                a <<= 16;
 		break;
 	default:
-		addr = 0;
+		a = 0;
 		break;
 	}
 
-	/*
-         * Compute a delta for address.
-         * Update the relocation info, if needed.
-         */
-	switch (rel->flags & RSMASK) {
+	/* compute address shift `delta' */
+	/* update relocation word */
+
+	delta = 0;
+	switch (r & RSMASK) {
 	case RTEXT:
 		delta = ctrel;
 		break;
@@ -584,75 +537,50 @@ unsigned relword (lp, word, rel, offset)
 		delta = cbrel;
 		break;
 	case REXT:
-		sp = lookloc (lp, rel->index);
+		sp = lookloc (lp, (int) RINDEX (r));
+		r &= RFMASK;
 		if (sp->n_type == N_EXT+N_UNDF ||
-		    sp->n_type == N_EXT+N_COMM) {
-                        rel->index = nsym + (sp - symtab);
+		    sp->n_type == N_EXT+N_COMM)
+		{
+			r |= REXT | RSETINDEX (nsym+(sp-symtab));
 			sp = 0;
-                        delta = 0;
-                } else {
-                        rel->flags &= RFMASK | RGPREL;
-                        rel->flags |= reltype (sp->n_type);
-                        delta = sp->n_value;
+			break;
 		}
-		break;
-	default:
-                delta = 0;
+		r |= reltype (sp->n_type);
+		delta = sp->n_value;
 		break;
 	}
 
-	if ((rel->flags & RGPREL) && ! output_relinfo) {
-            /*
-             * GP relative address.
-             */
-            delta -= gp;
-            rel->flags &= ~RGPREL;
-	}
+	/* add updated address to command */
 
-	/*
-         * Update the address field of the instruction.
-         * Update the relocation info, if needed.
-         */
-	switch (rel->flags & RFMASK) {
-	case RBYTE16:
-	        addr += delta;
-		word &= ~0xffff;
-		word |= addr & 0xffff;
-		break;
-	case RBYTE32:
-		word = addr + delta;
+	switch (r & RFMASK) {
+	case 0:
+		t &= ~0xffff;
+		t |= (a + delta) & 0xffff;
 		break;
 	case RWORD16:
 	        if (! sp)
                     break;
-	        addr += delta - offset - 4;
-                word &= ~0xffff;
-                word |= (addr >> 2) & 0xffff;
-                rel->flags = RABS;
+                delta -= offset + 4;
+                t &= ~0xffff;
+                t |= ((a + delta) >> 2) & 0xffff;
+                r = RABS;
 		break;
 	case RWORD26:
-	        addr += delta;
-		word &= ~0x3ffffff;
-		word |= (addr >> 2) & 0x3ffffff;
+		t &= ~0x3ffffff;
+		t |= ((a + delta) >> 2) & 0x3ffffff;
 		break;
 	case RHIGH16:
-	        addr += delta;
-		word &= ~0xffff;
-		word |= (addr >> 16) & 0xffff;
-		break;
-	case RHIGH16S:
-	        addr += delta;
-		word &= ~0xffff;
-		word |= ((addr + 0x8000) >> 16) & 0xffff;
+		t &= ~0xffff;
+		t |= ((a + delta) >> 16) & 0xffff;
 		break;
 	}
-	if (trace > 2) {
-		//printf (" +%#x ", delta);
-		printf (" -> ");
-                printrel (word, rel);
-		printf ("\n");
-        }
-	return word;
+
+	if (trace > 2)
+		printf (" -> %08x %08x\n", t, r);
+
+	*pt = t;
+	*pr = r;
 }
 
 void relocate (lp, b1, b2, len, origin)
@@ -660,16 +588,15 @@ void relocate (lp, b1, b2, len, origin)
         FILE *b1, *b2;
         unsigned len, origin;
 {
-	unsigned word, offset;
-	struct reloc rel;
+	unsigned r, t, offset;
 
 	for (offset=0; offset<len; offset+=W) {
-		word = fgetword (text);
-		fgetrel (reloc, &rel);
-		word = relword (lp, word, &rel, offset + origin);
-		fputword (word, b1);
-		if (output_relinfo)
-                        fputrel (&rel, b2);
+		t = fgetword (text);
+		r = fgetrel (reloc);
+		relword (lp, t, r, &t, &r, offset + origin);
+		fputword (t, b1);
+		if (rflag)
+                        fputrel (r, b2);
 	}
 }
 
@@ -719,7 +646,7 @@ int getfile (cp)
 {
 	int c;
 	struct stat x;
-        static char libname [] = "/lib/libxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+        static char libname [] = "/lib/libxxxxxxxxxxxxxxx";
         char magic [SARMAG];
 
 	text = 0;
@@ -742,17 +669,12 @@ int getfile (cp)
 		error (2, "cannot open");
 
         /* Read file magic. */
-	if (fread(magic, 1, SARMAG, text) != SARMAG)
+	if (fread(magic, 1, SARMAG, text) != SARMAG ||
+            strncmp (magic, ARMAG, SARMAG) != 0 ||
+            ! fgetarhdr (text, &archdr))
 		return (0);     /* regular file */
-        if (strncmp (magic, ARMAG, SARMAG) != 0)
-		return (0);     /* regular file */
-        if (! fgetarhdr (text, &archdr))
-		return (0);     /* regular file */
-	if (strncmp (archdr.ar_name, SYMDEF, sizeof (SYMDEF)) != 0) {
-	        free (archdr.ar_name);
+	if (strncmp (archdr.ar_name, SYMDEF, sizeof (archdr.ar_name)) != 0)
 		return (1);     /* regular archive */
-        }
-        free (archdr.ar_name);
 	fstat (fileno (text), &x);
 	if (x.st_mtime > archdr.ar_date + 2)
 		return (3);     /* out of date archive */
@@ -803,43 +725,31 @@ void symreloc()
                 cursym.n_type = N_EXT+N_ABS;
 }
 
-/*
- * Suboptimal 32-bit hash function.
- * Copyright (C) 2006 Serge Vakulenko.
- */
-unsigned hash_rot13 (s)
-    register const char *s;
-{
-    register unsigned hash, c;
-
-    hash = 0;
-    while ((c = (unsigned char) *s++) != 0) {
-        hash += c;
-        hash -= (hash << 13) | (hash >> 19);
-    }
-    return hash;
-}
-
 struct nlist **lookup()
 {
+	register int i;
 	int clash;
 	register char *cp, *cp1;
 	register struct nlist **hp;
 
-        hp = &hshtab[hash_rot13 (cursym.n_name) % NSYM + 2];
+	i = 0;
+	for (cp = cursym.n_name; *cp; cp++);
+	        i = (i << 1) + *cp;
+
+        hp = &hshtab[(i & 077777) % NSYM + 2];
 	while (*hp != 0) {
 		cp1 = (*hp)->n_name;
 		clash = 0;
-		for (cp = cursym.n_name; *cp;) {
+		for (cp = cursym.n_name; *cp;)
 			if (*cp++ != *cp1++) {
 				clash = 1;
 				break;
 			}
-                }
-		if (! clash)
+		if (clash) {
+			if (++hp >= &hshtab[NSYM+2])
+				hp = hshtab;
+		} else
 			break;
-		if (++hp >= &hshtab[NSYM+2])
-			hp = hshtab;
 	}
 	return (hp);
 }
@@ -860,7 +770,7 @@ void readhdr (loc)
 	fseek (text, loc, 0);
 	if (! fgethdr (text, &filhdr))
 		error (2, "bad format");
-	if (N_GETMAGIC(filhdr) != RMAGIC)
+	if (filhdr.a_magic != RMAGIC)
 		error (2, "bad magic");
 	if (filhdr.a_text % W)
 		error (2, "bad length of text");
@@ -880,7 +790,7 @@ int load1 (loc, libflg, nloc)
 	int savindex, ndef, type, symlen, nsymbol;
 
 	readhdr (loc);
-	if (N_GETMAGIC(filhdr) != RMAGIC) {
+	if (filhdr.a_magic != RMAGIC) {
 		error (1, "file not relocatable");
 		return (0);
 	}
@@ -951,11 +861,6 @@ int load1 (loc, libflg, nloc)
 		bsize += filhdr.a_bss;
 		ssize += nloc;
 		nsym += nsymbol;
-
-		/* Alignment. */
-                tsize = (tsize + 3) & ~3;
-                dsize = (dsize + 3) & ~3;
-                bsize = (bsize + 3) & ~3;
 		return (1);
 	}
 
@@ -973,10 +878,8 @@ int load1 (loc, libflg, nloc)
 	return (0);
 }
 
-void addlibp (nloc)
-        register unsigned nloc;
+void checklibp ()
 {
-        *libp++ = nloc;
 	if (libp >= &liblist[NLIBS])
 		error (2, "library table overflow");
 }
@@ -984,16 +887,21 @@ void addlibp (nloc)
 int step (nloc)
         register unsigned nloc;
 {
+	register char *cp;
+
 	fseek (text, nloc, 0);
 	if (! fgetarhdr (text, &archdr)) {
+		*libp++ = -1;
+		checklibp ();
 		return (0);
 	}
-	if (load1 (nloc + ARHDRSZ, 1, mkfsym (archdr.ar_name, 0))) {
-		addlibp (nloc);
-                if (trace)
-                        printf ("load '%s' offset %08x\n", archdr.ar_name, nloc);
-        }
-        free (archdr.ar_name);
+	cp = malloc (15);
+	strncpy (cp, archdr.ar_name, 14);
+	cp [14] = '\0';
+	if (load1 (nloc + ARHDRSZ, 1, mkfsym (cp, 0)))
+		*libp++ = nloc;
+	free (cp);
+	checklibp ();
 	return (1);
 }
 
@@ -1003,7 +911,7 @@ int ldrand ()
 	struct nlist **pp;
 	unsigned *oldp = libp;
 
-	for (p=rantab; p<rantab+rancount; ++p) {
+	for (p=rantab; p<rantab+tnum; ++p) {
 		pp = slookup (p->ran_name);
 		if (! *pp)
 			continue;
@@ -1014,48 +922,35 @@ int ldrand ()
 }
 
 /*
- * scan a library to find defined symbols
- */
-void load1lib (off0)
-        unsigned off0;
-{
-        register unsigned offset;
-        register unsigned *oldp;
-
-        /* repeat while any symbols found */
-        do {
-                oldp = libp;
-                offset = off0;
-                while (step (offset))
-                        offset += archdr.ar_size + ARHDRSZ;
-        } while (libp != oldp);
-        addlibp (-1);
-}
-
-/*
  * scan file to find defined symbols
  */
 void load1arg (cp)
         register char *cp;
 {
+	register unsigned nloc;
+
 	switch (getfile (cp)) {
 	case 0:                 /* regular file */
 		load1 (0L, 0, mkfsym (cp, 0));
 		break;
 	case 1:                 /* regular archive */
-                load1lib (SARMAG);
+		nloc = SARMAG;
+archive:
+		while (step (nloc))
+			nloc += archdr.ar_size + ARHDRSZ;
 		break;
-	case 2:                 /* archive with table of contents */
+	case 2:                 /* table of contents */
 		getrantab ();
 		while (ldrand ())
                         continue;
 		freerantab ();
-		addlibp (-1);
+		*libp++ = -1;
+		checklibp ();
 		break;
-	case 3:                 /* out of date table of contents */
+	case 3:                 /* out of date archive */
 		error (0, "out of date (warning)");
-                load1lib (SARMAG + archdr.ar_size + ARHDRSZ);
-		break;
+		nloc = W + archdr.ar_size + ARHDRSZ;
+		goto archive;
 	}
 	fclose (text);
 	fclose (reloc);
@@ -1137,7 +1032,7 @@ void pass1 (argc, argv)
 				/* preserve rel. bits, don't define common */
 			case 'r':
 				rflag++;
-				output_relinfo++;
+				arflag++;
 				continue;
 
 				/* discard all symbols */
@@ -1179,67 +1074,54 @@ void middle()
 	p_etext = *slookup ("_etext");
 	p_edata = *slookup ("_edata");
 	p_end = *slookup ("_end");
-        p_gp = *slookup ("_gp");
 
 	/*
 	 * If there are any undefined symbols, save the relocation bits.
 	 */
 	symp = &symtab[symindex];
-	if (! output_relinfo) {
+	if (!rflag) {
 		for (sp=symtab; sp<symp; sp++)
 			if (sp->n_type == N_EXT+N_UNDF &&
-				sp != p_end && sp != p_edata &&
-                                sp != p_etext && sp != p_gp)
+				sp != p_end && sp != p_edata && sp != p_etext)
 			{
-				output_relinfo++;
+				rflag++;
 				dflag = 0;
 				break;
 			}
 	}
-	if (output_relinfo)
+	if (rflag)
                 sflag = 0;
 
 	/*
 	 * Assign common locations.
-	 * Align text size to 16 bytes.
 	 */
 	cmsize = 0;
-	tsize  = (tsize + 15) & ~15;
-	if (dflag || ! output_relinfo) {
+	if (dflag || !rflag) {
 		ldrsym (p_etext, tsize, N_EXT+N_TEXT);
 		ldrsym (p_edata, dsize, N_EXT+N_DATA);
 		ldrsym (p_end, bsize, N_EXT+N_BSS);
-
-                /* Set GP as offset from the start of data segment. */
-		ldrsym (p_gp, gpoffset, N_EXT+N_DATA);
-
 		for (sp=symtab; sp<symp; sp++) {
 			if ((sp->n_type & N_TYPE) == N_COMM) {
 				t = sp->n_value;
 				sp->n_value = cmsize;
 				cmsize += t;
-                                cmsize = (cmsize + 3) & ~3;
 			}
                 }
 	}
 
 	/*
-	 * Now set symbols to their final value.
+	 * Now set symbols to their final value
 	 */
 	torigin = basaddr;
 	dorigin = torigin + tsize;
-	gp = dorigin + gpoffset;
 	cmorigin = dorigin + dsize;
 	borigin = cmorigin + cmsize;
 	nund = 0;
 	for (sp=symtab; sp<symp; sp++) {
 		switch (sp->n_type) {
 		case N_EXT+N_UNDF:
-			if (! rflag) {
+			if (! arflag) {
                                 errlev |= 1;
-				if (sp == p_end || sp == p_edata ||
-                                    sp == p_etext || sp == p_gp)
-                                        break;
 				if (! nund)
 					printf ("Undefined:\n");
 				nund++;
@@ -1287,19 +1169,13 @@ void middle()
 void setupout ()
 {
 	tcreat (&outb, 0);
-	int fd = mkstemp (tfname);
-    if (fd == -1) {
-        error(2, "internal error: unable to create temporary file %s", tfname);
-    } else {
-        close(fd);
-    }
-
+	mktemp (tfname);
 	tcreat (&toutb, 1);
 	tcreat (&doutb, 1);
 
 	if (! sflag || ! xflag)
                 tcreat (&soutb, 1);
-	if (output_relinfo) {
+	if (rflag) {
 		tcreat (&troutb, 1);
 		tcreat (&droutb, 1);
 	}
@@ -1375,13 +1251,13 @@ void load2 (loc)
 	count = loc + filhdr.a_text + filhdr.a_data;
 
 	if (trace > 1)
-		printf ("-- text --\n");
+		printf ("** TEXT **\n");
 	fseek (text, loc, 0);
 	fseek (reloc, count, 0);
 	relocate (lp, toutb, troutb, filhdr.a_text, torigin);
 
 	if (trace > 1)
-		printf ("-- data --\n");
+		printf ("** DATA **\n");
 	fseek (text, loc + filhdr.a_text, 0);
 	fseek (reloc, count + filhdr.a_reltext, 0);
 	relocate (lp, doutb, droutb, filhdr.a_data, dorigin);
@@ -1389,32 +1265,32 @@ void load2 (loc)
 	torigin += filhdr.a_text;
 	dorigin += filhdr.a_data;
 	borigin += filhdr.a_bss;
-
-        /* Alignment. */
-        torigin = (torigin + 3) & ~3;
-        dorigin = (dorigin + 3) & ~3;
-        borigin = (borigin + 3) & ~3;
 }
 
-void load2arg (arname)
-        register char *arname;
+void load2arg (acp)
+        register char *acp;
 {
 	register unsigned *lp;
 
-	if (getfile (arname) == 0) {
+	if (getfile (acp) == 0) {
 		if (trace || verbose)
-			printf ("%s:\n", arname);
-		mkfsym (arname, 1);
+			printf ("%s:\n", acp);
+		mkfsym (acp, 1);
 		load2 (0L);
 	} else {
 		/* scan archive members referenced */
+		char *arname = acp;
+
 		for (lp = libp; *lp != -1; lp++) {
 			fseek (text, *lp, 0);
 			fgetarhdr (text, &archdr);
+			acp = malloc (15);
+			strncpy (acp, archdr.ar_name, 14);
+			acp [14] = '\0';
 			if (trace || verbose)
-				printf ("%s(%s):\n", arname, archdr.ar_name);
-			mkfsym (archdr.ar_name, 1);
-                        free (archdr.ar_name);
+				printf ("%s(%s):\n", arname, acp);
+			mkfsym (acp, 1);
+			free (acp);
 			load2 (*lp + ARHDRSZ);
 		}
 		libp = ++lp;
@@ -1465,15 +1341,10 @@ void finishout ()
 {
 	register struct nlist *p;
         unsigned rtsize = 0, rdsize = 0;
-        register unsigned n;
 
-	n = copy_and_close (toutb);
-        while (n++ < tsize) {
-                /* Align text size. */
-                putc (0, outb);
-        }
+	copy_and_close (toutb);
 	copy_and_close (doutb);
-	if (output_relinfo) {
+	if (rflag) {
 		rtsize = copy_and_close (troutb);
 		while (rtsize % W) {
 			putc (0, outb);
@@ -1494,7 +1365,7 @@ void finishout ()
 		while (ssize++ % W)
 			putc (0, outb);
 	}
-	filhdr.a_midmag = output_relinfo ? RMAGIC : OMAGIC;
+	filhdr.a_magic = rflag ? RMAGIC : OMAGIC;
 	filhdr.a_text = tsize;
 	filhdr.a_data = dsize;
 	filhdr.a_bss = bsize;
@@ -1532,7 +1403,7 @@ int main (argc, argv)
                 printf ("  -X              Discard locals starting with 'L' or '.'\n");
                 printf ("  -r              Generate relocatable output\n");
                 printf ("  -d              Force common symbols to be defined\n");
-                printf ("  -t              Increase trace verbosity (up to 3)\n");
+                printf ("  -t              Enable trace output\n");
 		exit (4);
 	}
 	if (signal (SIGINT, SIG_IGN) != SIG_IGN)

@@ -28,24 +28,24 @@ POBJS=	../addch.o ../addstr.o ../box.o ../clear.o ../clrtobot.o ../clrtoeol.o ..
 
 CTAGS=	ctags
 DEFS=	-DNOSCCS
-CFLAGS=	-O -Wall -Werror $(DEFS)
+CFLAGS=	-O $(DEFS)
 TAGSFILE=tags
 
 all:    ../libcurses.a
 
 ../libcurses.a: ${OBJS}
 	@echo building normal ../libcurses.a
-	@$(AR) cru ../libcurses.a ${OBJS}
+	@$(AR) ru ../libcurses.a ${OBJS}
 	$(RANLIB) ../libcurses.a
 
 ../libcurses_p.a: ${OBJS}
 	@echo building profiled ../libcurses.a
-	@cd profiled; $(AR) cru ../../libcurses_p.a ${POBJS}
+	@cd profiled; $(AR) ru ../../libcurses_p.a ${POBJS}
 	$(RANLIB) ../libcurses_p.a
 
 install: all
-#	cp ../libcurses.a ${DESTDIR}/lib/libcurses.a
-#	$(RANLIB) ${DESTDIR}/lib/libcurses.a
+	cp ../libcurses.a ${DESTDIR}/lib/libcurses.a
+	$(RANLIB) ${DESTDIR}/lib/libcurses.a
 #	cp ../libcurses_p.a ${DESTDIR}/lib/libcurses_p.a
 #	$(RANLIB) ${DESTDIR}/lib/libcurses_p.a
 

@@ -29,17 +29,17 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-        .set    reorder
+
 	.type	index, @function
 index:	.globl  index
 1:
 	lbu	$a2, 0($a0)		# get a byte
-	addiu	$a0, $a0, 1
+	addu	$a0, $a0, 1
 	beq	$a2, $a1, fnd
-	bnez	$a2, 1b
+	bne	$a2, $zero, 1b
 notfnd:
 	move	$v0, $zero
 	j	$ra
 fnd:
-	addiu	$v0, $a0, -1
+	subu	$v0, $a0, 1
 	j	$ra

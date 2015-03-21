@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)visual.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
-# include	"getpar.h"
 
 /*
 **  VISUAL SCAN
@@ -18,20 +22,19 @@
 /* This struct[] has the delta x, delta y for particular directions */
 struct xy	Visdelta[11] =
 {
-	{ -1,	-1 },
-	{ -1,	 0 },
-	{ -1,	 1 },
-	{  0,	 1 },
-	{  1,	 1 },
-	{  1,	 0 },
-	{  1,	-1 },
-	{  0,	-1 },
-	{ -1,	-1 },
-	{ -1,	 0 },
-	{ -1,	 1 },
+	-1,	-1,
+	-1,	 0,
+	-1,	 1,
+	 0,	 1,
+	 1,	 1,
+	 1,	 0,
+	 1,	-1,
+	 0,	-1,
+	-1,	-1,
+	-1,	 0,
+	-1,	 1
 };
 
-void
 visual()
 {
 	register int		ix, iy;

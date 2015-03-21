@@ -6,8 +6,6 @@
 #include <sys/types.h>
 #include <sys/file.h>
 #include <stdio.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 FILE *
 fopen(file, mode)
@@ -15,7 +13,7 @@ fopen(file, mode)
 	register const char *mode;
 {
 	register FILE *iop;
-	register int f, rw, oflags;
+	register f, rw, oflags;
 	extern FILE *_findiop();
 
 	iop = _findiop();

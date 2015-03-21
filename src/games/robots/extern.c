@@ -3,7 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include "robots.h"
+
+#ifndef lint
+static char sccsid[] = "@(#)extern.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
+# include	"robots.h"
 
 bool	Dead;			/* Player is now dead */
 bool	Full_clear = TRUE;	/* Lots of junk for init_field to clear */

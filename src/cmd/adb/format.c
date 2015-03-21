@@ -1,10 +1,6 @@
 #include "defs.h"
+#include <ctype.h>
 #include <sys/wait.h>
-#ifdef CROSS
-#   include </usr/include/ctype.h>
-#else
-#   include <ctype.h>
-#endif
 
 void
 scanform(icount, ifp, itype, ptype)
@@ -87,7 +83,7 @@ exform(fcount, ifp, itype, ptype)
     u_int   w;
     long    savdot, wx;
     char    *fp = 0;
-    int     c, modifier;
+    int     c, modifier, longpr;
     struct {
         long    sa;
         int     sb, sc;
@@ -96,7 +92,7 @@ exform(fcount, ifp, itype, ptype)
     while (fcount > 0) {
         fp = ifp;
         c = *fp;
-        //int longpr = (c >= 'A' && c <= 'Z') || (c == 'f');
+        longpr = (c >= 'A' && c <= 'Z') || (c == 'f');
         if (itype == NSP || *fp == 'a') {
             wx = dot;
             w = dot;

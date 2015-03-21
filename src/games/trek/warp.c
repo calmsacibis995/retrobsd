@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)warp.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
-# include	"getpar.h"
 
 /*
 **  MOVE UNDER WARP POWER
@@ -21,10 +25,10 @@
 **	that you may be moving at some riduculous speed.  In that
 **	case, there is code to handle time warps, etc.
 */
-void
+
 warp(fl, c, d)
-        int	fl, c;
-        double	d;
+int	fl, c;
+double	d;
 {
 	int			course;
 	double			power;
@@ -34,22 +38,22 @@ warp(fl, c, d)
 	double			frac;
 	register int		percent;
 	register int		i;
-        char                    *cp;
+	extern double		move();
 
-	if (Ship.cond == DOCKED) {
-	        printf("%s is docked\n", Ship.shipname);
-		return;
-        }
-	if (damaged(WARP)) {
-	        out(WARP);
-		return;
+	if (Ship.cond == DOCKED)
+		return (printf("%s is docked\n", Ship.shipname));
+	if (damaged(WARP))
+	{
+		return (out(WARP));
 	}
-	if (fl < 0) {
+	if (fl < 0)
+	{
 		course = c;
 		dist = d;
 	}
-	else if (getcodi(&course, &dist))
-		return;
+	else
+		if (getcodi(&course, &dist))
+			return;
 
 	/* check to see that we are not using an absurd amount of power */
 	power = (dist + 0.05) * Ship.warp3;
@@ -101,9 +105,9 @@ warp(fl, c, d)
 	sleep(2);
 	printf("Crew experiencing extreme sensory distortion\n");
 	sleep(4);
-	if (ranf(100) >= 100 * dist) {
-	        printf("Equilibrium restored -- all systems normal\n");
-		return;
+	if (ranf(100) >= 100 * dist)
+	{
+		return (printf("Equilibrium restored -- all systems normal\n"));
 	}
 
 	/* select a bizzare thing to happen to us */
@@ -129,10 +133,10 @@ warp(fl, c, d)
 
 		/* s/he got lucky: a negative time portal */
 		time = Now.date;
-		cp = Etc.snapshot;
-		bmove(cp, Quad, sizeof Quad);
-		bmove(cp += sizeof Quad, Event, sizeof Event);
-		bmove(cp += sizeof Event, &Now, sizeof Now);
+		i = (int) Etc.snapshot;
+		bmove(i, Quad, sizeof Quad);
+		bmove(i += sizeof Quad, Event, sizeof Event);
+		bmove(i += sizeof Event, &Now, sizeof Now);
 		printf("Negative time portal entered -- it is now Stardate %.2f\n",
 			Now.date);
 		for (i = 0; i < MAXEVENTS; i++)

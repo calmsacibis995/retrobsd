@@ -3,19 +3,19 @@
 /* $Log:	init.c,v $
  * Revision 7.0.1.4  86/12/12  16:58:03  lwall
  * Baseline for net release.
- *
+ * 
  * Revision 7.0.1.3  86/10/20  14:35:31  lwall
  * Picked some lint.
- *
+ * 
  * Revision 7.0.1.2  86/10/17  15:53:30  lwall
  * Added random walk star fields.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:51:19  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:12:10  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -36,15 +36,15 @@
 void
 initialize()
 {
-    register int i;
-    register int x;
-    register int y;
-    register int dist;
-    register int ydist;
-    register int xdist;
+    Reg1 int i;
+    Reg2 int x;
+    Reg3 int y;
+    Reg4 int dist;
+    Reg5 int ydist;
+    Reg6 int xdist;
     long e;
     int yoff, xoff, ypred, xpred;
-    register OBJECT *obj;
+    Reg7 OBJECT *obj;
     char ch;
     FILE *mapfp = NULL;
     bool tmptholspec;
@@ -84,12 +84,18 @@ initialize()
     root.prev = &root;
     enemies = movers = NULL;
     numos = numxes = 0;
+#if defined(vax) && XYSIZEx4 == 3680
+    asm("movc5 $0,_occupant,$0,$3680,_occupant");
+    asm("movc5 $0,_blast,$0,$3680,_blast");	/* 3680 = XYSIZEx4 */
+    asm("movc5 $0,_amb,$32,$920,_amb");
+#else
     for (y=0;y<YSIZE;y++)
 	for (x=0;x<XSIZE;x++) {
 	    occupant[y][x] = 0;
 	    blast[y][x] = 0;
 	    amb[y][x] = ' ';
 	}
+#endif
     for (y=0; y<YSIZE; y++)
 	yblasted[y] = 0;
     for (x=0; x<XSIZE; x++)
@@ -239,9 +245,11 @@ stars_again:
 		x = rand_mod(XSIZE);	/* pick from 0..39, uniform */
 		break;
 	    case 1: case 2: case 3:
+#ifndef lint
 		x = (int)((((double)(myrand()-HALFRAND)) *
 		           ((double)(myrand()-HALFRAND))/RANDRAND)
 			  * 20.0) + xoff;	/* pick from -20..20, clumped */
+#endif
 		break;
 	    case 4:
 		if (fscanf(mapfp,"%d %d\n",&ypred,&xpred) == EOF)
@@ -262,21 +270,27 @@ stars_again:
 		y = rand_mod(YSIZE);
 		break;
 	    case 1:
+#ifndef lint
 		y = (int)((((double)(myrand()-HALFRAND)) *
 		           ((double)(myrand()-HALFRAND))/RANDRAND)
 			  * 12.0) + yoff;	/* pick from -12..12, clumped */
+#endif
 		break;
 	    case 2:
+#ifndef lint
 		y = (int)((((double)(myrand()-HALFRAND)) *
 		           ((double)(myrand()-HALFRAND))/RANDRAND)
 			  * 12.0) + yoff + x*YSIZE/XSIZE;
 				 		/* clumped & skewed */
+#endif
 		break;
 	    case 3:
+#ifndef lint
 		y = (int)((((double)(myrand()-HALFRAND)) *
 		           ((double)(myrand()-HALFRAND))/RANDRAND)
 			  * 12.0) + yoff - x*YSIZE/XSIZE;
 						/* clumped & skewed */
+#endif
 		break;
 	    case 4:
 		y = ypred + yoff;
@@ -286,6 +300,9 @@ stars_again:
 		break;
 	    case 6:
 		y += rand_mod(3) - 1;
+#ifdef lint
+		walksplit = walksplit;
+#endif
 		if (!rand_mod(walksplit)) {
 		    y = rand_mod(YSIZE);
 		    x = rand_mod(XSIZE);
@@ -433,9 +450,11 @@ stars_again:
 	    e = (ENTBOUNDARY - possiblescore) / 5;
 	else
 	    e = 250 + (sm50-1) * 30 * 20 / numenemies+1;
+#ifndef lint
 	e = exdis((int)e) + e - exdis((int)e);
 	obj = make_object(Enemy,ch,y,x,0,0,
 	    e + rand_mod(super*200+2) + 10000*massacre,e/4,&root);
+#endif
 	e /= 4;
 	switch (ch) {
 	case 'K':
@@ -464,7 +483,9 @@ stars_again:
 	    y = rand_mod(YSIZE);
 	} while (occupant[y][x]);
 	e = 250 + (sm50-1) * 30 * 20 / numenemies+1;
+#ifndef lint
 	e = exdis((int)e) + e - exdis((int)e);
+#endif
 	{
 	    static char let[] = "QWYUISDHJLZVMFFFFFFFFF";
 
@@ -494,14 +515,14 @@ stars_again:
 	mvaddch(base->posy+1, base->posx*2, base->image);
     sleep(2);
     {
-	register OBJECT *curobj;
+	Reg7 OBJECT *curobj;
 
 	for (curobj = root.next; curobj != &root; curobj = curobj->next) {
 	    mvaddch(curobj->posy+1, curobj->posx*2, curobj->image);
 	}
     }
 
-    for (i=0;i<2;i++) for (y=0;y<3;y++) for (x=0;x<3;x++)
+    for (i=0;i<2;i++) for (y=0;y<3;y++) for (x=0;x<3;x++) 
     isatorp[i][y][x]=0;
 
     whenok = 0;

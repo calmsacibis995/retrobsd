@@ -3,13 +3,13 @@
 /* $Log:	term.c,v $
  * Revision 7.0.1.2  86/12/12  17:04:09  lwall
  * Baseline for net release.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:53:20  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:14:02  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -25,7 +25,6 @@
 #include "weapon.h"
 #include "INTERN.h"
 #include "term.h"
-#include <unistd.h>
 
 int typeahead = FALSE;
 
@@ -79,6 +78,35 @@ term_init()
     ERASECH = _tty.sg_erase;		/* for finish_command() */
     KILLCH = _tty.sg_kill;		/* for finish_command() */
 #endif
+
+    /* The following could be a table but I can't be sure that there isn't */
+    /* some degree of sparsity out there in the world. */
+
+    switch (ospeed) {			/* 1 second of padding */
+#ifdef BEXTA
+        case BEXTA:  just_a_sec = 1920; break;
+#else
+#ifdef B19200
+        case B19200: just_a_sec = 1920; break;
+#endif
+#endif
+        case B9600:  just_a_sec =  960; break;
+        case B4800:  just_a_sec =  480; break;
+        case B2400:  just_a_sec =  240; break;
+        case B1800:  just_a_sec =  180; break;
+        case B1200:  just_a_sec =  120; break;
+        case B600:   just_a_sec =   60; break;
+	case B300:   just_a_sec =   30; break;
+	/* do I really have to type the rest of this??? */
+        case B200:   just_a_sec =   20; break;
+        case B150:   just_a_sec =   15; break;
+        case B134:   just_a_sec =   13; break;
+        case B110:   just_a_sec =   11; break;
+        case B75:    just_a_sec =    8; break;
+        case B50:    just_a_sec =    5; break;
+        default:     just_a_sec =  960; break;
+					/* if we are running detached I */
+    }					/*  don't want to know about it! */
 }
 
 /* set terminal characteristics */
@@ -88,13 +116,14 @@ term_set(tcbuf)
 char *tcbuf;		/* temp area for "uncompiled" termcap entry */
 {
     char *tmpaddr;			/* must not be register */
-    register char *tstr;
+    Reg1 char *tstr;
     char *tgetstr();
     char *s;
     int retval;
 
 #ifdef PENDING
 #ifndef FIONREAD
+#ifndef RDCHK
     /* do no delay reads on something that always gets closed on exit */
 
     devtty = open("/dev/tty",0);
@@ -105,9 +134,11 @@ char *tcbuf;		/* temp area for "uncompiled" termcap entry */
     fcntl(devtty,F_SETFL,O_NDELAY);
 #endif
 #endif
-
+#endif
+    
     /* get all that good termcap stuff */
 
+#ifdef HAVETERMLIB
     retval = tgetent(tcbuf,getenv("TERM"));	/* get termcap entry */
     if (retval < 1) {
 #ifdef VERBOSE
@@ -169,6 +200,9 @@ char *tcbuf;		/* temp area for "uncompiled" termcap entry */
 	else
 	    CR = "\r";
     }
+#else
+    ??????				/* Roll your own... */
+#endif
     if (LINES <= 0)
 	LINES = 24;
     if (COLS <= 0)
@@ -227,8 +261,7 @@ char *tcbuf;		/* temp area for "uncompiled" termcap entry */
 	}
     }
     if (debugging)
-	if (fgets(cmbuffer,(sizeof cmbuffer),stdin) == 0)
-	    /*ignore*/;
+	Fgets(cmbuffer,(sizeof cmbuffer),stdin);
 
     CMsize = comp_tc(cmbuffer,tgoto(CM,20,20),0);
     if (PC != '\0') {
@@ -291,11 +324,11 @@ char *line;
 char *tmpbuf;
 int tbsize;
 {
-    register char *s;
-    register char *m;
-    register KEYMAP *curmap;
-    register int ch;
-    register int garbage = 0;
+    Reg1 char *s;
+    Reg2 char *m;
+    Reg3 KEYMAP *curmap;
+    Reg4 int ch;
+    Reg5 int garbage = 0;
     static char override[] = "\r\nkeymap overrides string\r\n";
 
     if (topmap == Null(KEYMAP*))
@@ -341,10 +374,14 @@ int tbsize;
 KEYMAP*
 newkeymap()
 {
-    register int i;
-    register KEYMAP *map;
+    Reg1 int i;
+    Reg2 KEYMAP *map;
 
+#ifndef lint
     map = (KEYMAP*)safemalloc(sizeof(KEYMAP));
+#else
+    map = Null(KEYMAP*);
+#endif /* lint */
     for (i=127; i>=0; --i) {
 	map->km_ptr[i].km_km = Null(KEYMAP*);
 	map->km_type[i] = KM_NOTHIN;
@@ -392,10 +429,10 @@ move(y, x, chadd)
 int y, x;
 int chadd;
 {
-    register int ydist;
-    register int xdist;
-    register int i;
-    register char *s;
+    Reg1 int ydist;
+    Reg2 int xdist;
+    Reg3 int i;
+    Reg4 char *s;
 
     ydist = y - real_y;
     xdist = x - real_x;
@@ -486,15 +523,15 @@ helper()
 	getcmd(spbuf);
     } while (*spbuf != ' ');
     rewrite();
-
+    
 }
 
 void
 rewrite()
 {
-    register int x;
-    register int y;
-    register OBJECT *obj;
+    Reg1 int x;
+    Reg2 int y;
+    Reg3 OBJECT *obj;
 
     clear();
     for (y=0; y<YSIZE; y++) {
@@ -525,7 +562,7 @@ rewrite()
 
 char
 cmstore(ch)
-register char ch;
+Reg1 char ch;
 {
     *maxcmstring++ = ch;
 }
@@ -570,6 +607,9 @@ read_tty(addr,size)
 char *addr;
 int size;	/* ignored for now */
 {
+#ifdef lint
+    size = size;
+#endif
     if (nextout != nextin) {
 	*addr = circlebuf[nextout++];
 	nextout %= PUSHSIZE;
@@ -593,11 +633,12 @@ int size;	/* ignored for now */
 
 #ifdef PENDING
 #ifndef FIONREAD
+#ifndef RDCHK
 int
 circfill()
 {
-    register int howmany;
-    register int i;
+    Reg1 int howmany;
+    Reg2 int i;
 
     assert (nextin == nextout);
     howmany = read(devtty,circlebuf+nextin,metakey?1:PUSHSIZE-nextin);
@@ -616,6 +657,7 @@ circfill()
     }
     return howmany;
 }
+#endif /* RDCHK */
 #endif /* FIONREAD */
 #endif /* PENDING */
 
@@ -682,12 +724,12 @@ int siz;
 
 void
 getcmd(whatbuf)
-register char *whatbuf;
+Reg3 char *whatbuf;
 {
 #ifdef PUSHBACK
-    register KEYMAP *curmap;
-    register int i;
-    bool no_macros;
+    Reg1 KEYMAP *curmap;
+    Reg2 int i;
+    bool no_macros; 
     int times = 0;			/* loop detector */
     char scrchar;
 
@@ -762,14 +804,14 @@ void
 pushstring(str)
 char *str;
 {
-    register int i;
+    Reg1 int i;
     char tmpbuf[PUSHSIZE];
-    register char *s = tmpbuf;
+    Reg2 char *s = tmpbuf;
 
     assert(str != Nullch);
     interp(s,PUSHSIZE,str);
     for (i = strlen(s)-1; i >= 0; --i) {
-	s[i] ^= 0200;
+	s[i] ^= 0200; 
 	pushchar(s[i]);
     }
 }

@@ -8,10 +8,11 @@
  */
 #include "rogue.h"
 
-int
+extern short party_room;
+
 main(argc, argv)
-        int argc;
-        char *argv[];
+int argc;
+char *argv[];
 {
 	if (init(argc, argv)) {		/* restored game */
 		goto PL;

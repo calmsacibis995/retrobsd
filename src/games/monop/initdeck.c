@@ -1,6 +1,5 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include "deck.h"
+# include	<stdio.h>
+# include	"deck.h"
 
 /*
  *	This program initializes the card files for monopoly.
@@ -13,11 +12,11 @@
  * string to print, terminated with a null byte.
  */
 
-#define TRUE	1
-#define FALSE	0
+# define	TRUE	1
+# define	FALSE	0
 
-#define bool	char
-#define reg	register
+# define	bool	char
+# define	reg	register
 
 char	*infile		= "cards.inp",		/* input file		*/
 	*outfile	= "cards.pck";		/* "packed" file	*/
@@ -28,7 +27,42 @@ DECK	deck[2];
 
 FILE	*inf, *outf;
 
-void
+main(ac, av)
+int	ac;
+char	*av[]; {
+
+	getargs(ac, av);
+	if ((inf = fopen(infile, "r")) == NULL) {
+		perror(infile);
+		exit(1);
+	}
+	count();
+	/*
+	 * allocate space for pointers.
+	 */
+	CC_D.offsets = calloc(CC_D.num_cards + 1, sizeof (long));
+	CH_D.offsets = calloc(CH_D.num_cards + 1, sizeof (long));
+	fseek(inf, 0L, 0);
+	if ((outf = fopen(outfile, "w")) == NULL) {
+		perror(outfile);
+		exit(0);
+	}
+
+	fwrite(deck, sizeof (DECK), 2, outf);
+	fwrite(CC_D.offsets, sizeof (long), CC_D.num_cards, outf);
+	fwrite(CH_D.offsets, sizeof (long), CH_D.num_cards, outf);
+	putem();
+
+	fclose(inf);
+	fseek(outf, 0, 0L);
+	fwrite(deck, sizeof (DECK), 2, outf);
+	fwrite(CC_D.offsets, sizeof (long), CC_D.num_cards, outf);
+	fwrite(CH_D.offsets, sizeof (long), CH_D.num_cards, outf);
+	fclose(outf);
+	printf("There were %d com. chest and %d chance cards\n", CC_D.num_cards, CH_D.num_cards);
+	exit(0);
+}
+
 getargs(ac, av)
 int	ac;
 char	*av[]; {
@@ -39,11 +73,9 @@ char	*av[]; {
 			outfile = av[3];
 	}
 }
-
 /*
  * count the cards
  */
-void
 count() {
 
 	reg bool	newline;
@@ -63,11 +95,9 @@ count() {
 			newline = (c == '\n');
 	in_deck->num_cards++;
 }
-
 /*
  *	put strings in the file
  */
-void
 putem() {
 
 	reg bool	newline;
@@ -107,41 +137,4 @@ putem() {
 			newline = (c == '\n');
 		}
 	putc('\0', outf);
-}
-
-int
-main(ac, av)
-int	ac;
-char	*av[]; {
-
-	getargs(ac, av);
-	if ((inf = fopen(infile, "r")) == NULL) {
-		perror(infile);
-		exit(1);
-	}
-	count();
-	/*
-	 * allocate space for pointers.
-	 */
-	CC_D.offsets = calloc(CC_D.num_cards + 1, sizeof (long));
-	CH_D.offsets = calloc(CH_D.num_cards + 1, sizeof (long));
-	fseek(inf, 0L, 0);
-	if ((outf = fopen(outfile, "w")) == NULL) {
-		perror(outfile);
-		exit(0);
-	}
-
-	fwrite(deck, sizeof (DECK), 2, outf);
-	fwrite(CC_D.offsets, sizeof (long), CC_D.num_cards, outf);
-	fwrite(CH_D.offsets, sizeof (long), CH_D.num_cards, outf);
-	putem();
-
-	fclose(inf);
-	fseek(outf, 0, 0L);
-	fwrite(deck, sizeof (DECK), 2, outf);
-	fwrite(CC_D.offsets, sizeof (long), CC_D.num_cards, outf);
-	fwrite(CH_D.offsets, sizeof (long), CH_D.num_cards, outf);
-	fclose(outf);
-	printf("There were %d com. chest and %d chance cards\n", CC_D.num_cards, CH_D.num_cards);
-	return 0;
 }

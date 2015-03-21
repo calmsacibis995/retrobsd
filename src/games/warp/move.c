@@ -3,13 +3,13 @@
 /* $Log:	move.c,v $
  * Revision 7.0.1.2  86/10/20  14:37:06  lwall
  * Picked some lint.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:52:09  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:12:40  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -35,11 +35,11 @@ move_init()
 
 void
 bounce(obj)
-register OBJECT *obj;
+Reg4 OBJECT *obj;
 {
-    register int x;
-    register int y;
-    register int count=0;
+    Reg1 int x;
+    Reg2 int y;
+    Reg3 int count=0;
 
     y = (obj->posy - sgn(obj->vely) + YSIZE00) % YSIZE;
     x = (obj->posx - sgn(obj->velx) + XSIZE00) % XSIZE;
@@ -68,10 +68,10 @@ register OBJECT *obj;
 void
 move_universe()
 {
-    register OBJECT *curobj;
-    register int x;
-    register int y;
-    register OBJECT *temp;
+    Reg1 OBJECT *curobj;
+    Reg2 int x;
+    Reg3 int y;
+    Reg4 OBJECT *temp;
     OBJECT *thenext;
 
     for (curobj = movers; curobj != &root; curobj = curobj->next) {
@@ -204,9 +204,9 @@ move_universe()
 	}
     }
     if (blasted) {
-	register int minxblast = -1;
-	register int maxxblast = -2;
-	register long tmpblast;
+	Reg7 int minxblast = -1;
+	Reg8 int maxxblast = -2;
+	Reg5 long tmpblast;
 
 	blasted = numamoebas;
 	for (x=0; x<XSIZE; x++) {
@@ -237,7 +237,7 @@ move_universe()
 			yblasted[y] = 2;
 		    }
 		    if (tmpblast) {
-			register OBJECT *biggie = 0;
+			Reg6 OBJECT *biggie = 0;
 
 			blast[y][x] = 0;
 			temp = occupant[y][x];
@@ -574,8 +574,12 @@ move_universe()
 	  lookfor(curobj->posy,curobj->posx,Base)) {
 	    int tmp;
 
+#ifdef lint
+	    tmp = 0;
+#else
 	    tmp = (int) (base->energy - 1000 < entmax - curobj->energy ?
 		         base->energy - 1000 : entmax - curobj->energy);
+#endif
 	    if (tmp < 0)
 		tmp = 0;
 	    curobj->energy += tmp;
@@ -603,14 +607,14 @@ move_universe()
 
 int
 lookaround(y, x, what)
-register int y;
-register int x;
-register char what;
+Reg1 int y;
+Reg2 int x;
+Reg4 char what;
 {
-    register OBJECT *obj;
-    register int count=0;
-    register int xp;
-    register int xm;
+    Reg3 OBJECT *obj;
+    Reg5 int count=0;
+    Reg6 int xp;
+    Reg7 int xm;
 
     if ((obj=occupant[y][xp=(x+XSIZE01)%XSIZE])&&obj->type == what) /* 0, 1 */
 	count++;
@@ -633,13 +637,13 @@ register char what;
 
 int
 lookfor(y, x, what)
-register int y;
-register int x;
-register char what;
+Reg1 int y;
+Reg2 int x;
+Reg4 char what;
 {
-    register OBJECT *obj;
-    register int xp;
-    register int xm;
+    Reg3 OBJECT *obj;
+    Reg5 int xp;
+    Reg6 int xm;
 
     if ((obj=occupant[y][xp=(x+XSIZE01)%XSIZE])&&obj->type == what ||/* 0, 1 */
         (obj=occupant[y][xm=(x+XSIZE99)%XSIZE])&&obj->type == what ||/* 0, -1 */
@@ -655,13 +659,13 @@ register char what;
 
 OBJECT*
 lookimg(y, x, what)
-register int y;
-register int x;
-register char what;
+Reg1 int y;
+Reg2 int x;
+Reg4 char what;
 {
-    register OBJECT *obj;
-    register int xp;
-    register int xm;
+    Reg3 OBJECT *obj;
+    Reg5 int xp;
+    Reg6 int xm;
 
     if ((obj=occupant[y][xp=(x+XSIZE01)%XSIZE])&&obj->image==what ||/* 0, 1 */
         (obj=occupant[y][xm=(x+XSIZE99)%XSIZE])&&obj->image==what ||/* 0, -1 */

@@ -34,31 +34,22 @@
  * SUCH DAMAGE.
  */
 #ifdef CROSS
-#   include <time.h>
-#   include <fcntl.h>
-#   include <stdint.h>
-#   include <sys/file.h>
-#   include <sys/stat.h>
-#   include <stdio.h>
-#   include <string.h>
-#   include <strings.h>
-#   include <stdlib.h>
-#   include <unistd.h>
-#   include <errno.h>
+#   include </usr/include/stdio.h>
+#   include </usr/include/errno.h>
 #else
-#   include <sys/param.h>
-#   include <sys/stat.h>
-#   include <sys/dir.h>
-#   include <sys/file.h>
 #   include <stdio.h>
-#   include <string.h>
-#   include <strings.h>
-#   include <stdlib.h>
-#   include <unistd.h>
 #   include <errno.h>
-#   include <fcntl.h>
 #endif
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <sys/dir.h>
+#include <sys/file.h>
 #include <ar.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include "archive.h"
 #include "extern.h"
 
@@ -79,8 +70,7 @@ open_archive(mode)
 	created = 0;
 	if (mode & O_CREAT) {
 		mode |= O_EXCL;
-		fd = open(archive, mode, 0666);
-		if (fd >= 0) {
+		if ((fd = open(archive, mode, 0666)) >= 0) {
 			/* POSIX.2 puts create message on stderr. */
 			if (!(options & AR_C))
 				(void)fprintf(stderr,
@@ -92,9 +82,7 @@ open_archive(mode)
 			error(archive);
 		mode &= ~O_EXCL;
 	}
-
-	fd = open(archive, mode, 0666);
-	if (fd < 0)
+	if ((fd = open(archive, mode, 0666)) < 0)
 		error(archive);
 
 	/*
@@ -238,10 +226,7 @@ copy_ar(cfp, size)
 
 	from = cfp->rfd;
 	to = cfp->wfd;
-	while (sz) {
-	        nr = read(from, buf, sz < sizeof(buf) ? sz : sizeof(buf));
-		if (nr <= 0)
-		        break;
+	while (sz && (nr = read(from, buf, (size_t)(MIN(sz, sizeof(buf))))) > 0) {
 		sz -= nr;
 		for (off = 0; off < nr; nr -= off, off += nw)
 			if ((nw = write(to, buf + off, (size_t)nr)) < 0)
@@ -341,6 +326,6 @@ skip_arobj(fd)
 	off_t len;
 
 	len = chdr.size + (chdr.lname & 1);
-	if (lseek(fd, len, SEEK_CUR) == (off_t)-1)
+	if (lseek(fd, len, L_INCR) == (off_t)-1)
 		error(archive);
 }

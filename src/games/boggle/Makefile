@@ -5,36 +5,28 @@
 #
 #	@(#)Makefile	5.3 (Berkeley) 9/7/85
 #
-TOPSRC          = $(shell cd ../../..; pwd)
-include $(TOPSRC)/target.mk
-#include $(TOPSRC)/cross.mk
+DESTDIR=
+CC = /bin/cc
+SEPFLAG= -i
+CFLAGS = -O
 
-CFLAGS  	+= -O
-OBJS    	= boggle.o
-MAN             = boggle.0
-MANSRC          = boggle.6
+all:	boggle bogdict
 
-all:            boggle bogdict ${MAN}
+bogdict: comp sfile
+	-if [ -f /usr/local/lib/w2a ]; \
+		then dict=/usr/local/lib/w2a; \
+		else dict=/usr/dict/words; fi; \
+	sed -f sfile $$dict | uniq | ./comp >bogdict
 
-boggle:         ${OBJS}
-		$(CC) $(LDFLAGS) -o $@.elf $(OBJS) $(LIBS)
-		$(OBJDUMP) -S $@.elf > $@.dis
-		$(SIZE) $@.elf
-		$(ELF2AOUT) $@.elf $@ && rm $@.elf
+install: all
+	install -s boggle ${DESTDIR}/usr/games/boggle
+	install -m 644 bogdict ${DESTDIR}/usr/games/lib/bogdict
 
-bogdict:        comp sfile
-		sed -f sfile ../../../share/dict/words | uniq | ./comp > bogdict
+boggle: boggle.c
+	cc ${SEPFLAG} -o boggle ${CFLAGS} boggle.c
 
-comp:           comp.c
-		cc -O comp.c -o comp
-
-${MAN}:         ${MANSRC}
-		${MANROFF} $< > $@
+comp: comp.c
+	cc ${SEPFLAG} -o comp ${CFLAGS} comp.c
 
 clean:
-		rm -f *.o core boggle comp bogdict
-
-install:
-		install boggle $(DESTDIR)/games/
-		install -m 644 bogdict $(DESTDIR)/games/lib/bogdict
-		cp ${MAN} $(DESTDIR)/share/man/cat6/
+	rm -f bogdict boggle comp *.o

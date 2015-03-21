@@ -3,13 +3,17 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include "robots.h"
+
+#ifndef lint
+static char sccsid[] = "@(#)query.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
+# include	"robots.h"
 
 /*
  * query:
  *	Ask a question and get a yes or no answer.  Default is "no".
  */
-int
 query(prompt)
 char	*prompt;
 {

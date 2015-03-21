@@ -3,10 +3,10 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-# include "trek.h"
-# include <stdarg.h>
-# include <errno.h>
-# include <stdlib.h>
+
+#ifndef lint
+static char sccsid[] = "@(#)utility.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
 
 /*
 **  ASSORTED UTILITY ROUTINES
@@ -20,10 +20,10 @@
 **	Returns the address of the byte following the `b' field.
 **	Overflow of `b' is not tested.
 */
-void *
-bmove(a, b, l)
-        void	*a, *b;
-        int	l;
+
+char *bmove(a, b, l)
+char	*a, *b;
+int	l;
 {
 	register int		n;
 	register char		*p, *q;
@@ -43,9 +43,9 @@ bmove(a, b, l)
 **	absolute equality.
 **	returns one if equal, zero otherwise.
 */
-int
+
 sequal(a, b)
-        char	*a, *b;
+char	*a, *b;
 {
 	register char		*p, *q;
 
@@ -59,14 +59,41 @@ sequal(a, b)
 
 
 /*
+**  STRING CONCATENATE
+**
+**	The strings `s1' and `s2' are concatenated and stored into
+**	`s3'.  It is ok for `s1' to equal `s3', but terrible things
+**	will happen if `s2' equals `s3'.  The return value is is a
+**	pointer to the end of `s3' field.
+*/
+
+char *concat(s1, s2, s3)
+char	*s1, *s2, *s3;
+{
+	register char		*p;
+	register char		*q;
+
+	p = s3;
+	q = s1;
+	while (*q)
+		*p++ = *q++;
+	q = s2;
+	while (*q)
+		*p++ = *q++;
+	*p = 0;
+	return (p);
+}
+
+
+/*
 **  FIND STRING LENGTH
 **
 **	The length of string `s' (excluding the null byte which
 **		terminates the string) is returned.
 */
-int
+
 length(s)
-        char	*s;
+char	*s;
 {
 	register int	l;
 	register char	*p;
@@ -82,15 +109,13 @@ length(s)
 /*
 **  SYSTEM ERROR
 */
-void
-syserr(char *fmt, ...)
+
+syserr(p0, p1, p2, p3, p4, p5)
 {
-        va_list ap;
+	extern int	errno;
 
 	printf("\n\07TREK SYSERR: ");
-        va_start(ap, fmt);
-	vprintf(fmt, ap);
-        va_end(ap);
+	printf(p0, p1, p2, p3, p4, p5);
 	printf("\n");
 	if (errno)
 		printf("\tsystem error %d\n", errno);

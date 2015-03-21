@@ -34,46 +34,28 @@
  * SUCH DAMAGE.
  */
 #ifdef CROSS
-#   include <stdint.h>
-#   include <sys/types.h>
-#   include <sys/select.h>
-#   include <sys/stat.h>
-#   include <sys/time.h>
-#   include <time.h>
-#   include <sys/fcntl.h>
-#   include <sys/signal.h>
-#   include <stdio.h>
-#   include <string.h>
-#   include <stdlib.h>
-#   include <unistd.h>
-#   include <errno.h>
-#   define _PATH_RANTMP "/tmp/ranlib.XXXXXX"
+#   include </usr/include/stdio.h>
 #else
-#   include <sys/types.h>
-#   include <sys/dir.h>
-#   include <sys/file.h>
-#   include <sys/stat.h>
-#   include <sys/param.h>
 #   include <stdio.h>
-#   include <errno.h>
-#   include <stdlib.h>
-#   include <string.h>
-#   include <strings.h>
-#   include <fcntl.h>
-#   include <unistd.h>
-#   include <signal.h>
-#   include <time.h>
-#   include <paths.h>
 #endif
+#include <sys/types.h>
+#include <sys/dir.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <sys/param.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <signal.h>
+#include <time.h>
+#include <errno.h>
+#include <paths.h>
 #include <ar.h>
 #include <ranlib.h>
 #include <a.out.h>
-
-#ifdef CROSS
-#   include "../ar/archive.h"
-#else
-#   include "archive.h"
-#endif
+#include <archive.h>
 
 u_int options;				/* UNUSED -- keep open_archive happy */
 
@@ -92,7 +74,6 @@ RLIB *rhead, **pnext;
 FILE *fp;
 long symcnt;				/* symbol count */
 long tsymlen;				/* total string length */
-int verbose;
 
 void error(name)
 	char *name;
@@ -144,7 +125,7 @@ unsigned int fgetword (f)
 
 /*
  * Read a symbol table entry.
- * Return a number of bytes read, 0 on end of table or -1 on EOF.
+ * Return a number of bytes read, or -1 on EOF.
  * Format of symbol record:
  *  1 byte: length of name in bytes
  *  1 byte: type of symbol (N_UNDF, N_ABS, N_TEXT, etc)
@@ -161,12 +142,8 @@ int fgetsym (fi, name, value, type)
         unsigned nbytes;
 
         len = getc (fi);
-        if (len < 0) {
+        if (len <= 0)
                 return -1;
-        }
-        if (len == 0) {
-                return 0;
-        }
         *type = getc (fi);
         *value = fgetword (fi);
         nbytes = len + 6;
@@ -193,8 +170,8 @@ void rexec(rfd, wfd)
 	off_t r_off, w_off;
 
 	/* Get current offsets for original and tmp files. */
-	r_off = lseek(rfd, (off_t)0, SEEK_CUR);
-	w_off = lseek(wfd, (off_t)0, SEEK_CUR);
+	r_off = lseek(rfd, (off_t)0, L_INCR);
+	w_off = lseek(wfd, (off_t)0, L_INCR);
 
 	/* Read in exec structure. */
 	nr = read(rfd, (char *)&ebuf, sizeof(struct exec));
@@ -206,18 +183,18 @@ void rexec(rfd, wfd)
 		goto bad1;
 
 	/* Seek to symbol table. */
-	if (fseek(fp, (off_t)N_SYMOFF(ebuf) + r_off, SEEK_SET) == (off_t)-1)
+	if (fseek(fp, (off_t)N_SYMOFF(ebuf) + r_off, L_SET) == (off_t)-1)
 		goto bad1;
 
 	/* For each symbol read the nlist entry and save it as necessary. */
 	nsyms = ebuf.a_syms;
-	while (nsyms > 4) {
+	while (nsyms > 0) {
                 unsigned value;
                 unsigned short type;
 	        char name [256];
 
                 int c = fgetsym(fp, name, &value, &type);
-                if (c < 0) {
+                if (c <= 0) {
 			if (feof(fp)) {
 				/* Bad file format. */
                                 errno = EINVAL;
@@ -242,8 +219,8 @@ void rexec(rfd, wfd)
 		rp->next = NULL;
 		rp->pos = w_off;
 		rp->symlen = symlen;
-		rp->sym = (char*) emalloc(symlen + 1);
-		bcopy(name, rp->sym, symlen + 1);
+		rp->sym = (char*) emalloc(symlen);
+		bcopy(name, rp->sym, symlen);
 		tsymlen += symlen;
 
 		/* Build in forward order for "ar -m" command. */
@@ -251,7 +228,7 @@ void rexec(rfd, wfd)
 		pnext = &rp->next;
 		++symcnt;
 	}
-bad1:	(void)lseek(rfd, (off_t)r_off, SEEK_SET);
+bad1:	(void)lseek(rfd, (off_t)r_off, L_SET);
 }
 
 /*
@@ -261,53 +238,69 @@ bad1:	(void)lseek(rfd, (off_t)r_off, SEEK_SET);
  */
 void symobj()
 {
-	register RLIB *rp;
-	char hb[sizeof(struct ar_hdr) + 1];
-	long ransize, baseoff;
+	register RLIB *rp, *next;
+	struct ranlib rn;
+	char hb[sizeof(struct ar_hdr) + 1], pad;
+	long ransize, size, stroff;
+	gid_t getgid();
+	uid_t getuid();
 
 	/* Rewind the archive, leaving the magic number. */
-	if (fseek(fp, (off_t)SARMAG, SEEK_SET) == (off_t)-1)
+	if (fseek(fp, (off_t)SARMAG, L_SET) == (off_t)-1)
 		error(archive);
 
-        /* Compute the size of rantab. */
-        ransize = 0;
-	for (rp = rhead; rp; rp = rp->next) {
-	        ransize += rp->symlen + 5;
-        }
-        ransize += 4 - (ransize & 3);
+	/* Size of the ranlib archive file, pad if necessary. */
+	ransize = sizeof(long) +
+	    symcnt * sizeof(struct ranlib) + sizeof(long) + tsymlen;
+	if (ransize & 01) {
+		++ransize;
+		pad = '\n';
+	} else
+		pad = '\0';
 
 	/* Put out the ranlib archive file header. */
 	(void)sprintf(hb, HDR2, RANLIBMAG, 0L, getuid(), getgid(),
 	    0666 & ~umask(0), ransize, ARFMAG);
-	if (! fwrite(hb, sizeof(struct ar_hdr), 1, fp))
+	if (!fwrite(hb, sizeof(struct ar_hdr), 1, fp))
+		error(tname);
+
+	/* First long is the size of the ranlib structure section. */
+	size = symcnt * sizeof(struct ranlib);
+	if (!fwrite((char *)&size, sizeof(size), 1, fp))
 		error(tname);
 
 	/* Offset of the first archive file. */
-	baseoff = SARMAG + sizeof(struct ar_hdr) + ransize;
+	size = SARMAG + sizeof(struct ar_hdr) + ransize;
 
 	/*
-	 * Write out the ranlib structures.  The offset into the archive
-         * is the base value plus the offset to the first archive file.
+	 * Write out the ranlib structures.  The offset into the string
+	 * table is cumulative, the offset into the archive is the value
+	 * set in rexec() plus the offset to the first archive file.
 	 */
-	for (rp = rhead; rp; rp = rp->next) {
-                /* Write struct ranlib to file.
-                 * 1 byte - length of name.
-                 * 4 bytes - seek in archive.
-                 * 'len' bytes - symbol name. */
-	        unsigned offset = baseoff + rp->pos;
-	        fputc (rp->symlen, fp);
-		if (! fwrite((char *)&offset, 4, 1, fp))
+	for (rp = rhead, stroff = 0; rp; rp = rp->next) {
+		rn.ran_name = (char*) stroff;
+		stroff += rp->symlen;
+		rn.ran_off = size + rp->pos;
+		if (!fwrite((char *)&rn, sizeof(struct ranlib), 1, fp))
 			error(archive);
-		if (! fwrite(rp->sym, rp->symlen, 1, fp))
-			error(tname);
-                if (verbose)
-                        fprintf (stderr, "%8u %s\n", offset, rp->sym);
-	        ransize -= rp->symlen + 5;
 	}
 
-        /* Align to word boundary. */
-	while (ransize-- > 0)
-                fputc (0, fp);
+	/* Second long is the size of the string table. */
+	if (!fwrite((char *)&tsymlen, sizeof(tsymlen), 1, fp))
+		error(tname);
+
+	/* Write out the string table. */
+	for (rp = rhead; rp; ) {
+		if (!fwrite(rp->sym, rp->symlen, 1, fp))
+			error(tname);
+		(void)free(rp->sym);
+		next = rp->next;
+		free(rp);
+		rp = next;
+	}
+
+	if (pad && !fwrite(&pad, sizeof(pad), 1, fp))
+		error(tname);
 
 	(void)fflush(fp);
 }
@@ -320,7 +313,7 @@ void settime(afd)
 	char buf[50];
 
 	size = SARMAG + sizeof(hdr->ar_name);
-	if (lseek(afd, size, SEEK_SET) == (off_t)-1)
+	if (lseek(afd, size, L_SET) == (off_t)-1)
 		error(archive);
 	(void)sprintf(buf, "%-12ld", time((time_t *)NULL) + RANLIBSKEW);
 	if (write(afd, buf, sizeof(hdr->ar_date)) != sizeof(hdr->ar_date))
@@ -329,26 +322,20 @@ void settime(afd)
 
 int tmp()
 {
-#ifndef CROSS
 	long set, oset;
-#endif
 	int fd;
 	char path[MAXPATHLEN];
 
 	bcopy(_PATH_RANTMP, path, sizeof(_PATH_RANTMP));
 
-#ifndef CROSS
 	set = sigmask(SIGHUP) | sigmask(SIGINT) |
              sigmask(SIGQUIT) | sigmask(SIGTERM);
 	oset = sigsetmask(set);
-#endif
 	fd = mkstemp(path);
 	if (fd < 0)
 		error(tname);
         (void)unlink(path);
-#ifndef CROSS
 	(void)sigsetmask(oset);
-#endif
 	return(fd);
 }
 
@@ -368,7 +355,7 @@ int build()
 	pnext = &rhead;
 	symcnt = tsymlen = 0;
 	while(get_arobj(afd)) {
-		if (strcmp(chdr.name, RANLIBMAG) == 0) {
+		if (!strcmp(chdr.name, RANLIBMAG)) {
 			skip_arobj(afd);
 			continue;
 		}
@@ -381,11 +368,11 @@ int build()
 	symobj();
 
 	/* Copy the saved objects into the archive. */
-	size = lseek(tfd, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd, (off_t)0, SEEK_SET);
+	size = lseek(tfd, (off_t)0, L_INCR);
+	(void)lseek(tfd, (off_t)0, L_SET);
 	SETCF(tfd, tname, afd, archive, RPAD|WPAD);
 	copy_ar(&cf, size);
-	(void)ftruncate(afd, lseek(afd, (off_t)0, SEEK_CUR));
+	(void)ftruncate(afd, lseek(afd, (off_t)0, L_INCR));
 	(void)close(tfd);
 
 	/* Set the time. */
@@ -412,11 +399,7 @@ int touch()
 
 void usage()
 {
-        fprintf(stderr, "Usage:\n");
-        fprintf(stderr, "  ranlib [-t] file...\n");
-        fprintf(stderr, "Options:\n");
-        fprintf(stderr, "  -t      Update the timestamp of the symbol map\n");
-        fprintf(stderr, "  -v      Verbose: print the resulting symbol map\n");
+	(void)fprintf(stderr, "usage: ranlib [-t] archive ...\n");
 	exit(1);
 }
 
@@ -427,15 +410,11 @@ int main(argc, argv)
 	int ch, eval, tflag;
 
 	tflag = 0;
-	while ((ch = getopt(argc, argv, "tv")) != EOF)
+	while ((ch = getopt(argc, argv, "t")) != EOF)
 		switch(ch) {
 		case 't':
 			tflag = 1;
 			break;
-		case 'v':
-			verbose = 1;
-			break;
-		case 'h':
 		case '?':
 		default:
 			usage();

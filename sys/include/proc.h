@@ -97,7 +97,7 @@ struct	proc *pidhash [PIDHSZ];
 extern struct	proc proc[];	/* the proc table itself */
 struct	proc *freeproc, *zombproc, *allproc, *qs;
 			/* lists of procs in various states */
-extern int nproc;
+int nproc;
 
 /*
  * Init the process queues.
@@ -271,8 +271,6 @@ void fatalsig (int signum);
  * Parent controlled tracing.
  */
 int procxmt (void);
-
-void execsigs(register struct proc *p);
 
 #endif /* KERMEL */
 

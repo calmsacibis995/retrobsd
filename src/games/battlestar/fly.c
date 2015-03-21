@@ -3,6 +3,11 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)fly.c	1.3 4/24/85";
+#endif
+
 #include "externs.h"
 #undef UP
 #include <curses.h>
@@ -14,144 +19,31 @@
 int row, column;
 int dr = 0, dc = 0;
 char destroyed;
-int clk = 120;                  /* time for all the flights in the game */
+int clock = 120;		/* time for all the flights in the game */
 char cross = 0;
-void (*oldsig)();
+int (*oldsig)();
 
-static void
-endfly()
-{
-	alarm(0);
-	signal(SIGALRM, SIG_DFL);
-	mvcur(0,COLS-1,LINES-1,0);
-	delwin(stdscr);
-	endwin();
-	signal(SIGTSTP, SIG_DFL);
-	signal(SIGINT, oldsig);
-}
-
-void
 succumb()
 {
-	if (oldsig == SIG_DFL) {
+	switch (oldsig) {
+	case SIG_DFL:
 		endfly();
 		exit(1);
-        }
-	if (oldsig != SIG_IGN) {
+	case SIG_IGN:
+		break;
+	default:
 		endfly();
 		(*oldsig)();
 	}
 }
 
-static void
-screen()
-{
-	register int r,c,n;
-	int i;
-
-	clear();
-	i = rnd(100);
-	for (n=0; n < i; n++){
-		r = rnd(LINES-3) + 1;
-		c = rnd(COLS);
-		mvaddch(r, c, '.');
-	}
-	mvaddstr(LINES-1-1,21,"TORPEDOES           FUEL           TIME");
-	refresh();
-}
-
-static void
-target()
-{
-	register int n;
-
-	move(MIDR,MIDC-10);
-	addstr("-------   +   -------");
-	for (n = MIDR-4; n < MIDR-1; n++){
-		mvaddch(n,MIDC,'|');
-		mvaddch(n+6,MIDC,'|');
-	}
-}
-
-static void
-notarget()
-{
-	register int n;
-
-	move(MIDR,MIDC-10);
-	addstr("                     ");
-	for (n = MIDR-4; n < MIDR-1; n++){
-		mvaddch(n,MIDC,' ');
-		mvaddch(n+6,MIDC,' ');
-	}
-}
-
-static void
-moveenemy()
-{
-	double d;
-	int oldr, oldc;
-
-	oldr = row;
-	oldc = column;
-	if (fuel > 0){
-		if (row + dr <= LINES-3 && row + dr > 0)
-			row += dr;
-		if (column + dc < COLS-1 && column + dc > 0)
-			column += dc;
-	} else if (fuel < 0){
-		fuel = 0;
-		mvaddstr(0,60,"*** Out of fuel ***");
-	}
-	d = (double) ((row - MIDR)*(row - MIDR) + (column - MIDC)*(column - MIDC));
-	if (d < 16){
-		row += (rnd(9) - 4) % (4 - abs(row - MIDR));
-		column += (rnd(9) - 4) % (4 - abs(column - MIDC));
-	}
-	clk--;
-	mvaddstr(oldr, oldc - 1, "   ");
-	if (cross)
-		target();
-	mvaddstr(row, column - 1, "/-\\");
-	move(LINES-1, 24);
-	printw("%3d", torps);
-	move(LINES-1, 42);
-	printw("%3d", fuel);
-	move(LINES-1, 57);
-	printw("%3d", clk);
-	refresh();
-	signal(SIGALRM, moveenemy);
-	alarm(1);
-}
-
-static void
-blast()
-{
-	register int n;
-
-	alarm(0);
-	move(LINES-1, 24);
-	printw("%3d", torps);
-	for(n = LINES-1-2; n >= MIDR + 1; n--){
-		mvaddch(n, MIDC+MIDR-n, '/');
-		mvaddch(n, MIDC-MIDR+n, '\\');
-		refresh();
-	}
-	mvaddch(MIDR,MIDC,'*');
-	for(n = LINES-1-2; n >= MIDR + 1; n--){
-		mvaddch(n, MIDC+MIDR-n, ' ');
-		mvaddch(n, MIDC-MIDR+n, ' ');
-		refresh();
-	}
-	alarm(1);
-}
-
-int
 visual()
 {
+	int moveenemy();
+
 	destroyed = 0;
 	savetty();
-	if(initscr() != stdscr){
+	if(initscr() == ERR){
 		puts("Whoops!  No more memory...");
 		return(0);
 	}
@@ -249,9 +141,118 @@ visual()
 			endfly();
 			return(1);
 		}
-		if (clk <= 0){
+		if (clock <= 0){
 			endfly();
-			die(0);
+			die();
 		}
 	}
+}
+
+screen()
+{
+	register int r,c,n;
+	int i;
+
+	clear();
+	i = rnd(100);
+	for (n=0; n < i; n++){
+		r = rnd(LINES-3) + 1;
+		c = rnd(COLS);
+		mvaddch(r, c, '.');
+	}
+	mvaddstr(LINES-1-1,21,"TORPEDOES           FUEL           TIME");
+	refresh();
+}
+
+target()
+{
+	register int n;
+
+	move(MIDR,MIDC-10);
+	addstr("-------   +   -------");
+	for (n = MIDR-4; n < MIDR-1; n++){
+		mvaddch(n,MIDC,'|');
+		mvaddch(n+6,MIDC,'|');
+	}
+}
+
+notarget()
+{
+	register int n;
+
+	move(MIDR,MIDC-10);
+	addstr("                     ");
+	for (n = MIDR-4; n < MIDR-1; n++){
+		mvaddch(n,MIDC,' ');
+		mvaddch(n+6,MIDC,' ');
+	}
+}
+
+blast()
+{
+	register int n;
+
+	alarm(0);
+	move(LINES-1, 24);
+	printw("%3d", torps);
+	for(n = LINES-1-2; n >= MIDR + 1; n--){
+		mvaddch(n, MIDC+MIDR-n, '/');
+		mvaddch(n, MIDC-MIDR+n, '\\');
+		refresh();
+	}
+	mvaddch(MIDR,MIDC,'*');
+	for(n = LINES-1-2; n >= MIDR + 1; n--){
+		mvaddch(n, MIDC+MIDR-n, ' ');
+		mvaddch(n, MIDC-MIDR+n, ' ');
+		refresh();
+	}
+	alarm(1);
+}
+
+moveenemy()
+{
+	double d;
+	int oldr, oldc;
+
+	oldr = row;
+	oldc = column;
+	if (fuel > 0){
+		if (row + dr <= LINES-3 && row + dr > 0)
+			row += dr;
+		if (column + dc < COLS-1 && column + dc > 0)
+			column += dc;
+	} else if (fuel < 0){
+		fuel = 0;
+		mvaddstr(0,60,"*** Out of fuel ***");
+	}
+	d = (double) ((row - MIDR)*(row - MIDR) + (column - MIDC)*(column - MIDC));
+	if (d < 16){
+		row += (rnd(9) - 4) % (4 - abs(row - MIDR));
+		column += (rnd(9) - 4) % (4 - abs(column - MIDC));
+	}
+	clock--;
+	mvaddstr(oldr, oldc - 1, "   ");
+	if (cross)
+		target();
+	mvaddstr(row, column - 1, "/-\\");
+	move(LINES-1, 24);
+	printw("%3d", torps);
+	move(LINES-1, 42);
+	printw("%3d", fuel);
+	move(LINES-1, 57);
+	printw("%3d", clock);
+	refresh();
+	signal(SIGALRM, moveenemy);
+	alarm(1);
+}
+
+endfly()
+{
+	alarm(0);
+	signal(SIGALRM, SIG_DFL);
+	mvcur(0,COLS-1,LINES-1,0);
+	delwin(stdscr);
+	endwin();
+	signal(SIGTSTP, SIG_DFL);
+	signal(SIGINT, oldsig);
 }

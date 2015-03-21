@@ -29,17 +29,6 @@
 #include "systm.h"
 #include "uio.h"
 
-const struct devspec gpiodevs[] = {
-    { 0, "porta" }, { 1, "portb" }, { 2, "portc" }, { 3, "portd" },
-    { 4, "porte" }, { 5, "portf" }, { 6, "portg" },
-
-    { 64, "confa" }, { 65, "confb" }, { 66, "confc" }, { 67, "confd" },
-    { 68, "confe" }, { 69, "conff" }, { 70, "confg" },
-
-    { 0, 0 }
-};
-
-
 /*
  * Devices:
  *      /dev/porta ... /dev/portg
@@ -165,8 +154,8 @@ gpio_filter (mask, portnum)
 {
         mask &= gpio_pins_mx7 [portnum];
 
-#ifdef LED_SWAP_PORT
-        mask = filter_out (mask, portnum, &LED_SWAP_PORT, LED_SWAP_PIN);
+#ifdef LED_AUX_PORT
+        mask = filter_out (mask, portnum, &LED_AUX_PORT, LED_AUX_PIN);
 #endif
 #ifdef LED_DISK_PORT
         mask = filter_out (mask, portnum, &LED_DISK_PORT, LED_DISK_PIN);
@@ -177,35 +166,14 @@ gpio_filter (mask, portnum)
 #ifdef LED_TTY_PORT
         mask = filter_out (mask, portnum, &LED_TTY_PORT, LED_TTY_PIN);
 #endif
-#ifdef SD0_CS_PORT
-        mask = filter_out (mask, portnum, &SD0_CS_PORT, SD0_CS_PIN);
+#ifdef SD_CS0_PORT
+        mask = filter_out (mask, portnum, &SD_CS0_PORT, SD_CS0_PIN);
 #endif
-#ifdef SD1_CS_PORT
-        mask = filter_out (mask, portnum, &SD1_CS_PORT, SD1_CS_PIN);
+#ifdef SD_CS1_PORT
+        mask = filter_out (mask, portnum, &SD_CS1_PORT, SD_CS1_PIN);
 #endif
-#ifdef SD0_ENA_PORT
-        mask = filter_out (mask, portnum, &SD0_ENA_PORT, SD0_ENA_PIN);
-#endif
-#ifdef SD1_ENA_PORT
-        mask = filter_out (mask, portnum, &SD1_ENA_PORT, SD1_ENA_PIN);
-#endif
-#ifdef UART1_ENA_PORT
-        mask = filter_out (mask, portnum, &UART1_ENA_PORT, UART1_ENA_PIN);
-#endif
-#ifdef UART2_ENA_PORT
-        mask = filter_out (mask, portnum, &UART2_ENA_PORT, UART2_ENA_PIN);
-#endif
-#ifdef UART3_ENA_PORT
-        mask = filter_out (mask, portnum, &UART3_ENA_PORT, UART3_ENA_PIN);
-#endif
-#ifdef UART4_ENA_PORT
-        mask = filter_out (mask, portnum, &UART4_ENA_PORT, UART4_ENA_PIN);
-#endif
-#ifdef UART5_ENA_PORT
-        mask = filter_out (mask, portnum, &UART5_ENA_PORT, UART5_ENA_PIN);
-#endif
-#ifdef UART6_ENA_PORT
-        mask = filter_out (mask, portnum, &UART6_ENA_PORT, UART6_ENA_PIN);
+#ifdef SD_ENA_PORT
+        mask = filter_out (mask, portnum, &SD_ENA_PORT, SD_ENA_PIN);
 #endif
 #ifdef SW_DATA_PORT
         mask = filter_out (mask, portnum, &SW_DATA_PORT, SW_DATA_PIN);

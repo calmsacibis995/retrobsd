@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)move.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-# include	<float.h>
 
 /*
 **  Move Under Warp or Impulse Power
@@ -40,12 +44,12 @@
 **
 **	Uses trace flag 4.
 */
-double
-move(ramflag, course, time, speed)
-        int	ramflag;
-        int	course;
-        double	time;
-        double	speed;
+
+double move(ramflag, course, time, speed)
+int	ramflag;
+int	course;
+double	time;
+double	speed;
 {
 	double			angle;
 	double			x, y, dx, dy;
@@ -85,7 +89,7 @@ move(ramflag, course, time, speed)
 	evtime = Now.eventptr[E_LRTB]->date - Now.date;
 #	ifdef xTRACE
 	if (Trace)
-		printf("E.ep = %p, ->evcode = %d, ->date = %.2f, evtime = %.2f\n",
+		printf("E.ep = %u, ->evcode = %d, ->date = %.2f, evtime = %.2f\n",
 			Now.eventptr[E_LRTB], Now.eventptr[E_LRTB]->evcode,
 			Now.eventptr[E_LRTB]->date, evtime);
 #	endif
@@ -96,7 +100,7 @@ move(ramflag, course, time, speed)
 		time = evtime;
 	}
 	else
-		evtime = -DBL_MAX;
+		evtime = -1.0e50;
 	dist = time * speed;
 
 	/* move within quadrant */
@@ -111,7 +115,6 @@ move(ramflag, course, time, speed)
 #	endif
 	Move.free = 0;
 
-        ix = iy = 0;
 	for (i = 0; i < n; i++)
 	{
 		ix = (x += dx);
@@ -147,12 +150,13 @@ move(ramflag, course, time, speed)
 			Ship.quady = iy / NSECTS;
 			Ship.sectx = ix % NSECTS;
 			Ship.secty = iy % NSECTS;
-			if (ix < 0 || Ship.quadx >= NQUADS || iy < 0 || Ship.quady >= NQUADS) {
-				if (! damaged(COMPUTER)) {
+			if (ix < 0 || Ship.quadx >= NQUADS || iy < 0 || Ship.quady >= NQUADS)
+				if (!damaged(COMPUTER))
+				{
 					dumpme(0);
-				} else
+				}
+				else
 					lose(L_NEGENB);
-                        }
 			initquad(0);
 			n = 0;
 			break;

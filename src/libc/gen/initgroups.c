@@ -10,21 +10,21 @@
 #include <stdio.h>
 #include <sys/param.h>
 #include <grp.h>
-#include <string.h>
 
-int
+struct group *getgrent();
+
 initgroups(uname, agroup)
 	char *uname;
 	int agroup;
 {
-	gid_t groups[NGROUPS];
+	int groups[NGROUPS], ngroups = 0;
 	register struct group *grp;
-	register int i, ngroups = 0;
+	register int i;
 
 	if (agroup >= 0)
 		groups[ngroups++] = agroup;
 	setgrent();
-	while ((grp = getgrent())) {
+	while (grp = getgrent()) {
 		if (grp->gr_gid == agroup)
 			continue;
 		for (i = 0; grp->gr_mem[i]; i++)

@@ -11,36 +11,28 @@
 #
 # Supported boards
 #
-MAX32           = sys/pic32/max32/MAX32
-FUBARINO        = sys/pic32/fubarino/FUBARINO
-FUBARINOBIG     = sys/pic32/fubarino/FUBARINO-UART2CONS-UART1-SRAMC
-SDXL            = sys/pic32/sdxl/SDXL
-MAXIMITE        = sys/pic32/maximite/MAXIMITE
-MAXCOLOR        = sys/pic32/maximite-color/MAXCOLOR
-DUINOMITE       = sys/pic32/duinomite/DUINOMITE
-DUINOMITEUART   = sys/pic32/duinomite-uart/DUINOMITE-UART
-DUINOMITEE      = sys/pic32/duinomite-e/DUINOMITE-E
-DUINOMITEEUART  = sys/pic32/duinomite-e-uart/DUINOMITE-E-UART
-MMBMX7          = sys/pic32/mmb-mx7/MMB-MX7
-WF32            = sys/pic32/wf32/WF32
-UBW32           = sys/pic32/ubw32/UBW32
-UBW32UART       = sys/pic32/ubw32-uart/UBW32-UART
-UBW32UARTSDRAM  = sys/pic32/ubw32-uart-sdram/UBW32-UART-SDRAM
-EXPLORER16      = sys/pic32/explorer16/EXPLORER16
-STARTERKIT      = sys/pic32/starter-kit/STARTER-KIT
-BAREMETAL       = sys/pic32/baremetal/BAREMETAL
-RETROONE        = sys/pic32/retroone/RETROONE
+MAX32           = pic32/max32
+UBW32           = pic32/ubw32
+UBW32UART       = pic32/ubw32-uart
+UBW32UARTSDRSW  = pic32/ubw32-uart-sdramswap
+MAXIMITE        = pic32/maximite
+EXPLORER16      = pic32/explorer16
+STARTERKIT      = pic32/starter-kit
+DUINOMITE       = pic32/duinomite
+PINGUINO        = pic32/pinguino-micro
+DIP             = pic32/dip
+BAREMETAL       = pic32/baremetal
+RETROONE	= pic32/retroone
 
 # Select target board
-TARGET          ?= $(MAX32)
+TARGET          ?= $(UBW32UARTSDRSW)
 
 # Filesystem and swap sizes.
-FS_MBYTES       = 100
-U_MBYTES        = 100
-SWAP_MBYTES     = 2
+FS_KBYTES       = 16384
+SWAP_KBYTES     = 2048
 
 # Set this to the device name for your SD card.  With this
-# enabled you can use "make installfs" to copy the sdcard.img
+# enabled you can use "make installfs" to copy the filesys.img
 # to the SD card.
 
 #SDCARD          = /dev/sdb
@@ -53,71 +45,136 @@ DEFS		=
 
 FSUTIL		= tools/fsutil/fsutil
 
--include Makefile.user
+#
+# Filesystem contents.
+#
+BIN_FILES	:= $(wildcard bin/*)
+SBIN_FILES	:= $(wildcard sbin/*)
+GAMES_FILES	:= $(shell find games -type f ! -path '*/.*')
+LIB_FILES	:= $(wildcard lib/*)
+LIBEXEC_FILES	:= $(wildcard libexec/*)
+ETC_FILES	= etc/rc etc/rc.local etc/ttys etc/gettytab etc/group \
+                  etc/passwd etc/shadow etc/fstab etc/motd etc/shells \
+                  etc/termcap
+INC_FILES	= include/stdio.h include/syscall.h include/sys/types.h \
+                  include/sys/select.h
+SHARE_FILES	= share/re.help share/example/Makefile \
+                  share/example/ashello.S share/example/chello.c \
+                  share/example/blkjack.bas share/example/hilow.bas \
+                  share/example/stars.bas share/example/prime.scm \
+                  share/example/fact.fth share/example/echo.S
+ALLFILES	= $(SBIN_FILES) $(ETC_FILES) $(BIN_FILES) $(LIB_FILES) $(LIBEXEC_FILES) \
+                  $(INC_FILES) $(SHARE_FILES) $(GAMES_FILES) \
+                  var/log/messages var/log/wtmp .profile
+ALLDIRS         = sbin/ bin/ dev/ etc/ tmp/ lib/ libexec/ share/ share/example/ \
+                  share/misc/ var/ var/run/ var/log/ u/ include/ include/sys/ \
+                  games/ games/lib/
+BDEVS           = dev/sd0!b0:0 dev/sd1!b0:1 dev/sw0!b1:0
+CDEVS           = dev/console!c0:0 \
+                  dev/mem!c1:0 dev/kmem!c1:1 dev/null!c1:2 dev/zero!c1:3 \
+                  dev/tty!c2:0 \
+                  dev/rsd0!c3:0 dev/rsd1!c3:1 dev/swap!c3:0 \
+                  dev/klog!c4:0 \
+                  dev/stdin!c5:0 dev/stdout!c5:1 dev/stderr!c5:2 \
+                  dev/rsw0!c6:0 \
+                  dev/porta!c7:0 dev/portb!c7:1 dev/portc!c7:2 \
+                  dev/portd!c7:3 dev/porte!c7:4 dev/portf!c7:5 dev/portg!c7:6 \
+                  dev/confa!c7:64 dev/confb!c7:65 dev/confc!c7:66 \
+                  dev/confd!c7:67 dev/confe!c7:68 dev/conff!c7:69 dev/confg!c7:70 \
+                  dev/spi1!c9:0 dev/spi2!c9:1 dev/spi3!c9:2 dev/spi4!c9:3 \
+		  dev/glcd0!c10:0
+FDDEVS          = dev/fd/ dev/fd/0!c5:0 dev/fd/1!c5:1 dev/fd/2!c5:2 \
+                  dev/fd/3!c5:3 dev/fd/4!c5:4 dev/fd/5!c5:5 dev/fd/6!c5:6 \
+                  dev/fd/7!c5:7 dev/fd/8!c5:8 dev/fd/9!c5:9 dev/fd/10!c5:10 \
+                  dev/fd/11!c5:11 dev/fd/12!c5:12 dev/fd/13!c5:13 \
+                  dev/fd/14!c5:14 dev/fd/15!c5:15 dev/fd/16!c5:16 \
+                  dev/fd/17!c5:17 dev/fd/18!c5:18 dev/fd/19!c5:19 \
+                  dev/fd/20!c5:20 dev/fd/21!c5:21 dev/fd/22!c5:22 \
+                  dev/fd/23!c5:23 dev/fd/24!c5:24 dev/fd/25!c5:25 \
+                  dev/fd/26!c5:26 dev/fd/27!c5:27 dev/fd/28!c5:28 \
+                  dev/fd/29!c5:29
+ADCDEVS         = dev/adc0!c8:0 dev/adc1!c8:1 dev/adc2!c8:2 dev/adc3!c8:3 \
+                  dev/adc4!c8:4 dev/adc5!c8:5 dev/adc6!c8:6 dev/adc7!c8:7 \
+                  dev/adc8!c8:8 dev/adc9!c8:9 dev/adc10!c8:10 dev/adc11!c8:11 \
+                  dev/adc12!c8:12 dev/adc13!c8:13 dev/adc14!c8:14 dev/adc15!c8:15
+OCDEVS		= dev/oc0!c11:0 dev/oc1!c11:1 dev/oc2!c11:2 dev/oc3!c11:3 dev/oc4!c11:4
 
-TARGETDIR    = $(shell dirname $(TARGET))
-TARGETNAME   = $(shell basename $(TARGET))
-TOPSRC       = $(shell pwd)
-CONFIG       = $(TOPSRC)/tools/configsys/config
-
-all:            .profile
-		$(MAKE) -C tools
-		$(MAKE) -C lib
-		$(MAKE) -C src install
-		$(MAKE) kernel
+all:            build kernel
 		$(MAKE) fs
 
-kernel: 	$(TARGETDIR)/Makefile
-		$(MAKE) -C $(TARGETDIR)
+fs:             filesys.img user.img
 
-$(TARGETDIR)/Makefile: $(CONFIG) $(TARGETDIR)/$(TARGETNAME)
-		cd $(TARGETDIR) && ../../../tools/configsys/config $(TARGETNAME)
+kernel:
+		$(MAKE) -C sys/$(TARGET)
 
-fs:             sdcard.img
+build:
+		$(MAKE) -C tools
+		$(MAKE) -C src install
 
-.PHONY:         sdcard.img
-sdcard.img:	$(FSUTIL) rootfs.manifest userfs.manifest
+filesys.img:	$(FSUTIL) $(ALLFILES)
 		rm -f $@
-		$(FSUTIL) --repartition=fs=$(FS_MBYTES)M:swap=$(SWAP_MBYTES)M:fs=$(U_MBYTES)M $@
-		$(FSUTIL) --new --partition=1 --manifest=rootfs.manifest $@ .
-		$(FSUTIL) --new --partition=3 --manifest=userfs.manifest $@ u
+		$(FSUTIL) -n$(FS_KBYTES) -s$(SWAP_KBYTES) $@
+		$(FSUTIL) -a $@ $(ALLDIRS) $(ALLFILES)
+		$(FSUTIL) -a $@ $(CDEVS)
+		$(FSUTIL) -a $@ $(BDEVS)
+		$(FSUTIL) -a $@ $(ADCDEVS)
+		$(FSUTIL) -a $@ $(OCDEVS)
+#		$(FSUTIL) -a $@ $(FDDEVS)
+
+user.img:	$(FSUTIL)
+		rm -f $@
+		$(FSUTIL) -n$(FS_KBYTES) $@
 
 $(FSUTIL):
 		cd tools/fsutil; $(MAKE)
 
-$(CONFIG):
-		make -C tools/configsys
-
 clean:
 		rm -f *~
-		for dir in tools lib src sys/pic32; do $(MAKE) -C $$dir -k clean; done
+		for dir in tools src sys/pic32; do $(MAKE) -C $$dir -k clean; done
 
 cleanall:       clean
-		$(MAKE) -C lib clean
-		rm -f sys/pic32/*/unix.hex bin/* sbin/* libexec/*
-		rm -f games/[a-k]* games/[m-z]* share/man/cat*/*
-		rm -f games/lib/adventure.dat games/lib/cfscores
-		rm -f share/re.help share/emg.keys share/misc/more.help
-		rm -f etc/termcap etc/remote etc/phones
-		rm -f tools/configsys/.depend
-		rm -f var/log/aculog
-		rm -rf var/lock share/unixbench
+		rm -f sys/pic32/*/unix.hex bin/* sbin/* lib/* games/[a-k]* games/[m-z]* libexec/* share/man/cat*/*
+		rm -f games/lib/adventure.dat
+		rm -f games/lib/cfscores
+		rm -f share/re.help
+		rm -f share/misc/more.help
+		rm -f etc/termcap
 
-installfs:
+
+# TODO
+buildlib:
+		@echo installing /usr/include
+		# cd include; $(MAKE) DESTDIR=$(DESTDIR) install
+		@echo
+		@echo compiling libc.a
+		cd lib/libc; $(MAKE) $(LIBCDEFS)
+		@echo installing /lib/libc.a
+		cd lib/libc; $(MAKE) DESTDIR=$(DESTDIR) install
+		@echo
+		@echo compiling C compiler
+		cd lib; $(MAKE) ccom cpp c2
+		@echo installing C compiler
+		cd lib/ccom; $(MAKE) DESTDIR=$(DESTDIR) install
+		cd lib/cpp; $(MAKE) DESTDIR=$(DESTDIR) install
+		cd lib/c2; $(MAKE) DESTDIR=$(DESTDIR) install
+		cd lib; $(MAKE) clean
+		@echo
+		@echo re-compiling libc.a
+		cd lib/libc; $(MAKE) $(LIBCDEFS)
+		@echo re-installing /lib/libc.a
+		cd lib/libc; $(MAKE) DESTDIR=$(DESTDIR) install
+		@echo
+		@echo re-compiling C compiler
+		cd lib; $(MAKE) ccom cpp c2
+		@echo re-installing C compiler
+		cd lib/ccom; $(MAKE) DESTDIR=$(DESTDIR) install
+		cd lib/cpp; $(MAKE) DESTDIR=$(DESTDIR) install
+		cd lib/c2; $(MAKE) DESTDIR=$(DESTDIR) install
+		@echo
+
+installfs: filesys.img
 ifdef SDCARD
-		@[ -f sdcard.img ] || $(MAKE) sdcard.img
-		sudo dd bs=32k if=sdcard.img of=$(SDCARD)
+	sudo dd bs=16k if=filesys.img of=$(SDCARD)
 else
-		@echo "Error: No SDCARD defined."
+	@echo "Error: No SDCARD defined."
 endif
-
-# TODO: make it relative to Target
-installflash:
-		sudo pic32prog sys/pic32/fubarino/unix.hex
-
-# TODO: make it relative to Target
-installboot:
-		sudo pic32prog sys/pic32/fubarino/bootloader.hex
-
-.profile:       etc/root/dot.profile
-		cp etc/root/dot.profile .profile

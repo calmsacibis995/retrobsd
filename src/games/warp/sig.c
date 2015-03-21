@@ -1,19 +1,19 @@
 /* $Header: /usr/src/games/warp/RCS/sig.c,v 1.1 87/07/03 01:47:11 games Exp $ */
 
 /* $Log:	sig.c,v $
- * Revision 7.0.1.2   99/10/24
+ * Revision 7.0.1.2   99/10/24 
  * Update to sigprocmask.
  *
  * Revision 7.0.1.1a  87/07/03  01:47:11  games
  * Changed sigsetmask to use sigmask instead of calculating it (incorrectly)
  * by hand.
- *
+ * 
  * Revision 7.0.1.1  86/12/12  17:02:44  lwall
  * Baseline for net release.
- *
+ * 
  * Revision 7.0  86/10/08  15:13:24  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -28,6 +28,9 @@
 void
 sig_init()
 {
+#ifdef lint
+    ;
+#else
     sigignore(SIGINT);  /* for inquiry of existence via kill call */
 #ifdef SIGTTOU
     sigignore(SIGTTOU);
@@ -53,13 +56,16 @@ sig_init()
     sigset(SIGTSTP, stop_catcher);
     sigset(SIGSTOP, stop_catcher);
 #endif
+#endif /* lint */
 }
 
 #ifdef SIGTSTP
 void
 cont_catcher()
 {
+#ifndef lint
     sigset(SIGCONT,cont_catcher);
+#endif
     savetty();
     crmode();
     raw();
@@ -147,7 +153,9 @@ sig_catcher(signo)
 #endif
 
 #ifdef SIGTTOU
+#ifndef lint
     sigignore(SIGTTOU);
+#endif /* lint */
 #endif
 #ifdef DEBUGGING
     if (debug) {

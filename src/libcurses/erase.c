@@ -3,15 +3,20 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include "curses.ext"
+
+#if !defined(lint) && !defined(NOSCCS)
+static char sccsid[] = "@(#)erase.c	5.1 (Berkeley) 6/7/85";
+#endif
+
+# include	"curses.ext"
 
 /*
- * This routine erases everything on the window.
+ *	This routine erases everything on the window.
+ *
  */
-void
 werase(win)
-        reg WINDOW	*win;
-{
+reg WINDOW	*win; {
+
 	reg int		y;
 	reg char	*sp, *end, *start, *maxx;
 	reg int		minx;
@@ -21,7 +26,6 @@ werase(win)
 # endif
 	for (y = 0; y < win->_maxy; y++) {
 		minx = _NOCHANGE;
-		maxx = 0;
 		start = win->_y[y];
 		end = &start[win->_maxx];
 		for (sp = start; sp < end; sp++)

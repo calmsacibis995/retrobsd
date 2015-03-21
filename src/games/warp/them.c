@@ -3,22 +3,22 @@
 /* $Log:	them.c,v $
  * Revision 7.0.1.5  86/12/12  17:05:41  lwall
  * Baseline for net release.
- *
+ * 
  * Revision 7.0.1.4  86/10/20  12:32:38  lwall
  * Wasn't clearing FRIENDLY flag on pirate creation.
- *
+ * 
  * Revision 7.0.1.3  86/10/20  12:15:33  lwall
  * Was trying to create pirates from cloaked pirates.
- *
+ * 
  * Revision 7.0.1.2  86/10/17  10:03:44  lwall
  * Fixed Romulan writing spaces while cloaked.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:53:39  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:14:15  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -43,12 +43,12 @@ them_init()
 void
 their_smarts()
 {
-    register OBJECT *curkl;
-    register OBJECT *obj;
-    register int prob;
-    register int count;
-    register int y;
-    register int x;
+    Reg1 OBJECT *curkl;
+    Reg2 OBJECT *obj;
+    Reg3 int prob;
+    Reg4 int count;
+    Reg5 int y;
+    Reg6 int x;
 
     if (numcrushes && (obj=movers)->type == Crusher) {
 	if (numamoebas) {
@@ -182,6 +182,9 @@ their_smarts()
 	    if (--count <= 0)		/* no opening, just ram something */
 		break;
 
+#ifdef lint
+	    prob = prob;
+#endif
 	    if (!(rand_mod(prob)))	/* turn randomly occasionally */
 		goto accell;
 
@@ -330,15 +333,15 @@ their_smarts()
 
 void
 modify_amoeba(y,x,where,ch,quant)
-register int y;
-register int x;
+Reg1 int y;
+Reg2 int x;
 int where;
-register int ch;
-register int quant;
+Reg6 int ch;
+Reg7 int quant;
 {
-    register int dy;
-    register int dx;
-    register int count = 15;
+    Reg3 int dy;
+    Reg4 int dx;
+    Reg5 int count = 15;
 
     if (!numamoebas)
 	return;

@@ -17,8 +17,6 @@
 #   define errnet(narg, name)	0, nonet
 #endif
 
-extern void sc_msec();
-
 /*
  * Reserved/unimplemented system calls in the range 0-150 inclusive
  * are reserved for use in future Berkeley releases.
@@ -87,7 +85,7 @@ const struct sysent sysent[] = {
 	{ 0, getegid },			/*  48 = getegid */
 	{ 1, setgid },			/*  49 = setgid */
 	{ 1, setegid },			/*  50 = setegid */
-	{ 0, kmemdev },			/*  51 = kmemdev */
+	{ 0, nosys },			/*  51 = unused */
 	{ 3, nosys },			/*  52 = (2.9) set phys addr */
 	{ 1, nosys },			/*  53 = (2.9) lock in core */
 	{ 4, ioctl },			/*  54 = ioctl */
@@ -106,14 +104,9 @@ const struct sysent sysent[] = {
 	{ 0, nosys },			/*  67 = unused */
 	{ 0, nosys },			/*  68 = unused */
 	{ 1, brk },			/*  69 = brk */
-#ifdef GLOB_ENABLED
 	{ 1, rdglob },			/*  70 = read from global */
 	{ 2, wrglob },			/*  71 = write to global */
-#else
-    { 1, nosys },
-    { 2, nosys },
-#endif
-	{ 0, sc_msec },			/*  72 = msec */
+	{ 0, nosys },			/*  72 = unused */
 	{ 0, nosys },			/*  73 = unused */
 	{ 0, nosys },			/*  74 = unused */
 	{ 0, nosys },			/*  75 = unused */

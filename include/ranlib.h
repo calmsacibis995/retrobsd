@@ -39,7 +39,7 @@
 
 struct ranlib {
 	int ran_len;                    /* 1 byte - name length in bytes */
-	unsigned ran_off;		/* 4 bytes - file offset */
+	off_t ran_off;			/* 4 bytes - file offset */
 	char *ran_name;                 /* in memory symbol name */
 };
 

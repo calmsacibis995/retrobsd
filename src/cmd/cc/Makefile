@@ -4,13 +4,13 @@ include $(TOPSRC)/target.mk
 
 OBJS            = cc.o
 
-CFLAGS		+= -Werror -Wall
+CFLAGS		+= -Werror -Wall -DGCC_COMPAT
 CFLAGS          += -DVERSSTR=\"1.0\" \
                    -DSTDINC=\"/include\" \
                    -DLIBDIR=\"/lib\" \
-                   -DLIBEXECDIR=\"/libexec\" \
+                   -DLIBEXECDIR=\"/libexec\"
                    -DCRT0FILE=\"/lib/crt0.o\" \
-                   -DCRT0FILE_PROFILE=\"/lib/mcrt0.o\"
+                   -DCRT0FILE_PROFILE=\"/lib/gcrt0.o\"
 
 all:            cc
 
@@ -25,5 +25,3 @@ clean:
 
 install:        all
 		install cc $(DESTDIR)/bin/
-		install cc $(DESTDIR)/bin/scc
-		install cc $(DESTDIR)/bin/lcc

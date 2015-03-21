@@ -12,7 +12,29 @@
 short write_failed = 0;
 char *save_file = (char *) 0;
 
-void
+extern boolean detect_monster;
+extern short cur_level, max_level;
+extern char hunger_str[];
+extern char login_name[];
+extern short party_room;
+extern short foods;
+extern boolean is_wood[];
+extern short cur_room;
+extern boolean being_held;
+extern short bear_trap;
+extern short halluc;
+extern short blind;
+extern short confused;
+extern short levitate;
+extern short haste_self;
+extern boolean see_invisible;
+extern boolean detect_monster;
+extern boolean wizard;
+extern boolean score_only;
+extern short m_moves;
+
+extern boolean msg_cleared;
+
 save_game()
 {
 	char fname[64];
@@ -26,136 +48,8 @@ save_game()
 	save_into_file(fname);
 }
 
-static void
-r_write(fp, buf, n)
-        FILE *fp;
-        char *buf;
-        int n;
-{
-	if (!write_failed) {
-		if (fwrite(buf, sizeof(char), n, fp) != n) {
-			message("write() failed, don't know why", 0);
-			sound_bell();
-			write_failed = 1;
-		}
-	}
-}
-
-static void
-write_string(s, fp)
-        char *s;
-        FILE *fp;
-{
-	short n;
-
-	n = strlen(s) + 1;
-	xxxx(s, n);
-	r_write(fp, (char *) &n, sizeof(short));
-	r_write(fp, s, n);
-}
-
-static void
-write_pack(pack, fp)
-        object *pack;
-        FILE *fp;
-{
-	object t;
-
-	while ((pack = pack->next_object)) {
-		r_write(fp, (char *) pack, sizeof(object));
-	}
-	t.ichar = t.what_is = 0;
-	r_write(fp, (char *) &t, sizeof(object));
-}
-
-static void
-r_read(fp, buf, n)
-        FILE *fp;
-        char *buf;
-        int n;
-{
-	if (fread(buf, sizeof(char), n, fp) != n) {
-		clean_up("read() failed, don't know why");
-	}
-}
-
-static void
-rw_dungeon(fp, rw)
-        FILE *fp;
-        boolean rw;
-{
-	int i, j;
-	char buf[DCOLS];
-
-	for (i = 0; i < DROWS; i++) {
-		if (rw) {
-			r_write(fp, (char *) dungeon[i], (DCOLS * sizeof(dungeon[0][0])));
-			for (j = 0; j < DCOLS; j++) {
-				buf[j] = mvinch(i, j);
-			}
-			r_write(fp, buf, DCOLS);
-		} else {
-			r_read(fp, (char *) dungeon[i], (DCOLS * sizeof(dungeon[0][0])));
-			r_read(fp, buf, DCOLS);
-			for (j = 0; j < DCOLS; j++) {
-				mvaddch(i, j, buf[j]);
-			}
-		}
-	}
-}
-
-static void
-read_string(s, fp)
-        char *s;
-        FILE *fp;
-{
-	short n;
-
-	r_read(fp, (char *) &n, sizeof(short));
-	r_read(fp, s, n);
-	xxxx(s, n);
-}
-
-static void
-rw_id(id_table, fp, n, wr)
-        struct id id_table[];
-        FILE *fp;
-        int n;
-        boolean wr;
-{
-	int i;
-
-	for (i = 0; i < n; i++) {
-		if (wr) {
-			r_write(fp, (char *) &(id_table[i].value), sizeof(short));
-			r_write(fp, (char *) &(id_table[i].id_status),
-				sizeof(unsigned short));
-			write_string(id_table[i].title, fp);
-		} else {
-			r_read(fp, (char *) &(id_table[i].value), sizeof(short));
-			r_read(fp, (char *) &(id_table[i].id_status),
-				sizeof(unsigned short));
-			read_string(id_table[i].title, fp);
-		}
-	}
-}
-
-static void
-rw_rooms(fp, rw)
-        FILE *fp;
-        boolean rw;
-{
-	int i;
-
-	for (i = 0; i < MAXROOMS; i++) {
-		rw ? r_write(fp, (char *) (rooms + i), sizeof(room)) :
-			r_read(fp, (char *) (rooms + i), sizeof(room));
-	}
-}
-
-void
 save_into_file(sfile)
-        char *sfile;
+char *sfile;
 {
 	FILE *fp;
 	int file_id;
@@ -164,8 +58,7 @@ save_into_file(sfile)
 	struct rogue_time rt_buf;
 
 	if (sfile[0] == '~') {
-	        hptr = md_getenv("HOME");
-		if (hptr) {
+		if (hptr = md_getenv("HOME")) {
 			(void) strcpy(name_buffer, hptr);
 			(void) strcat(name_buffer, sfile+1);
 			sfile = name_buffer;
@@ -224,75 +117,8 @@ save_into_file(sfile)
 	}
 }
 
-static void
-read_pack(pack, fp, is_rogue)
-        object *pack;
-        FILE *fp;
-        boolean is_rogue;
-{
-	object read_obj, *new_obj;
-
-	for (;;) {
-		r_read(fp, (char *) &read_obj, sizeof(object));
-		if (read_obj.ichar == 0) {
-			pack->next_object = (object *) 0;
-			break;
-		}
-		new_obj = alloc_object();
-		*new_obj = read_obj;
-		if (is_rogue) {
-			if (new_obj->in_use_flags & BEING_WORN) {
-					do_wear(new_obj);
-			} else if (new_obj->in_use_flags & BEING_WIELDED) {
-					do_wield(new_obj);
-			} else if (new_obj->in_use_flags & (ON_EITHER_HAND)) {
-				do_put_on(new_obj,
-					((new_obj->in_use_flags & ON_LEFT_HAND) ? 1 : 0));
-			}
-		}
-		pack->next_object = new_obj;
-		pack = new_obj;
-	}
-}
-
-static boolean
-has_been_touched(saved_time, mod_time)
-        struct rogue_time *saved_time, *mod_time;
-{
-	if (saved_time->year < mod_time->year) {
-		return(1);
-	} else if (saved_time->year > mod_time->year) {
-		return(0);
-	}
-	if (saved_time->month < mod_time->month) {
-		return(1);
-	} else if (saved_time->month > mod_time->month) {
-		return(0);
-	}
-	if (saved_time->day < mod_time->day) {
-		return(1);
-	} else if (saved_time->day > mod_time->day) {
-		return(0);
-	}
-	if (saved_time->hour < mod_time->hour) {
-		return(1);
-	} else if (saved_time->hour > mod_time->hour) {
-		return(0);
-	}
-	if (saved_time->minute < mod_time->minute) {
-		return(1);
-	} else if (saved_time->minute > mod_time->minute) {
-		return(0);
-	}
-	if (saved_time->second < mod_time->second) {
-		return(1);
-	}
-	return(0);
-}
-
-void
 restore(fname)
-        char *fname;
+char *fname;
 {
 	FILE *fp;
 	struct rogue_time saved_time, mod_time;
@@ -300,14 +126,10 @@ restore(fname)
 	char tbuf[40];
 	int new_file_id, saved_file_id;
 
-	new_file_id = md_get_file_id(fname);
-	if (new_file_id == -1) {
-		clean_up("no save file");
-        }
-        fp = fopen(fname, "r");
-        if (! fp) {
+	if (	((new_file_id = md_get_file_id(fname)) == -1) ||
+			((fp = fopen(fname, "r")) == NULL)) {
 		clean_up("cannot open file");
-        }
+	}
 	if (md_link_count(fname) > 1) {
 		clean_up("file has link");
 	}
@@ -373,4 +195,188 @@ restore(fname)
 	msg_cleared = 0;
 	ring_stats(0);
 	fclose(fp);
+}
+
+write_pack(pack, fp)
+object *pack;
+FILE *fp;
+{
+	object t;
+
+	while (pack = pack->next_object) {
+		r_write(fp, (char *) pack, sizeof(object));
+	}
+	t.ichar = t.what_is = 0;
+	r_write(fp, (char *) &t, sizeof(object));
+}
+
+read_pack(pack, fp, is_rogue)
+object *pack;
+FILE *fp;
+boolean is_rogue;
+{
+	object read_obj, *new_obj;
+
+	for (;;) {
+		r_read(fp, (char *) &read_obj, sizeof(object));
+		if (read_obj.ichar == 0) {
+			pack->next_object = (object *) 0;
+			break;
+		}
+		new_obj = alloc_object();
+		*new_obj = read_obj;
+		if (is_rogue) {
+			if (new_obj->in_use_flags & BEING_WORN) {
+					do_wear(new_obj);
+			} else if (new_obj->in_use_flags & BEING_WIELDED) {
+					do_wield(new_obj);
+			} else if (new_obj->in_use_flags & (ON_EITHER_HAND)) {
+				do_put_on(new_obj,
+					((new_obj->in_use_flags & ON_LEFT_HAND) ? 1 : 0));
+			}
+		}
+		pack->next_object = new_obj;
+		pack = new_obj;
+	}
+}
+
+rw_dungeon(fp, rw)
+FILE *fp;
+boolean rw;
+{
+	short i, j;
+	char buf[DCOLS];
+
+	for (i = 0; i < DROWS; i++) {
+		if (rw) {
+			r_write(fp, (char *) dungeon[i], (DCOLS * sizeof(dungeon[0][0])));
+			for (j = 0; j < DCOLS; j++) {
+				buf[j] = mvinch(i, j);
+			}
+			r_write(fp, buf, DCOLS);
+		} else {
+			r_read(fp, (char *) dungeon[i], (DCOLS * sizeof(dungeon[0][0])));
+			r_read(fp, buf, DCOLS);
+			for (j = 0; j < DCOLS; j++) {
+				mvaddch(i, j, buf[j]);
+			}
+		}
+	}
+}
+
+rw_id(id_table, fp, n, wr)
+struct id id_table[];
+FILE *fp;
+int n;
+boolean wr;
+{
+	short i;
+
+	for (i = 0; i < n; i++) {
+		if (wr) {
+			r_write(fp, (char *) &(id_table[i].value), sizeof(short));
+			r_write(fp, (char *) &(id_table[i].id_status),
+				sizeof(unsigned short));
+			write_string(id_table[i].title, fp);
+		} else {
+			r_read(fp, (char *) &(id_table[i].value), sizeof(short));
+			r_read(fp, (char *) &(id_table[i].id_status),
+				sizeof(unsigned short));
+			read_string(id_table[i].title, fp);
+		}
+	}
+}
+
+write_string(s, fp)
+char *s;
+FILE *fp;
+{
+	short n;
+
+	n = strlen(s) + 1;
+	xxxx(s, n);
+	r_write(fp, (char *) &n, sizeof(short));
+	r_write(fp, s, n);
+}
+
+read_string(s, fp)
+char *s;
+FILE *fp;
+{
+	short n;
+
+	r_read(fp, (char *) &n, sizeof(short));
+	r_read(fp, s, n);
+	xxxx(s, n);
+}
+
+rw_rooms(fp, rw)
+FILE *fp;
+boolean rw;
+{
+	short i;
+
+	for (i = 0; i < MAXROOMS; i++) {
+		rw ? r_write(fp, (char *) (rooms + i), sizeof(room)) :
+			r_read(fp, (char *) (rooms + i), sizeof(room));
+	}
+}
+
+r_read(fp, buf, n)
+FILE *fp;
+char *buf;
+int n;
+{
+	if (fread(buf, sizeof(char), n, fp) != n) {
+		clean_up("read() failed, don't know why");
+	}
+}
+
+r_write(fp, buf, n)
+FILE *fp;
+char *buf;
+int n;
+{
+	if (!write_failed) {
+		if (fwrite(buf, sizeof(char), n, fp) != n) {
+			message("write() failed, don't know why", 0);
+			sound_bell();
+			write_failed = 1;
+		}
+	}
+}
+
+boolean
+has_been_touched(saved_time, mod_time)
+struct rogue_time *saved_time, *mod_time;
+{
+	if (saved_time->year < mod_time->year) {
+		return(1);
+	} else if (saved_time->year > mod_time->year) {
+		return(0);
+	}
+	if (saved_time->month < mod_time->month) {
+		return(1);
+	} else if (saved_time->month > mod_time->month) {
+		return(0);
+	}
+	if (saved_time->day < mod_time->day) {
+		return(1);
+	} else if (saved_time->day > mod_time->day) {
+		return(0);
+	}
+	if (saved_time->hour < mod_time->hour) {
+		return(1);
+	} else if (saved_time->hour > mod_time->hour) {
+		return(0);
+	}
+	if (saved_time->minute < mod_time->minute) {
+		return(1);
+	} else if (saved_time->minute > mod_time->minute) {
+		return(0);
+	}
+	if (saved_time->second < mod_time->second) {
+		return(1);
+	}
+	return(0);
 }

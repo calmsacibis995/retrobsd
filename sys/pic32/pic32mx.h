@@ -112,11 +112,8 @@
 /*--------------------------------------
  * Peripheral registers.
  */
-#ifdef __ASSEMBLER__
-#define PIC32_R(a)		(0xBF800000 + (a))
-#else
 #define PIC32_R(a)		*(volatile unsigned*)(0xBF800000 + (a))
-#endif
+
 /*--------------------------------------
  * UART registers.
  */
@@ -589,7 +586,22 @@
 #define U1BDTP2		PIC32_R (0x852C0) /* Buffer descriptor table pointer 2 */
 #define U1BDTP3		PIC32_R (0x852D0) /* Buffer descriptor table pointer 3 */
 #define U1CNFG1		PIC32_R (0x852E0) /* Debug and idle */
-#define U1EP(n)		PIC32_R (0x85300 + (n << 4)) /* Endpoint control */
+#define U1EP0		PIC32_R (0x85300) /* Endpoint control */
+#define U1EP1		PIC32_R (0x85310)
+#define U1EP2		PIC32_R (0x85320)
+#define U1EP3		PIC32_R (0x85330)
+#define U1EP4		PIC32_R (0x85340)
+#define U1EP5		PIC32_R (0x85350)
+#define U1EP6		PIC32_R (0x85360)
+#define U1EP7		PIC32_R (0x85370)
+#define U1EP8		PIC32_R (0x85380)
+#define U1EP9		PIC32_R (0x85390)
+#define U1EP10		PIC32_R (0x853A0)
+#define U1EP11		PIC32_R (0x853B0)
+#define U1EP12		PIC32_R (0x853C0)
+#define U1EP13		PIC32_R (0x853D0)
+#define U1EP14		PIC32_R (0x853E0)
+#define U1EP15		PIC32_R (0x853F0)
 
 /*
  * USB Control register.
@@ -666,7 +678,11 @@
 
 #define PIC32_U1STAT_PPBI	0x0004 /*  */
 #define PIC32_U1STAT_DIR	0x0008 /*  */
-#define PIC32_U1STAT_ENDPT(x)	(((x) >> 4) & 0xF) /*  */
+#define PIC32_U1STAT_ENDPT0	0x0010 /*  */
+#define PIC32_U1STAT_ENDPT	0x00F0 /*  */
+#define PIC32_U1STAT_ENDPT1	0x0020 /*  */
+#define PIC32_U1STAT_ENDPT2	0x0040 /*  */
+#define PIC32_U1STAT_ENDPT3	0x0080 /*  */
 
 #define PIC32_U1ADDR_DEVADDR	0x007F /*  */
 #define PIC32_U1ADDR_USBADDR0	0x0001 /*  */
@@ -714,18 +730,6 @@
 #define PIC32_U1EP_EPCONDIS	0x0010 /*  */
 #define PIC32_U1EP_RETRYDIS	0x0040 /*  */
 #define PIC32_U1EP_LSPD		0x0080 /*  */
-
-/* DB status field values */
-#define PIC32_DB_BSTALL		(1 << 2)
-#define PIC32_DB_DTS		(1 << 3)
-#define PIC32_DB_NINC		(1 << 4)
-#define PIC32_DB_KEEP		(1 << 5)
-#define PIC32_DB_DATA1		(1 << 6)
-#define PIC32_DB_UOWN		(1 << 7)
-#define PIC32_DB_GET_PID(x)	(((x) >> 2) & 0xF)
-#define PIC32_DB_SET_PID(x)	(((x) & 0xF) << 2)
-#define PIC32_DB_GET_COUNT(x)	(((x) >> 16) & 0x3FF)
-#define PIC32_DB_SET_COUNT(x)	(((x) & 0x3FF) << 16)
 
 /*--------------------------------------
  * SPI registers.
@@ -851,10 +855,7 @@
 /*--------------------------------------
  * System controller registers.
  */
-#define OSCCON          PIC32_R (0xf000)        /* Oscillator Control */
-#define OSCCONCLR       PIC32_R (0xf004)
-#define OSCCONSET       PIC32_R (0xf008)
-#define OSCCONINV       PIC32_R (0xf00C)
+#define OSCCON          PIC32_R (0xf000)
 #define OSCTUN          PIC32_R (0xf010)
 #define DDPCON          PIC32_R (0xf200)        /* Debug Data Port Control */
 #define DEVID           PIC32_R (0xf220)
@@ -867,29 +868,6 @@
 #define RSWRSTCLR       PIC32_R (0xf614)
 #define RSWRSTSET       PIC32_R (0xf618)
 #define RSWRSTINV       PIC32_R (0xf61C)
-
-/*
- * Oscillator control register.
- */
-#define PIC32_OSCCON_OSWEN      0x00000001 /* Oscillator switch enable */
-#define PIC32_OSCCON_SOSCEN     0x00000002 /* Secondary oscillator enable */
-#define PIC32_OSCCON_UFRCEN     0x00000004 /* USB FRC clock enable */
-#define PIC32_OSCCON_CF         0x00000008 /* Clock fail detect */
-#define PIC32_OSCCON_SLPEN      0x00000010 /* Sleep mode enable */
-#define PIC32_OSCCON_LOCK       0x00000020 /* PLL lock status */
-#define PIC32_OSCCON_ULOCK      0x00000040 /* USB PLL lock status */
-#define PIC32_OSCCON_CLKLOCK    0x00000080 /* Clock selection lock enable */
-#define PIC32_OSCCON_NOSC       0x00000700 /* New oscillator selection */
-#define PIC32_OSCCON_COSC       0x00007000 /* Current oscillator selection */
-#define PIC32_OSCCON_PLLMULT    0x00070000 /* PLL multiplier */
-#define PIC32_OSCCON_PBDIV_MASK 0x00180000 /* Peripheral bus clock divisor */
-#define PIC32_OSCCON_PBDIV_1    0x00000000 /* SYSCLK / 1 */
-#define PIC32_OSCCON_PBDIV_2    0x00080000 /* SYSCLK / 2 */
-#define PIC32_OSCCON_PBDIV_4    0x00100000 /* SYSCLK / 4 */
-#define PIC32_OSCCON_PBDIV_8    0x00180000 /* SYSCLK / 8 */
-#define PIC32_OSCCON_SOSCRDY    0x00400000 /* Secondary oscillator ready */
-#define PIC32_OSCCON_FRCDIV     0x07000000 /* Fast internal RC clock divider */
-#define PIC32_OSCCON_PLLODIV    0x38000000 /* Output divider for PLL */
 
 /*
  * Reset control register.
@@ -954,27 +932,6 @@
 #define PIC32_NVMCON_WRERR      0x00002000
 #define PIC32_NVMCON_WREN       0x00004000
 #define PIC32_NVMCON_WR         0x00008000
-
-
-/*
- * Timer2 registers
- */
-#define T2CON 		PIC32_R (0x0800)
-#define T2CONSET 	PIC32_R (0x0808)
-#define TMR2  		PIC32_R (0x0810)
-#define PR2   		PIC32_R (0x0820)
-
-/*
- * Output compare registers
- */
-#define OC1CON		PIC32_R (0x3000)
-#define OC1R		PIC32_R (0x3010)
-#define OC1RS		PIC32_R (0x3020)
-#define OC4CON   	PIC32_R (0x3600)
-#define OC4R		PIC32_R (0x3610)
-#define OC4RS		PIC32_R (0x3620)
-
-#define BLRKEY      *(volatile unsigned*)(0x80000000)
 
 /*--------------------------------------
  * Configuration registers.
@@ -1052,10 +1009,6 @@
 #define DEVCFG1_WDTPS_524288    0x00130000 /* 1:524288 */
 #define DEVCFG1_WDTPS_1048576   0x00140000 /* 1:1048576 */
 #define DEVCFG1_FWDTEN          0x00800000 /* Watchdog enable */
-#define WDTCON      PIC32_R (0x0000)   /* Watchdog timer control */
-#define WDTCONCLR   PIC32_R (0x0004)   /* Watchdog timer control */
-#define WDTCONSET   PIC32_R (0x0008)   /* Watchdog timer control */
-
 
 /*
  * Config2 register at 1fc02ff4.

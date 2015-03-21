@@ -3,10 +3,10 @@
 /* $Log:	play.c,v $
  * Revision 7.0.1.1  86/10/16  10:52:39  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:13:09  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -33,11 +33,11 @@ void
 play()
 {
     bool done = FALSE;
-    register OBJECT *curobj;
-    register OBJECT *to;
-    register int i;
-    register int x;
-    register int y;
+    Reg1 OBJECT *curobj;
+    Reg2 OBJECT *to;
+    Reg3 int i;
+    Reg4 int x;
+    Reg5 int y;
 
     display_status();
 #ifdef TIOCOUTQ

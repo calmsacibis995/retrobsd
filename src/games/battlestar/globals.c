@@ -3,6 +3,11 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)globals.c	1.3 4/24/85";
+#endif
+
 #include "externs.h"
 
 #define strstr(x) x
@@ -10,7 +15,7 @@
 int WEIGHT = MAXWEIGHT;
 int CUMBER = MAXCUMBER;
 
-#ifdef EXT_MESSAGE_FILE
+#ifdef pdp11
 unsigned objdes[NUMOFOBJECTS] = {
 #else
 char *objdes[NUMOFOBJECTS] = {
@@ -160,14 +165,14 @@ char *ouch[NUMOFINJURIES] = {
 	"a few broken ribs",
 	"a broken leg and torn ligaments",
 	"a broken back and ruptured spleen",
-	"some deep incisions and a loss of blood",
+	"some deep incisions and a loss of blood",	
 	"a fractured skull and mashed face",
 	"a broken neck"
 };
 
 int objwt[NUMOFOBJECTS] = {
 	1, 	5,	0,	10,	15,	2,	10,	10,
-	3,	5,	50,	2500,	2,	1,	100,	1,
+	3,	5,	50,	2500,	2,	1,	100,	1,	
 	2,	1,	1,	1,	60,	10,	5,	0,
 	50,	5,	15,	5,	1,	20,	10,	10,
 	0,	0,	0,	0,	1,	0,	0,	1,

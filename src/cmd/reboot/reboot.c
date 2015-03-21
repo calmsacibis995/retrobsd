@@ -44,8 +44,6 @@ main(argc, argv)
 		howto = RB_NOFSCK;
 	else if (strcmp(myname, "poweroff") == 0)
 		howto = RB_HALT|RB_POWEROFF;
-    else if (strcmp(myname, "bootloader") == 0)
-        howto = RB_HALT|RB_BOOTLOADER;
 	else
 		howto = 0;
 

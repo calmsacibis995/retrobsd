@@ -8,22 +8,16 @@
  * This has changed over time - see a.out.h, sys/exec.h and nlist.h
  * for the current a.out definition and format.
  */
-#include <sys/types.h>
 #include <sys/param.h>
 #include <sys/user.h>
 #include <machine/io.h>
+#include <sgtty.h>
 #include <setjmp.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <a.out.h>
 #include <sys/ptrace.h>
-#ifdef CROSS
-#   include <termios.h>
-#   define sgttyb termios
-#else
-#   include <sgtty.h>
-#endif
 
 #define MAXSYMLEN       32
 #define MAXCOM          64
@@ -55,6 +49,7 @@ typedef struct map      MAP;
 typedef MAP             *MAPPTR;
 typedef struct bkpt     BKPT;
 typedef BKPT            *BKPTR;
+typedef struct user     U;
 
 /* file address maps */
 struct map {
@@ -134,9 +129,7 @@ typedef struct reglist REGLIST;
 #define MAXPOS  80
 #define MAXLIN  128
 
-#ifndef TRUE
-    #define TRUE    (-1)
-#endif
+#define TRUE    (-1)
 #define FALSE   0
 #define LOBYTE  0377
 #define HIBYTE  0177400
@@ -150,7 +143,7 @@ typedef struct reglist REGLIST;
 
 /* long to ints and back (puns) */
 #define leng(a)         ((long)((unsigned)(a)))
-#define shorten(a)      ((long)a)
+#define shorten(a)      ((int)a)
 
 struct sgttyb adbtty, usrtty;
 jmp_buf erradb;

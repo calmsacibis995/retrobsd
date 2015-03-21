@@ -1,11 +1,9 @@
-#include <strings.h>
-#include "hangman.h"
+# include	"hangman.h"
 
 /*
  * playgame:
  *	play a game
  */
-void
 playgame()
 {
 	register bool	*bp;

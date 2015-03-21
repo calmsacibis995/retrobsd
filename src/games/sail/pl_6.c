@@ -3,20 +3,13 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)pl_6.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "player.h"
 
-static int
-turned()
-{
-	register char *p;
-
-	for (p = movebuf; *p; p++)
-		if (*p == 'r' || *p == 'l')
-			return 1;
-	return 0;
-}
-
-void
 repair()
 {
 	char c;
@@ -28,7 +21,7 @@ repair()
 	? (ptr->x += count, count = 0) : (count -= m - ptr->x, ptr->x = m))
 
 	if (repaired || loaded || fired || changed || turned()) {
-		Signal("No hands free to repair", (struct ship *)0, 0, 0, 0, 0);
+		Signal("No hands free to repair", (struct ship *)0);
 		return;
 	}
 	c = sgetch("Repair (hull, guns, rigging)? ", (struct ship *)0, 1);
@@ -43,7 +36,7 @@ repair()
 			repairs = &mf->RR;
 			break;
 		default:
-			Signal("Avast heaving!", (struct ship *)0, 0, 0, 0, 0);
+			Signal("Avast heaving!", (struct ship *)0);
 			return;
 	}
 	if (++*repairs >= 3) {
@@ -95,7 +88,7 @@ repair()
 			break;
 		}
 		if (count == 2) {
-			Signal("Repairs completed.", (struct ship *)0, 0, 0, 0, 0);
+			Signal("Repairs completed.", (struct ship *)0);
 			*repairs = 2;
 		} else {
 			*repairs = 0;
@@ -110,14 +103,23 @@ repair()
 	repaired = 1;
 }
 
-void
+turned()
+{
+	register char *p;
+
+	for (p = movebuf; *p; p++)
+		if (*p == 'r' || *p == 'l')
+			return 1;
+	return 0;
+}
+
 loadplayer()
 {
-	int c;
-	register int loadL, loadR, ready, load;
+	char c;
+	register loadL, loadR, ready, load;
 
 	if (!mc->crew3) {
-		Signal("Out of crew", (struct ship *)0, 0, 0, 0, 0);
+		Signal("Out of crew", (struct ship *)0);
 		return;
 	}
 	loadL = mf->loadL;
@@ -130,7 +132,7 @@ loadplayer()
 		else
 			loadR = 1;
 	}
-	if ((!loadL && loadR) || (loadL && !loadR)) {
+	if (!loadL && loadR || loadL && !loadR) {
 		c = sgetch("Reload with (round, double, chain, grape)? ",
 			(struct ship *)0, 1);
 		switch (c) {
@@ -152,7 +154,7 @@ loadplayer()
 			break;
 		default:
 			Signal("Broadside not loaded.",
-				(struct ship *)0, 0, 0, 0, 0);
+				(struct ship *)0);
 			return;
 		}
 		if (!loadR) {

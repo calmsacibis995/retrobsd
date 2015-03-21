@@ -9,14 +9,23 @@
  * as a general purpose string stripper.  Also replaces pointer with
  * a (long) pointer.
  */
+
+#ifndef lint
+char copyright[] =
+"@(#) Copyright (c) 1980 Regents of the University of California.\n\
+ All rights reserved.\n";
+#endif not lint
+
+#ifndef lint
+static char sccsid[] = "@(#)mkstr.c	5.1 (Berkeley) 5/31/85";
+#endif not lint
+
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #define	ungetchar(c)	ungetc(c, stdin)
 
+long	ftell();
+char	*calloc();
 /*
  * mkstr - create a string error message file by massaging C source
  *
@@ -43,97 +52,94 @@
  * existing error message file for recompilation of single routines.
  */
 
+
 FILE	*mesgread, *mesgwrite;
 char	*progname;
-char	usagestr[] = "usage: %s [ - ] mesgfile prefix file ...\n";
+char	usagestr[] =	"usage: %s [ - ] mesgfile prefix file ...\n";
 char	name[100], *np;
 
-#define	NBUCKETS	511
-
-struct	hash {
-	long	hval;
-	long hpt;
-	struct	hash *hnext;
-} *bucket[NBUCKETS];
-
-static int
-fgetNUL(obuf, rmdr, file)
-	char *obuf;
-	register int rmdr;
-	FILE *file;
+main(argc, argv)
+	int argc;
+	char *argv[];
 {
-	register int c;
-	register char *buf = obuf;
+	char addon = 0;
 
-	while (--rmdr > 0 && (c = getc(file)) != 0 && c != EOF)
-		*buf++ = c;
-	*buf++ = 0;
-	getc(file);
-	if (feof(file) || ferror(file))
-	    return 0;
-	return 1;
+	argc--, progname = *argv++;
+	if (argc > 1 && argv[0][0] == '-')
+		addon++, argc--, argv++;
+	if (argc < 3)
+		fprintf(stderr, usagestr, progname), exit(1);
+	mesgwrite = fopen(argv[0], addon ? "a" : "w");
+	if (mesgwrite == NULL)
+		perror(argv[0]), exit(1);
+	mesgread = fopen(argv[0], "r");
+	if (mesgread == NULL)
+		perror(argv[0]), exit(1);
+	inithash();
+	argc--, argv++;
+	strcpy(name, argv[0]);
+	np = name + strlen(name);
+	argc--, argv++;
+	do {
+		strcpy(np, argv[0]);
+		if (freopen(name, "w", stdout) == NULL)
+			perror(name), exit(1);
+		if (freopen(argv[0], "r", stdin) == NULL)
+			perror(argv[0]), exit(1);
+		process();
+		argc--, argv++;
+	} while (argc > 0);
+	exit(0);
 }
 
-static long
-hashit(str, really, fakept)
-	char *str;
-	int really;
-	unsigned fakept;
+process()
 {
-	int i;
-	register struct hash *hp;
-	char buf[512];
-	long hashval = 0;
 	register char *cp;
+	register c;
 
-	if (really)
-		fflush(mesgwrite);
-	for (cp = str; *cp;)
-		hashval = (hashval << 1) + *cp++;
-	i = hashval % NBUCKETS;
-	if (i < 0)
-		i += NBUCKETS;
-	if (really != 0)
-		for (hp = bucket[i]; hp != 0; hp = hp->hnext)
-		if (hp->hval == hashval) {
-			fseek(mesgread, (long) hp->hpt, 0);
-			fgetNUL(buf, sizeof buf, mesgread);
-#ifdef DEBUG
-			fprintf(stderr, "Got (from %ld) %s\n", hp->hpt, buf);
-#endif
-			if (strcmp(buf, str) == 0)
-				break;
+	for (;;) {
+		c = getchar();
+		if (c == EOF)
+			return;
+		if (c != 's') {
+			putchar(c);
+			continue;
 		}
-	if (!really || hp == 0) {
-		hp = (struct hash *) calloc(1, sizeof *hp);
-		hp->hnext = bucket[i];
-		hp->hval = hashval;
-		hp->hpt = really ? ftell(mesgwrite) : fakept;
-		if (really) {
-			fwrite(str, sizeof (char), strlen(str) + 1, mesgwrite);
-			fwrite("\n", sizeof (char), 1, mesgwrite);
+		if (match("strstr(")) {
+			printf("strstr(");
+			c = getchar();
+			if (c != '"')
+				putchar(c);
+			else
+				copystr();
 		}
-		bucket[i] = hp;
 	}
-#ifdef DEBUG
-	fprintf(stderr, "%s hashed to %ld at %ld\n", str, hp->hval, hp->hpt);
-#endif
-	return (hp->hpt);
 }
 
-static int
-octdigit(c)
-	int c;
+match(ocp)
+	char *ocp;
 {
-	return (c >= '0' && c <= '7');
+	register char *cp;
+	register c;
+
+	for (cp = ocp + 1; *cp; cp++) {
+		c = getchar();
+		if (c != *cp) {
+			while (ocp < cp)
+				putchar(*ocp++);
+			ungetchar(c);
+			return (0);
+		}
+	}
+	return (1);
 }
 
-static void
 copystr()
 {
-	register int c, ch;
+	register c, ch;
 	char buf[512];
 	register char *cp = buf;
+	long hashit();
 
 	for (;;) {
 		c = getchar();
@@ -189,96 +195,97 @@ copystr()
 	}
 out:
 	*cp = 0;
-	printf("%ld", hashit(buf, 1, 0));
+	printf("%ld", hashit(buf, 1, NULL));
 }
 
-static int
-match(ocp)
-	char *ocp;
+octdigit(c)
+	char c;
 {
-	register char *cp;
-	register int c;
 
-	for (cp = ocp + 1; *cp; cp++) {
-		c = getchar();
-		if (c != *cp) {
-			while (ocp < cp)
-				putchar(*ocp++);
-			ungetchar(c);
-			return (0);
-		}
-	}
-	return (1);
+	return (c >= '0' && c <= '7');
 }
 
-static void
-process()
-{
-	register int c;
-
-	for (;;) {
-		c = getchar();
-		if (c == EOF)
-			return;
-		if (c != 's') {
-			putchar(c);
-			continue;
-		}
-		if (match("strstr(")) {
-			printf("strstr(");
-			c = getchar();
-			if (c != '"')
-				putchar(c);
-			else
-				copystr();
-		}
-	}
-}
-
-static void
 inithash()
 {
 	char buf[512];
 	int mesgpt = 0;
 
 	rewind(mesgread);
-	while (fgetNUL(buf, sizeof buf, mesgread) != 0) {
+	while (fgetNUL(buf, sizeof buf, mesgread) != NULL) {
 		hashit(buf, 0, mesgpt);
 		mesgpt += strlen(buf) + 2;
 	}
 }
 
-int
-main(argc, argv)
-	int argc;
-	char *argv[];
-{
-	char addon = 0;
+#define	NBUCKETS	511
 
-	argc--, progname = *argv++;
-	if (argc > 1 && argv[0][0] == '-')
-		addon++, argc--, argv++;
-	if (argc < 3)
-		fprintf(stderr, usagestr, progname), exit(1);
-	mesgwrite = fopen(argv[0], addon ? "a" : "w");
-	if (mesgwrite == NULL)
-		perror(argv[0]), exit(1);
-	mesgread = fopen(argv[0], "r");
-	if (mesgread == NULL)
-		perror(argv[0]), exit(1);
-	inithash();
-	argc--, argv++;
-	strcpy(name, argv[0]);
-	np = name + strlen(name);
-	argc--, argv++;
-	do {
-		strcpy(np, argv[0]);
-		if (freopen(name, "w", stdout) == NULL)
-			perror(name), exit(1);
-		if (freopen(argv[0], "r", stdin) == NULL)
-			perror(argv[0]), exit(1);
-		process();
-		argc--, argv++;
-	} while (argc > 0);
-	exit(0);
+struct	hash {
+	long	hval;
+	long hpt;
+	struct	hash *hnext;
+} *bucket[NBUCKETS];
+
+long
+hashit(str, really, fakept)
+	char *str;
+	char really;
+	unsigned fakept;
+{
+	int i;
+	register struct hash *hp;
+	char buf[512];
+	long hashval = 0;
+	register char *cp;
+
+	if (really)
+		fflush(mesgwrite);
+	for (cp = str; *cp;)
+		hashval = (hashval << 1) + *cp++;
+	i = hashval % NBUCKETS;
+	if (i < 0)
+		i += NBUCKETS;
+	if (really != 0)
+		for (hp = bucket[i]; hp != 0; hp = hp->hnext)
+		if (hp->hval == hashval) {
+			fseek(mesgread, (long) hp->hpt, 0);
+			fgetNUL(buf, sizeof buf, mesgread);
+#ifdef DEBUG
+			fprintf(stderr, "Got (from %ld) %s\n", hp->hpt, buf);
+#endif
+			if (strcmp(buf, str) == 0)
+				break;
+		}
+	if (!really || hp == 0) {
+		hp = (struct hash *) calloc(1, sizeof *hp);
+		hp->hnext = bucket[i];
+		hp->hval = hashval;
+		hp->hpt = really ? ftell(mesgwrite) : fakept;
+		if (really) {
+			fwrite(str, sizeof (char), strlen(str) + 1, mesgwrite);
+			fwrite("\n", sizeof (char), 1, mesgwrite);
+		}
+		bucket[i] = hp;
+	}
+#ifdef DEBUG
+	fprintf(stderr, "%s hashed to %ld at %ld\n", str, hp->hval, hp->hpt);
+#endif
+	return (hp->hpt);
+}
+
+#include <sys/types.h>
+#include <sys/stat.h>
+
+fgetNUL(obuf, rmdr, file)
+	char *obuf;
+	register int rmdr;
+	FILE *file;
+{
+	register c;
+	register char *buf = obuf;
+
+	while (--rmdr > 0 && (c = getc(file)) != 0 && c != EOF)
+		*buf++ = c;
+	*buf++ = 0;
+	getc(file);
+	return ((feof(file) || ferror(file)) ? NULL : 1);
 }

@@ -3,11 +3,16 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)save.c	1.4.1 1996/10/26";
+#endif
+
 #include "externs.h"
 
-void
 restore()
 {
+	char *getenv();
 	char *home;
 	char home1[100];
 	register int n;
@@ -18,51 +23,51 @@ restore()
 	strcpy(home1, home);
 	strcat(home1, "/Bstar");
 	if ((fp = fopen(home1, "r")) == 0) {
-fatal:		perror(home1);
+		perror(home1);
 		return;
 	}
-	if (fread(&WEIGHT, sizeof WEIGHT, 1, fp) != 1) goto fatal;
-	if (fread(&CUMBER, sizeof CUMBER, 1, fp) != 1) goto fatal;
-	if (fread(&clk, sizeof clk, 1, fp) != 1) goto fatal;
-	if (fread(&tmp, sizeof tmp, 1, fp) != 1) goto fatal;
+	fread(&WEIGHT, sizeof WEIGHT, 1, fp);
+	fread(&CUMBER, sizeof CUMBER, 1, fp);
+	fread(&clock, sizeof clock, 1, fp);
+	fread(&tmp, sizeof tmp, 1, fp);
 	location = tmp ? dayfile : nightfile;
 	for (n = 1; n <= NUMOFROOMS; n++) {
-		if (fread(location[n].link, sizeof location[n].link, 1, fp) != 1) goto fatal;
-		if (fread(location[n].objects, sizeof location[n].objects, 1, fp) != 1) goto fatal;
+		fread(location[n].link, sizeof location[n].link, 1, fp);
+		fread(location[n].objects, sizeof location[n].objects, 1, fp);
 	}
-	if (fread(inven, sizeof inven, 1, fp) != 1) goto fatal;
-	if (fread(wear, sizeof wear, 1, fp) != 1) goto fatal;
-	if (fread(injuries, sizeof injuries, 1, fp) != 1) goto fatal;
-	if (fread(notes, sizeof notes, 1, fp) != 1) goto fatal;
-	if (fread(&direction, sizeof direction, 1, fp) != 1) goto fatal;
-	if (fread(&position, sizeof position, 1, fp) != 1) goto fatal;
-	if (fread(&Time, sizeof Time, 1, fp) != 1) goto fatal;
-	if (fread(&fuel, sizeof fuel, 1, fp) != 1) goto fatal;
-	if (fread(&torps, sizeof torps, 1, fp) != 1) goto fatal;
-	if (fread(&carrying, sizeof carrying, 1, fp) != 1) goto fatal;
-	if (fread(&encumber, sizeof encumber, 1, fp) != 1) goto fatal;
-	if (fread(&rythmn, sizeof rythmn, 1, fp) != 1) goto fatal;
-	if (fread(&followfight, sizeof followfight, 1, fp) != 1) goto fatal;
-	if (fread(&ate, sizeof ate, 1, fp) != 1) goto fatal;
-	if (fread(&snooze, sizeof snooze, 1, fp) != 1) goto fatal;
-	if (fread(&meetgirl, sizeof meetgirl, 1, fp) != 1) goto fatal;
-	if (fread(&followgod, sizeof followgod, 1, fp) != 1) goto fatal;
-	if (fread(&godready, sizeof godready, 1, fp) != 1) goto fatal;
-	if (fread(&win, sizeof win, 1, fp) != 1) goto fatal;
-	if (fread(&wintime, sizeof wintime, 1, fp) != 1) goto fatal;
-	if (fread(&matchlight, sizeof matchlight, 1, fp) != 1) goto fatal;
-	if (fread(&matchcount, sizeof matchcount, 1, fp) != 1) goto fatal;
-	if (fread(&loved, sizeof loved, 1, fp) != 1) goto fatal;
-	if (fread(&pleasure, sizeof pleasure, 1, fp) != 1) goto fatal;
-	if (fread(&power, sizeof power, 1, fp) != 1) goto fatal;
-	if (fread(&ego, sizeof ego, 1, fp) != 1) goto fatal;
+	fread(inven, sizeof inven, 1, fp);
+	fread(wear, sizeof wear, 1, fp);
+	fread(injuries, sizeof injuries, 1, fp);
+	fread(notes, sizeof notes, 1, fp);
+	fread(&direction, sizeof direction, 1, fp);
+	fread(&position, sizeof position, 1, fp);
+	fread(&Time, sizeof Time, 1, fp);
+	fread(&fuel, sizeof fuel, 1, fp);
+	fread(&torps, sizeof torps, 1, fp);
+	fread(&carrying, sizeof carrying, 1, fp);
+	fread(&encumber, sizeof encumber, 1, fp);
+	fread(&rythmn, sizeof rythmn, 1, fp);
+	fread(&followfight, sizeof followfight, 1, fp);
+	fread(&ate, sizeof ate, 1, fp);
+	fread(&snooze, sizeof snooze, 1, fp);
+	fread(&meetgirl, sizeof meetgirl, 1, fp);
+	fread(&followgod, sizeof followgod, 1, fp);
+	fread(&godready, sizeof godready, 1, fp);
+	fread(&win, sizeof win, 1, fp);
+	fread(&wintime, sizeof wintime, 1, fp);
+	fread(&matchlight, sizeof matchlight, 1, fp);
+	fread(&matchcount, sizeof matchcount, 1, fp);
+	fread(&loved, sizeof loved, 1, fp);
+	fread(&pleasure, sizeof pleasure, 1, fp);
+	fread(&power, sizeof power, 1, fp);
+	fread(&ego, sizeof ego, 1, fp);
 
 	fclose(fp);
 }
 
-void
 save()
 {
+	char *getenv();
 	char *home;
 	char home1[100];
 	register int n;
@@ -79,7 +84,7 @@ save()
 	printf("Saved in %s.\n", home1);
 	fwrite(&WEIGHT, sizeof WEIGHT, 1, fp);
 	fwrite(&CUMBER, sizeof CUMBER, 1, fp);
-	fwrite(&clk, sizeof clk, 1, fp);
+	fwrite(&clock, sizeof clock, 1, fp);
 	tmp = location == dayfile;
 	fwrite(&tmp, sizeof tmp, 1, fp);
 	for (n = 1; n <= NUMOFROOMS; n++) {

@@ -59,7 +59,7 @@
 #define	SYS_getegid	48
 #define	SYS_setgid	49
 #define	SYS_setegid	50
-#define SYS_kmemdev 51
+				/* 51 is old; acct */
 #define	SYS_phys	52
 #define	SYS_lock	53
 #define	SYS_ioctl	54
@@ -81,7 +81,7 @@
 #define	SYS_rdglob	70
 #define SYS_wrglob	71
 				/* 71 is unused 4.3: mmap */
-#define SYS_msec 	72	/* 72 is unused 4.3: vadvise */
+				/* 72 is unused 4.3: vadvise */
 				/* 73 is unused 4.3: munmap */
 				/* 74 is unused 4.3: mprotect */
 				/* 75 is unused 4.3: madvise */

@@ -221,7 +221,7 @@ reswitch:	switch (c = *fmt++) {
 			if (! s)
 				s = (const unsigned char*) "(null)";
 string:			if (! dot)
-				n = strlen ((char*)s);
+				n = strlen (s);
 			else
 				for (n=0; n<dwidth && s[n]; n++)
 					continue;
@@ -387,7 +387,7 @@ number:		if (sign && ((long) ul != 0L)) {
 			 * if the first char isn't NULL, it did.
 			 */
 			if (isnan (d) || isinf (d)) {
-				strcpy ((char*)nbuf, isnan (d) ? "NaN" : "Inf");
+				strcpy (nbuf, isnan (d) ? "NaN" : "Inf");
 				size = 3;
 				extrazeros = 0;
 				s = nbuf;

@@ -60,7 +60,7 @@ const char *const syscallnames[] = {
 	"getegid",		/*  48 = getegid */
 	"setgid",		/*  49 = setgid */
 	"setegid",		/*  50 = setegid */
-	"kmemdev",		/*  51 = kmemdev  */
+	"#51",			/*  51 - unused */
 	"phys",			/*  52 = (2.9) set phys addr */
 	"lock",			/*  53 = (2.9) lock in core */
 	"ioctl",		/*  54 = ioctl */
@@ -81,7 +81,7 @@ const char *const syscallnames[] = {
 	"brk",			/*  69 = brk */
 	"rdglob",		/*  70 = read from global space */
 	"wrglob",		/*  71 = write to global space */
-	"msec", 		/*  72 = kticks */
+	"#72",			/*  72 = unused */
 	"#73",			/*  73 = unused */
 	"#74",			/*  74 = unused */
 	"#75",			/*  75 = unused */

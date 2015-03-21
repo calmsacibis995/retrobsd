@@ -3,6 +3,11 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)nightobjs.c	1.3 4/24/85";
+#endif
+
 #include "externs.h"
 
 struct objs nightobjs[] = {
@@ -64,5 +69,5 @@ struct objs nightobjs[] = {
 	{ 249,	FOOT },
 	{ 250,	FOOT },
 	{ 93,	PAPAYAS },
-	{ 0 },
+	0
 };

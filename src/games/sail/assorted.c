@@ -3,38 +3,16 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)assorted.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "externs.h"
 
-static void
-strike(ship, from)
-        register struct ship *ship, *from;
-{
-	int points;
-
-	if (ship->file->struck)
-		return;
-	Write(W_STRUCK, ship, 0, 1, 0, 0, 0);
-	points = ship->specs->pts + from->file->points;
-	Write(W_POINTS, from, 0, points, 0, 0, 0);
-	unboard(ship, ship, 0);		/* all offense */
-	unboard(ship, ship, 1);		/* all defense */
-	switch (die()) {
-	case 3:
-	case 4:		/* ship may sink */
-		Write(W_SINK, ship, 0, 1, 0, 0, 0);
-		break;
-	case 5:
-	case 6:		/* ship may explode */
-		Write(W_EXPLODE, ship, 0, 1, 0, 0, 0);
-		break;
-	}
-	Write(W_SIGNAL, ship, 1, (int) "striking her colours!", 0, 0, 0);
-}
-
-void
 table(rig, shot, hittable, on, from, roll)
-        struct ship *on, *from;
-        int rig, shot, hittable, roll;
+struct ship *on, *from;
+int rig, shot, hittable, roll;
 {
 	register int hhits = 0, chits = 0, ghits = 0, rhits = 0;
 	int Ghit = 0, Hhit = 0, Rhit = 0, Chit = 0;
@@ -42,7 +20,7 @@ table(rig, shot, hittable, on, from, roll)
 	int crew[3];
 	register int n;
 	int rigg[4];
-	char *message = 0;
+	char *message;
 	struct Tables *tp;
 
 	pc = on->file->pcrew;
@@ -96,7 +74,7 @@ table(rig, shot, hittable, on, from, roll)
 		rigg[3] -= rhits;
 	}
 	if (rig && !rigg[2] && (!rigg[3] || rigg[3] == -1))
-		makesignal(on, "dismasted!", (struct ship *)0, 0, 0, 0);
+		makesignal(on, "dismasted!", (struct ship *)0);
 	if (portside(from, on, 0)) {
 		guns = on->specs->gunR;
 		car = on->specs->carR;
@@ -148,7 +126,7 @@ table(rig, shot, hittable, on, from, roll)
 	case L_EXPLODE:
 		message = "exploding shot on %s (%c%c)";
 	}
-	makesignal(from, message, on, 0, 0, 0);
+	makesignal(from, message, on);
 	if (roll == 6 && rig) {
 		switch(Rhit) {
 		case 0:
@@ -173,7 +151,7 @@ table(rig, shot, hittable, on, from, roll)
 			message = "main topmast and mizzen mast shattered";
 			break;
 		}
-		makesignal(on, message, (struct ship *)0, 0, 0, 0);
+		makesignal(on, message, (struct ship *)0);
 	} else if (roll == 6) {
 		switch (Hhit) {
 		case 0:
@@ -199,17 +177,17 @@ table(rig, shot, hittable, on, from, roll)
 			message = "shot holes below the water line";
 			break;
 		}
-		makesignal(on, message, (struct ship *)0, 0, 0, 0);
+		makesignal(on, message, (struct ship *)0);
 	}
 	/*
 	if (Chit > 1 && on->file->readyL&R_INITIAL && on->file->readyR&R_INITIAL) {
 		on->specs->qual--;
 		if (on->specs->qual <= 0) {
-			makesignal(on, "crew mutinying!", (struct ship *)0, 0, 0, 0);
+			makesignal(on, "crew mutinying!", (struct ship *)0);
 			on->specs->qual = 5;
 			Write(W_CAPTURED, on, 0, on->file->index, 0, 0, 0);
-		} else
-			makesignal(on, "crew demoralized", (struct ship *)0, 0, 0, 0);
+		} else 
+			makesignal(on, "crew demoralized", (struct ship *)0);
 		Write(W_QUAL, on, 0, on->specs->qual, 0, 0, 0);
 	}
 	*/
@@ -217,10 +195,9 @@ table(rig, shot, hittable, on, from, roll)
 		strike(on, from);
 }
 
-void
 Cleansnag(from, to, all, flag)
-        register struct ship *from, *to;
-        int all, flag;
+register struct ship *from, *to;
+char all, flag;
 {
 	if (flag & 1) {
 		Write(W_UNGRAP, from, 0, to->file->index, all, 0, 0);
@@ -242,4 +219,29 @@ Cleansnag(from, to, all, flag)
 		} else
 			unboard(to, from, 0);		/* offense */
 	}
+}
+
+strike(ship, from)
+register struct ship *ship, *from;
+{
+	int points;
+
+	if (ship->file->struck)
+		return;
+	Write(W_STRUCK, ship, 0, 1, 0, 0, 0);
+	points = ship->specs->pts + from->file->points;
+	Write(W_POINTS, from, 0, points, 0, 0, 0);
+	unboard(ship, ship, 0);		/* all offense */
+	unboard(ship, ship, 1);		/* all defense */
+	switch (die()) {
+	case 3:
+	case 4:		/* ship may sink */
+		Write(W_SINK, ship, 0, 1, 0, 0, 0);
+		break;
+	case 5:
+	case 6:		/* ship may explode */
+		Write(W_EXPLODE, ship, 0, 1, 0, 0, 0);
+		break;
+	}
+	Write(W_SIGNAL, ship, 1, (int) "striking her colours!", 0, 0, 0);
 }

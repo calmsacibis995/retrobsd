@@ -62,13 +62,13 @@ void udp_stop (udp_t *u);
 /*
  * Send a packet to specified peer.
  */
-unsigned udp_send_packet (udp_t *u, const uint8_t *data, unsigned len,
+uint16_t udp_send_packet (udp_t *u, const uint8_t *data, unsigned len,
                           uint8_t *ip, unsigned port);
 
 /*
  * Send a zero-terminated string to specified peer.
  */
-unsigned udp_send_string (udp_t *u, const char *data,
+uint16_t udp_send_string (udp_t *u, const char *data,
                           uint8_t *ip, unsigned port);
 
 /*

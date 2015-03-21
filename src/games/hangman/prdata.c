@@ -1,10 +1,9 @@
-#include "hangman.h"
+# include	"hangman.h"
 
 /*
  * prdata:
  *	Print out the current guesses
  */
-void
 prdata()
 {
 	register bool	*bp;

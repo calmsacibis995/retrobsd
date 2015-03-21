@@ -3,14 +3,19 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include "curses.ext"
+
+#if !defined(lint) && !defined(NOSCCS)
+static char sccsid[] = "@(#)scroll.c	5.1 (Berkeley) 6/7/85";
+#endif
+
+# include	"curses.ext"
 
 /*
- * This routine scrolls the window up a line.
+ *	This routine scrolls the window up a line.
+ *
  */
-int
 scroll(win)
-        register WINDOW *win;
+register  WINDOW	*win;
 {
 	register int	oy, ox;
 
@@ -18,7 +23,7 @@ scroll(win)
 	fprintf(outf, "SCROLL(%0.2o)\n", win);
 # endif
 
-	if (! win->_scroll)
+	if (!win->_scroll)
 		return ERR;
 
 	getyx(win, oy, ox);
@@ -34,5 +39,4 @@ scroll(win)
 		fprintf(outf, "SCROLL: win == curscr\n");
 # endif
 	}
-	return OK;
 }

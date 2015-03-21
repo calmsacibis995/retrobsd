@@ -3,16 +3,16 @@
 /* $Log:	bang.c,v $
  * Revision 7.0.1.3  86/12/12  16:57:00  lwall
  * Made circular explosions.
- *
+ * 
  * Revision 7.0.1.2  86/10/20  14:36:02  lwall
  * Picked some lint.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:49:45  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:11:57  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -33,10 +33,10 @@ bang_init()
 
 void
 make_plink(y,x)
-register int x;
-register int y;
+Reg1 int x;
+Reg2 int y;
 {
-    register OBJECT *obj;
+    Reg3 OBJECT *obj;
 
     move(y+1,x*2,0);
     beg_qwrite();
@@ -58,8 +58,8 @@ register int y;
 
 void
 make_blast(y,x,mass,size)
-register int x;
-register int y;
+Reg1 int x;
+Reg2 int y;
 int size;
 long mass;
 {
@@ -77,7 +77,7 @@ long mass;
 	return;
     }
     else if (mass >= 0) {
-	register OBJECT *obj;
+	Reg3 OBJECT *obj;
 
 	move(y+1,x*2,0);
 	beg_qwrite();
@@ -109,13 +109,13 @@ long mass;
 void
 do_bangs()
 {
-    register int x;
-    register int y;
-    register int i;
-    register int j;
-    register int k;
-    register int lastxy;
-    register OBJECT *obj;
+    Reg1 int x;
+    Reg2 int y;
+    Reg3 int i;
+    Reg4 int j;
+    Reg7 int k;
+    Reg5 int lastxy;
+    Reg6 OBJECT *obj;
 
     /* read blast list and update blast array */
     assert(nxtbang >= 0 && nxtbang <= XSIZE * YSIZE);

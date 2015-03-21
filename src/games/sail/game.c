@@ -3,18 +3,21 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)game.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "externs.h"
 
-int
 maxturns(ship, af)
-        register struct ship *ship;
-        char *af;
+register struct ship *ship;
+char *af;
 {
 	register int turns;
 
 	turns = ship->specs->ta;
-	*af = (ship->file->drift > 1 && turns);
-	if (*af) {
+	if (*af = (ship->file->drift > 1 && turns)) {
 		turns--;
 		if (ship->file->FS == 1)
 			turns = 0;
@@ -22,10 +25,9 @@ maxturns(ship, af)
 	return turns;
 }
 
-int
 maxmove(ship, dir, fs)
-        register struct ship *ship;
-        int dir, fs;
+register struct ship *ship;
+int dir, fs;
 {
 	register int riggone = 0, Move, flank = 0;
 
@@ -50,7 +52,7 @@ maxmove(ship, dir, fs)
 		Move = (flank ? 2 : 1) - WET[windspeed][ship->specs->class-1].D;
 	else if (dir == winddir + 4 || dir == winddir - 4)
 		Move = 0;
-	else
+	else 
 		Move -= WET[windspeed][ship->specs->class-1].A;
 	Move -= riggone;
 	Move = Move < 0 ? 0 : Move;

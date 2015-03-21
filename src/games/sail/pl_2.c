@@ -3,9 +3,13 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)pl_2.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "player.h"
 
-void
 play()
 {
 	register struct ship *sp;
@@ -25,7 +29,7 @@ play()
 			unfoulplayer();
 			break;
 		case 'v':
-			Signal("%s", (struct ship *)0, (int)version, 0, 0, 0);
+			Signal("%s", (struct ship *)0, version);
 			break;
 		case 'b':
 			acceptboard();
@@ -43,7 +47,7 @@ play()
 			repair();
 			break;
 		case 'B':
-			Signal("'Hands to stations!'", (struct ship *)0, 0, 0, 0, 0);
+			Signal("'Hands to stations!'", (struct ship *)0);
 			unboard(ms, ms, 1);	/* cancel DBP's */
 			unboard(ms, ms, 0);	/* cancel offense */
 			break;
@@ -59,10 +63,10 @@ play()
 			mf->loadR = L_EMPTY;
 			mf->readyL = R_EMPTY;
 			mf->readyR = R_EMPTY;
-			Signal("Broadsides unloaded", (struct ship *)0, 0, 0, 0, 0);
+			Signal("Broadsides unloaded", (struct ship *)0);
 			break;
 		case 'q':
-			Signal("Type 'Q' to quit", (struct ship *)0, 0, 0, 0, 0);
+			Signal("Type 'Q' to quit", (struct ship *)0);
 			break;
 		case 'Q':
 			leave(LEAVE_QUIT);
@@ -74,7 +78,7 @@ play()
 			break;
 		case 'i':
 			if ((sp = closestenemy(ms, 0, 1)) == 0)
-				Signal("No more ships left.", (struct ship *)0, 0, 0, 0, 0);
+				Signal("No more ships left.");
 			else
 				eyeball(sp);
 			break;

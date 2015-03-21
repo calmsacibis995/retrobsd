@@ -9,7 +9,7 @@
 #include <sgtty.h>
 #include <term.h>
 
-#define	bool	int
+#define	bool	char
 #define	reg	register
 
 #define	TRUE	(1)
@@ -149,7 +149,7 @@ int	__void__;
 #define noecho() (_tty.sg_flags &= ~ECHO, _echoit = FALSE,   ioctl(_tty_ch, TIOCSETP, &_tty))
 #define nl()	 (_tty.sg_flags |= CRMOD, _pfast  = _rawmode,ioctl(_tty_ch, TIOCSETP, &_tty))
 #define nonl()	 (_tty.sg_flags &= ~CRMOD,_pfast  = TRUE,    ioctl(_tty_ch, TIOCSETP,&_tty))
-#define	savetty() ((void) ioctl(_tty_ch, TIOCGETP, &_tty), _res_flg = _tty.sg_flags)
+#define	savetty() ((void) gtty(_tty_ch, &_tty), _res_flg = _tty.sg_flags)
 #define	resetty() (_tty.sg_flags = _res_flg, (void) ioctl(_tty_ch, TIOCSETP, &_tty))
 
 #define	erasechar()	(_tty.sg_erase)
@@ -167,24 +167,11 @@ int     wgetch (WINDOW *);
 char    *wstandout (WINDOW *);
 char    *wstandend (WINDOW *);
 int     touchwin (WINDOW *);
-int     touchline (WINDOW *, int, int, int);
-void    box (WINDOW *, char, char);
+int     touchline (WINDOW *, int, int);
+int     box (WINDOW *, char, char);
 void    endwin (void);
-int     printw (char *, ...);
-int     wprintw (WINDOW *, char *, ...);
-int     scroll (WINDOW *);
-void    wclrtoeol (WINDOW *);
-void    werase (WINDOW *);
-int     setterm (char *);
-int     delwin (WINDOW *);
-int     waddstr (WINDOW *, char *);
-int     wgetstr (WINDOW *, char *);
-int     wdeleteln (WINDOW *);
-void    mvcur(int ly, int lx, int y, int x);
-void    overwrite(WINDOW *win1, WINDOW *win2);
-void    wclrtobot(WINDOW *win);
-int     mvprintw(int y, int x, char *fmt, ...);
-int     mvwprintw(WINDOW *win, int y, int x, char *fmt, ...);
+int     printw (char *fmt, ...);
+int     wprintw (WINDOW *win, char *fmt, ...);
 
 /*
  * Used to be in unctrl.h.

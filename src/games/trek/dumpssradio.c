@@ -3,12 +3,17 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dumpssradio.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /**
  **	output hidden distress calls
  **/
-int
+
 dumpssradio()
 {
 	register struct event	*e;
@@ -26,7 +31,7 @@ dumpssradio()
 		{
 			unschedule(e);
 			printf("Starsystem %s in quadrant %d,%d is no longer distressed\n",
-				Systemname[(int)e->systemname], e->x, e->y);
+				systemname(e), e->x, e->y);
 			continue;
 		}
 
@@ -42,7 +47,7 @@ dumpssradio()
 		  case E_ENSLV:
 		  case E_REPRO:
 			printf("Starsystem %s in quadrant %d,%d is distressed\n",
-				Systemname[(int)e->systemname], e->x, e->y);
+				systemname(e), e->x, e->y);
 			chkrest++;
 			break;
 

@@ -11,12 +11,11 @@
 #
 DESTDIR = ../../..
 
-termcap.full: reorder termcap.src
+termcap: reorder termcap.src
 	ex - termcap.src < reorder
 
-install: termcap.small termcap.full
-	install -c -m 444 termcap.small ${DESTDIR}/etc/termcap
-	install -c -m 444 termcap.full ${DESTDIR}/etc/termcap.full
+install: termcap
+	install -c -m 444 termcap ${DESTDIR}/etc/termcap
 
 tabset: FRC
 	rm -fr ${DESTDIR}/usr/share/tabset
@@ -25,6 +24,6 @@ tabset: FRC
 	install -c -m 444 tabset/* ${DESTDIR}/usr/share/tabset
 
 clean:
-	rm -f termcap.full
+	rm -f termcap
 
 FRC:

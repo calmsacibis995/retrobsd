@@ -18,7 +18,6 @@
  * Nothing is returned and if less than ~20000 microseconds is specified the
  * select will return without any delay at all.
  */
-void
 usleep(micros)
 	long micros;
 {

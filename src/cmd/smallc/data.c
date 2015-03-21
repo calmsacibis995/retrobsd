@@ -1,17 +1,12 @@
-/*
- * File data.c: 2.2 (84/11/27,16:26:13)
- */
 #include <stdio.h>
 #include "defs.h"
 
 /* storage words */
-symbol_t symbol_table[NUMBER_OF_GLOBALS + NUMBER_OF_LOCALS];
-int global_table_index, rglobal_table_index;
-int local_table_index;
 
-loop_t  loopstack[WSTABSZ];
-int     loop_table_index;
-
+char    symtab[SYMTBSZ];
+char    *glbptr, *rglbptr, *locptr;
+int     ws[WSTABSZ];
+int     *wsptr;
 int     swstcase[SWSTSZ];
 int     swstlab[SWSTSZ];
 int     swstp;
@@ -29,19 +24,20 @@ int     nxtlab,
         ncmp,
         errcnt,
         glbflag,
-        verbose,
         ctext,
         cmode,
         lastst;
 
-FILE    *input, *output;
+FILE    *input, *input2, *output;
+FILE    *inclstk[INCLSIZ];
 int     inclsp;
+char    fname[20];
 
-int     current_symbol_table_idx;
+char    quote[2];
+char    *cptr;
 int     *iptr;
 int     fexitlab;
 int     errfile;
+int     sflag;
 int     errs;
-
-char initials_table[INITIALS_SIZE];      // 5kB space for initialisation data
-char *initials_table_ptr = 0;
+int     aflag;

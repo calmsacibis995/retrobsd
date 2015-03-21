@@ -1,5 +1,4 @@
 #include "c.h"
-#include <unistd.h>
 
 static const char *version = "RetroBSD revision " VERSION;
 
@@ -23,29 +22,10 @@ static int currentline;		/* current line number */
 static FILE *srcfp;		/* stream for current file, if non-NULL */
 static int srcpos;		/* position of srcfp, if srcfp is non-NULL */
 
-void usage()
-{
-        int i;
-
-        fprintf(stderr, "Usage:\n");
-        fprintf(stderr, "  lccom -target=TARGET [options] [infile [outfile]]\n");
-        fprintf(stderr, "Targets:\n");
-        for (i = 0; bindings[i].name; i++)
-                fprint(stderr, "  -target=%s\n", bindings[i].name);
-        fprintf(stderr, "Options:\n");
-        fprintf(stderr, "  ..todo..\n");
-        exit(1);
-}
-
 int main(int argc, char *argv[])
 {
 	int i, j;
 
-        if (argc == 1 && isatty(0))
-                usage();
-
-        /* Default target is mips-el. */
-	IR = bindings[0].ir;
 	for (i = argc - 1; i > 0; i--)
 		if (strncmp(argv[i], "-target=", 8) == 0)
 			break;

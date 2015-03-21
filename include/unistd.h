@@ -94,7 +94,6 @@ void	setusershell();
 void	sync();
 unsigned int	ualarm();
 void	usleep();
-int     pause (void);
 pid_t	vfork();
 
 int     pipe (int pipefd[2]);
@@ -108,18 +107,11 @@ int     chown (const char *path, uid_t owner, gid_t group);
 int     nice (int inc);
 int     setuid (uid_t uid);
 int     setgid (gid_t gid);
-int     seteuid (uid_t euid);
-int     setegid (gid_t egid);
-int     setreuid (uid_t ruid, uid_t euid);
-int     setregid (gid_t rgid, gid_t egid);
 int     isatty (int fd);
 int     chdir (const char *path);
 int     fchdir (int fd);
 int     chflags (const char *path, u_long flags);
 int     fchflags (int fd, u_long flags);
-int     getgroups (int size, gid_t list[]);
-int     getdtablesize (void);
-int     rmdir (const char *pathname);
 
 struct stat;
 int     stat (const char *path, struct stat *buf);
@@ -143,12 +135,7 @@ extern	char	*optarg;		/* getopt(3) external variables */
 extern	int	opterr, optind, optopt;
 
 #ifndef _VA_LIST_
-# ifdef __GNUC__
-#  define va_list   __builtin_va_list   /* For Gnu C */
-# endif
-# ifdef __SMALLER_C__
-#  define va_list   char *              /* For Smaller C */
-# endif
+#define va_list		__builtin_va_list	/* For GCC */
 #endif
 
 void	err (int eval, const char *fmt, ...);
@@ -161,6 +148,6 @@ void	vwarn (const char *fmt, va_list ap);
 void	vwarnx (const char *fmt, va_list ap);
 
 #ifndef _VA_LIST_
-# undef va_list
+#undef va_list
 #endif
 #endif /* !_UNISTD_H_ */

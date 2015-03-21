@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#if	!defined(lint) && defined(DOSCCS)
+static char sccsid[] = "@(#)play.c	5.1.1 (2.11BSD GTE) 11/20/94";
+#endif
+
 # include	"trek.h"
 # include	"getpar.h"
 # include	<setjmp.h>
@@ -17,41 +22,40 @@
 **	attack if the move was not free, and checkcond() to check up
 **	on how we are doing after the move.
 */
-extern void	abandon(), capture(), shield(), computer(), dcrept(),
+extern int	abandon(), capture(), shield(), computer(), dcrept(),
 		destruct(), dock(), help(), impulse(), lrscan(),
 		warp(), dumpgame(), rest(), shell(), srscan(),
 		myreset(), torped(), visual(), setwarp(), undock(), phaser();
 
 struct cvntab	Comtab[] =
 {
-	{ "abandon",		"",			abandon,	0 },
-	{ "ca",			"pture",		capture,	0 },
-	{ "cl",			"oak",			shield,         -1 },
-	{ "c",			"omputer",		computer,	0 },
-	{ "da",			"mages",		dcrept,         0 },
-	{ "destruct",		"",			destruct,	0 },
-	{ "do",			"ck",			dock,		0 },
-	{ "help",		"",			help,		0 },
-	{ "i",			"mpulse",		impulse,	0 },
-	{ "l",			"rscan",		lrscan,         0 },
-	{ "m",			"ove",			warp,		0 },
-	{ "p",			"hasers",		phaser,         0 },
-	{ "ram",		"",			warp,		1 },
-	{ "dump",		"",			dumpgame,	0 },
-	{ "r",			"est",			rest,		0 },
-	{ "shell",		"",			shell,		0 },
-	{ "sh",			"ield",			shield,         0 },
-	{ "s",			"rscan",		srscan,         0 },
-	{ "st",			"atus",			srscan,         -1 },
-	{ "terminate",		"",			myreset,	0 },
-	{ "t",			"orpedo",		torped,         0 },
-	{ "u",			"ndock",		undock,         0 },
-	{ "v",			"isual",		visual,         0 },
-	{ "w",			"arp",			setwarp,	0 },
-	{ 0 },
+	"abandon",		"",			abandon,	0,
+	"ca",			"pture",		capture,	0,
+	"cl",			"oak",			shield,	-1,
+	"c",			"omputer",		computer,	0,
+	"da",			"mages",		dcrept,	0,
+	"destruct",		"",			destruct,	0,
+	"do",			"ck",			dock,		0,
+	"help",			"",			help,		0,
+	"i",			"mpulse",		impulse,	0,
+	"l",			"rscan",		lrscan,	0,
+	"m",			"ove",			warp,		0,
+	"p",			"hasers",		phaser,	0,
+	"ram",			"",			warp,		1,
+	"dump",			"",			dumpgame,	0,
+	"r",			"est",			rest,		0,
+	"shell",		"",			shell,		0,
+	"sh",			"ield",			shield,	0,
+	"s",			"rscan",		srscan,	0,
+	"st",			"atus",			srscan,	-1,
+	"terminate",		"",			myreset,	0,
+	"t",			"orpedo",		torped,	0,
+	"u",			"ndock",		undock,	0,
+	"v",			"isual",		visual,	0,
+	"w",			"arp",			setwarp,	0,
+	0
 };
 
-void
 myreset()
 {
 	extern	jmp_buf	env;
@@ -59,7 +63,6 @@ myreset()
 	longjmp(env, 1);
 }
 
-void
 play()
 {
 	struct cvntab		*r;

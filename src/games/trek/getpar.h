@@ -10,17 +10,9 @@ struct cvntab		/* used for getcodpar() paramater list */
 {
 	char	*abrev;
 	char	*full;
-	void	(*value)();
+	int	(*value)();
 	int	value2;
 };
 
-void skiptonl(int c);
-void getstrpar(char *s, char *r, int l, char *t);
-
-int getintpar(char *s);
-int getynpar(char *s);
-int testnl(void);
-
-double getfltpar(char *s);
-
-struct cvntab *getcodpar(char *s, struct cvntab *tab);
+extern double		getfltpar();
+extern struct cvntab	*getcodpar();

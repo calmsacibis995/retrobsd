@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)events.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-# include	"getpar.h"
 
 /*
 **  CAUSE TIME TO ELAPSE
@@ -13,9 +17,10 @@
 **	energy, regenerates energy, processes any events that occur,
 **	and so on.
 */
-int
+
+
 events(warp)
-        int	warp;		/* set if called in a time warp */
+int	warp;		/* set if called in a time warp */
 {
 	register int		i;
 	int			j;
@@ -29,7 +34,6 @@ events(warp)
 	register struct event	*e;
 	int			evnum;
 	int			restcancel;
-	void                    *vp;
 
 	/* if nothing happened, just allow for any Klingons killed */
 	if (Move.time <= 0.0)
@@ -57,7 +61,6 @@ events(warp)
 		xdate = idate + Move.time;
 
 		/* find the first event that has happened */
-		ev = 0;
 		for (i = 0; i < MAXEVENTS; i++)
 		{
 			e = &Event[i];
@@ -102,7 +105,7 @@ events(warp)
 
 		  case E_SNOVA:			/* supernova */
 			/* cause the supernova to happen */
-			snova(-1, -1);
+			snova(-1);
 			/* and schedule the next one */
 			xresched(e, E_SNOVA, 1);
 			break;
@@ -205,7 +208,7 @@ events(warp)
 
 		  case E_KDESB:			/* Klingon destroys starbase */
 			unschedule(e);
-			q = &Quad[(int)e->x][(int)e->y];
+			q = &Quad[e->x][e->y];
 			/* if the base has mysteriously gone away, or if the Klingon
 			   got tired and went home, ignore this event */
 			if (q->bases <=0 || q->klings <= 0)
@@ -255,7 +258,7 @@ events(warp)
 			if (!damaged(SSRADIO))
 			{
 				printf("\nUhura: Captain, starsystem %s in quadrant %d,%d is under attack\n",
-					Systemname[(int)e->systemname], ix, iy);
+					Systemname[e->systemname], ix, iy);
 				restcancel++;
 			}
 			else
@@ -266,7 +269,7 @@ events(warp)
 		  case E_ENSLV:		/* starsystem is enslaved */
 			unschedule(e);
 			/* see if current distress call still active */
-			q = &Quad[(int)e->x][(int)e->y];
+			q = &Quad[e->x][e->y];
 			if (q->klings <= 0)
 			{
 				/* no Klingons, clean up */
@@ -282,7 +285,7 @@ events(warp)
 			if (!damaged(SSRADIO))
 			{
 				printf("\nUhura:  We've lost contact with starsystem %s\n",
-					Systemname[(int)e->systemname]);
+					Systemname[e->systemname]);
 				printf("  in quadrant %d,%d.\n",
 					e->x, e->y);
 			}
@@ -292,7 +295,7 @@ events(warp)
 
 		  case E_REPRO:		/* Klingon reproduces */
 			/* see if distress call is still active */
-			q = &Quad[(int)e->x][(int)e->y];
+			q = &Quad[e->x][e->y];
 			if (q->klings <= 0)
 			{
 				unschedule(e);
@@ -308,7 +311,6 @@ events(warp)
 			if (q->klings >= MAXKLQUAD)
 			{
 				/* this quadrant not ok, pick an adjacent one */
-				j = 0;
 				for (i = ix - 1; i <= ix + 1; i++)
 				{
 					if (i < 0 || i >= NQUADS)
@@ -340,7 +342,7 @@ events(warp)
 				/* we must position Klingon */
 				sector(&ix, &iy);
 				Sect[ix][iy] = KLINGON;
-				k = &Etc.klingon[(int)Etc.nkling++];
+				k = &Etc.klingon[Etc.nkling++];
 				k->x = ix;
 				k->y = iy;
 				k->power = Param.klingpwr;
@@ -354,10 +356,10 @@ events(warp)
 
 		  case E_SNAP:		/* take a snapshot of the galaxy */
 			xresched(e, E_SNAP, 1);
-			vp = Etc.snapshot;
-			vp = bmove(Quad, vp, sizeof (Quad));
-			vp = bmove(Event, vp, sizeof (Event));
-			vp = bmove(&Now, vp, sizeof (Now));
+			i = (int) Etc.snapshot;
+			i = bmove(Quad, i, sizeof (Quad));
+			i = bmove(Event, i, sizeof (Event));
+			i = bmove(&Now, i, sizeof (Now));
 			Game.snap = 1;
 			break;
 
@@ -412,8 +414,7 @@ events(warp)
 	}
 
 	/* unschedule an attack during a rest period */
-	e = Now.eventptr[E_ATTACK];
-	if (e)
+	if (e = Now.eventptr[E_ATTACK])
 		unschedule(e);
 
 	if (!warp)

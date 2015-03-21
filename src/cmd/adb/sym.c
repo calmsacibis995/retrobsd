@@ -1,13 +1,9 @@
 /*
  * Symbol table and file handling service routines
  */
+#include <stdio.h>
 #include "defs.h"
 #include <fcntl.h>
-#ifdef CROSS
-#   include </usr/include/stdio.h>
-#else
-#   include <stdio.h>
-#endif
 
 struct  SYMcache {
     char    *name;
@@ -207,6 +203,8 @@ symINI(ex)
         if (nbytes <= 0)
                 break;
         symnum -= nbytes;
+        if (type == N_REG)
+            continue;
         nused++;
     }
 
@@ -222,7 +220,7 @@ symINI(ex)
             if (nbytes <= 0)
                     break;
             symnum -= nbytes;
-            if (! (type & N_EXT))
+            if (type == N_REG || ! (type & N_EXT))
                 continue;
             nused++;
         }
@@ -244,6 +242,8 @@ symINI(ex)
         if (nbytes <= 0)
                 break;
         symnum -= nbytes;
+        if (type == N_REG)
+            continue;
         if (globals_only && ! (type & N_EXT))
             continue;
         sp->value = value;
@@ -254,10 +254,7 @@ symINI(ex)
     }
     symnum = nused;
 #if 1
-    //printf("file '%s'\n", symfil);
-    printf("text=%u data=%u bss=%u symoff=%u syms=%u\n",
-        ex->a_text, ex->a_data, ex->a_bss, (unsigned) symoff, ex->a_syms);
-    printf("%d symbols loaded\n", nused);
+    print("%d symbols loaded\n", nused);
 #endif
     if (globals_only)
         print("%s: could only do global symbols\n", myname);

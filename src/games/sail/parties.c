@@ -3,12 +3,16 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)parties.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "externs.h"
 
-int
 meleeing(from, to)
-        struct ship *from;
-        register struct ship *to;
+struct ship *from;
+register struct ship *to;
 {
 	register struct BP *p = from->file->OBP;
 	register struct BP *q = p + NBP;
@@ -19,10 +23,9 @@ meleeing(from, to)
 	return 0;
 }
 
-int
 boarding(from, isdefense)
-        register struct ship *from;
-        int isdefense;
+register struct ship *from;
+char isdefense;
 {
 	register struct BP *p = isdefense ? from->file->DBP : from->file->OBP;
 	register struct BP *q = p + NBP;
@@ -33,13 +36,12 @@ boarding(from, isdefense)
 	return 0;
 }
 
-void
 unboard(ship, to, isdefense)
-        register struct ship *ship, *to;
-        register int isdefense;
+register struct ship *ship, *to;
+register char isdefense;
 {
 	register struct BP *p = isdefense ? ship->file->DBP : ship->file->OBP;
-	register int n;
+	register n;
 
 	for (n = 0; n < NBP; p++, n++)
 		if (p->turnsent && (p->toship == to || isdefense || ship == to))

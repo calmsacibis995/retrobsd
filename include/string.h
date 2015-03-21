@@ -39,5 +39,5 @@ char	*strtok_r (char *, const char *, char **);
 size_t	strcspn (const char *, const char *);
 size_t	strspn (const char *, const char *);
 
-char *strerror (int);
+const char *strerror (int);
 const char *syserrlst (int);

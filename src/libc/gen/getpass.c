@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <signal.h>
 #include <sgtty.h>
-#include <fcntl.h>
 
 char *
 getpass(prompt)
@@ -10,13 +9,12 @@ char *prompt;
 	struct sgttyb ttyb;
 	int flags;
 	register char *p;
-	register int c;
+	register c;
 	FILE *fi;
 	static char pbuf[9];
 	sig_t sig;
 
-	fi = fdopen(open("/dev/tty", 2), "r");
-	if (! fi)
+	if ((fi = fdopen(open("/dev/tty", 2), "r")) == NULL)
 		fi = stdin;
 	else
 		setbuf(fi, (char *)NULL);

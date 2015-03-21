@@ -4,6 +4,10 @@
  * specifies the terms and conditions for redistribution.
  */
 
+#ifndef lint
+static char sccsid[] = "@(#)lo_main.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 /*
  * Print out the top ten SAILors
  *
@@ -18,7 +22,6 @@ char *title[] = {
 	"Commander", "Lieutenant"
 };
 
-int
 lo_main()
 {
 	FILE *fp;
@@ -44,18 +47,15 @@ lo_main()
 	}
 	while (fread((char *)&log, sizeof log, 1, fp) == 1 &&
 	       log.l_name[0] != '\0') {
-	        int equiv;
-
 		if (longfmt && (pass = getpwuid(log.l_uid)) != NULL)
 			(void) sprintf(sbuf, "%10.10s (%s)",
 				log.l_name, pass->pw_name);
 		else
 			(void) sprintf(sbuf, "%20.20s", log.l_name);
 		ship = &scene[log.l_gamenum].ship[log.l_shipnum];
-		equiv = 100 * log.l_netpoints / ship->specs->pts;
-		printf("%-10s %21s of the %15s %3d points, %d.%02d equiv\n",
+		printf("%-10s %21s of the %15s %3d points, %5.2f equiv\n",
 			title[n++], sbuf, ship->shipname, log.l_netpoints,
-			equiv / 100, equiv % 100);
+			(float) log.l_netpoints / ship->specs->pts);
 	}
 	printf("\n%d people have played.\n", people);
 	return 0;

@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dumpme.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -16,9 +21,9 @@
 **
 **	Repair of devices must be deferred.
 */
-void
+
 dumpme(flag)
-        int	flag;
+int	flag;
 {
 	register int		f;
 	double			x;
@@ -30,7 +35,7 @@ dumpme(flag)
 	Ship.quady = ranf(NQUADS);
 	Ship.sectx = ranf(NSECTS);
 	Ship.secty = ranf(NSECTS);
-	x = 1.5 * franf();
+	x += 1.5 * franf();
 	Move.time += x;
 	if (f)
 	{

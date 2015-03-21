@@ -3,122 +3,107 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)room.c	1.3 4/24/85";
+#endif
+
 #include "externs.h"
 
-#ifdef EXT_MESSAGE_FILE
+#ifdef pdp11
 #include <sys/file.h>
 #include <sys/types.h>
-#include <fcntl.h>
 
 static int desc = -1;
 
-void
 writedes()
 {
 	int compass;
 	register char *p;
-	register int c;
+	register c;
 	char buf[BUFSIZ];
 
-	if (desc < 0) {
+	if (desc < 0)
 		desc = open(BATTLESTRINGS, O_RDONLY, 0666);
-                if (desc < 0) {
-                        perror(BATTLESTRINGS);
-                        exit(1);
-                }
-        }
 
 	lseek(desc, (off_t) location[position].name, L_SET);
-	if (read(desc, buf, sizeof(buf)) != sizeof(buf)) /*ignore*/;
-	printf("\n\t%s\n", buf);
+	read(desc, &buf, sizeof(buf));
+	printf("\n\t%s\n", &buf);
 	if (beenthere[position] < 3) {
 		compass = NORTH;
 		lseek(desc, (off_t) location[position].desc, L_SET);
-		if (read(desc, buf, sizeof(buf)) != sizeof(buf)) /*ignore*/;
-		p = buf;
-		while ((c = *p++)) {
+		read(desc, &buf, sizeof(buf));
+		for (p = buf; c = *p++;)
 			if (c != '-' && c != '*' && c != '+')
 				putchar(c);
 			else {
 				if (c != '*')
-					printf("%s", truedirec(compass, c));
+					printf(truedirec(compass, c));
 				compass++;
 			}
-                }
 	}
 }
 
-void
 printobjs()
 {
 	register unsigned int *p = location[position].objects;
-	register int n;
+	register n;
 	char buf[BUFSIZ];
 
 	printf("\n");
 	for (n = 0; n < NUMOFOBJECTS; n++)
 		if (testbit(p, n) && objdes[n]) {
 			lseek(desc, (off_t) objdes[n], L_SET);
-			if (read(desc, buf, sizeof(buf)) != sizeof(buf)) /*ignore*/;
-			puts(buf);
+			read(desc, &buf, sizeof(buf));
+			puts(&buf);
 		}
 }
 
-void
 strprt(n)
-        int n;
+int n;
 {
 	char buf[BUFSIZ];
 
-	if (lseek(desc, (off_t) objdes[n], L_SET) != objdes[n] ||
-            read(desc, buf, sizeof(buf)) != sizeof(buf)) {
-                perror(BATTLESTRINGS);
-                exit(1);
-        }
-	printf("%s\n", buf);
+	lseek(desc, (off_t) objdes[n], L_SET);
+	read(desc, &buf, sizeof(buf));
+	printf("%s\n", &buf);
 }
 
-#else /* EXT_MESSAGE_FILE */
-
-void
+#else pdp11
 writedes()
 {
 	int compass;
 	register char *p;
-	register int c;
+	register c;
 
 	printf("\n\t%s\n", location[position].name);
 	if (beenthere[position] < 3) {
 		compass = NORTH;
-		p = location[position].desc;
-		while ((c = *p++) != 0) {
+		for (p = location[position].desc; c = *p++;)
 			if (c != '-' && c != '*' && c != '+')
 				putchar(c);
 			else {
 				if (c != '*')
-					printf("%s", truedirec(compass, c));
+					printf(truedirec(compass, c));
 				compass++;
 			}
-                }
 	}
 }
 
-void
 printobjs()
 {
 	register unsigned int *p = location[position].objects;
-	register int n;
+	register n;
 
 	printf("\n");
 	for (n = 0; n < NUMOFOBJECTS; n++)
 		if (testbit(p, n) && objdes[n])
 			puts(objdes[n]);
 }
-#endif /* EXT_MESSAGE_FILE */
+#endif pdp11
 
-void
 whichway(here)
-        struct room here;
+struct room here;
 {
 	switch(direction) {
 
@@ -128,7 +113,7 @@ whichway(here)
 			ahead = here.north;
 			back = here.south;
 			break;
-
+		
 		case SOUTH:
 			left = here.east;
 			right = here.west;
@@ -155,8 +140,8 @@ whichway(here)
 
 char *
 truedirec(way, option)
-        int way;
-        char option;
+int way;
+char option;
 {
 	switch(way) {
 
@@ -192,7 +177,7 @@ truedirec(way, option)
 					return("left");
 				case EAST:
 					return("ahead");
-				case WEST:
+				case WEST:	
 					return(option == '+' ? "behind you" : "back");
 			}
 
@@ -214,9 +199,8 @@ truedirec(way, option)
       }
 }
 
-void
 newway(thisway)
-        int thisway;
+int thisway;
 {
 	switch(direction){
 

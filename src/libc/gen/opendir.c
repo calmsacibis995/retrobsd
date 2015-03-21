@@ -6,8 +6,6 @@
 #include <sys/param.h>
 #include <sys/dir.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 /*
  * open a directory.

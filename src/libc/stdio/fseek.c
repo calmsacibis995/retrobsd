@@ -2,14 +2,12 @@
  * Seek for standard library.  Coordinates with buffering.
  */
 #include <stdio.h>
-#include <unistd.h>
 
-int
 fseek(iop, offset, ptrname)
 	register FILE *iop;
 	long offset;
 {
-	register int resync, c;
+	register resync, c;
 	long p = -1;			/* can't happen? */
 
 	iop->_flag &= ~_IOEOF;

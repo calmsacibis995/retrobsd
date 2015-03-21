@@ -1,4 +1,4 @@
-#include "extern.h"
+# include	"monop.ext"
 
 /*
  *	These routines deal with mortgaging.
@@ -30,49 +30,10 @@ static shrt	square[MAX_PRP+2];
 static int	num_good,got_houses;
 
 /*
- *	This routine sets up the list of mortgageable property
- */
-static int
-set_mlist() {
-
-	reg OWN	*op;
-
-	num_good = 0;
-	for (op = cur_p->own_list; op; op = op->next)
-		if (! ((PROP*)op->sqr->desc)->morg) {
-			if (op->sqr->type == PRPTY && ((PROP*)op->sqr->desc)->houses)
-				got_houses++;
-			else {
-				names[num_good] = op->sqr->name;
-				square[num_good++] = sqnum(op->sqr);
-			}
-                }
-	names[num_good++] = "done";
-	names[num_good--] = 0;
-	return num_good;
-}
-
-/*
- *	This routine actually mortgages the property.
- */
-static void
-m(prop)
-reg int	prop; {
-
-	reg int	price;
-
-	price = board[prop].cost/2;
-	((PROP*)board[prop].desc)->morg = TRUE;
-	printf("That got you $%d\n",price);
-	cur_p->money += price;
-}
-
-/*
  *	This routine is the command level response the mortgage command.
  * it gets the list of mortgageable property and asks which are to
  * be mortgaged.
  */
-void
 mortgage() {
 
 	reg int	prop;
@@ -95,52 +56,47 @@ mortgage() {
 		if (prop == num_good)
 			return;
 		m(square[prop]);
-		notify();
+		notify(cur_p);
 	}
 }
-
 /*
- *	This routine sets up the list of mortgaged property
+ *	This routine sets up the list of mortgageable property
  */
-static int
-set_umlist() {
+set_mlist() {
 
 	reg OWN	*op;
 
 	num_good = 0;
 	for (op = cur_p->own_list; op; op = op->next)
-		if (((PROP*)op->sqr->desc)->morg) {
-			names[num_good] = op->sqr->name;
-			square[num_good++] = sqnum(op->sqr);
-		}
+		if (!op->sqr->desc->morg)
+			if (op->sqr->type == PRPTY && op->sqr->desc->houses)
+				got_houses++;
+			else {
+				names[num_good] = op->sqr->name;
+				square[num_good++] = sqnum(op->sqr);
+			}
 	names[num_good++] = "done";
 	names[num_good--] = 0;
 	return num_good;
 }
-
 /*
- *	This routine actually unmortgages the property
+ *	This routine actually mortgages the property.
  */
-static void
-unm(prop)
+m(prop)
 reg int	prop; {
 
 	reg int	price;
 
 	price = board[prop].cost/2;
-	((PROP*)board[prop].desc)->morg = FALSE;
-	price += price/10;
-	printf("That cost you $%d\n",price);
-	cur_p->money -= price;
-	set_umlist();
+	board[prop].desc->morg = TRUE;
+	printf("That got you $%d\n",price);
+	cur_p->money += price;
 }
-
 /*
  *	This routine is the command level repsponse to the unmortgage
  * command.  It gets the list of mortgaged property and asks which are
  * to be unmortgaged.
  */
-void
 unmortgage() {
 
 	reg int	prop;
@@ -162,28 +118,56 @@ unmortgage() {
 		unm(square[prop]);
 	}
 }
-
 /*
- *	This routine is a special execute for the force_morg routine
+ *	This routine sets up the list of mortgaged property
  */
-static void
-fix_ex(com_num)
-reg int	com_num; {
+set_umlist() {
 
-	told_em = FALSE;
-	(*func[com_num])();
-	notify();
+	reg OWN	*op;
+
+	num_good = 0;
+	for (op = cur_p->own_list; op; op = op->next)
+		if (op->sqr->desc->morg) {
+			names[num_good] = op->sqr->name;
+			square[num_good++] = sqnum(op->sqr);
+		}
+	names[num_good++] = "done";
+	names[num_good--] = 0;
+	return num_good;
 }
+/*
+ *	This routine actually unmortgages the property
+ */
+unm(prop)
+reg int	prop; {
 
+	reg int	price;
+
+	price = board[prop].cost/2;
+	board[prop].desc->morg = FALSE;
+	price += price/10;
+	printf("That cost you $%d\n",price);
+	cur_p->money -= price;
+	set_umlist();
+}
 /*
  *	This routine forces the indebted player to fix his
  * financial woes.
  */
-void
 force_morg() {
 
 	told_em = fixing = TRUE;
 	while (cur_p->money <= 0)
 		fix_ex(getinp("How are you going to fix it up? ",morg_coms));
 	fixing = FALSE;
+}
+/*
+ *	This routine is a special execute for the force_morg routine
+ */
+fix_ex(com_num)
+reg int	com_num; {
+
+	told_em = FALSE;
+	(*func[com_num])();
+	notify();
 }

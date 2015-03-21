@@ -34,21 +34,16 @@
  * SUCH DAMAGE.
  */
 #ifdef CROSS
-#   include <sys/types.h>
-#   include <sys/select.h>
-#   include <sys/fcntl.h>
-#   include <stdio.h>
-#   include <stdint.h>
-#   include <unistd.h>
+#   include </usr/include/stdio.h>
 #else
-#   include <sys/param.h>
-#   include <sys/stat.h>
-#   include <sys/dir.h>
-#   include <sys/file.h>
 #   include <stdio.h>
-#   include <unistd.h>
-#   include <fcntl.h>
 #endif
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/dir.h>
+#include <sys/file.h>
+#include <unistd.h>
 #include <ar.h>
 #include "archive.h"
 #include "extern.h"
@@ -119,20 +114,20 @@ move(argv)
 		close_archive(afd);
 		return(1);
 	}
-	(void)lseek(afd, (off_t)SARMAG, SEEK_SET);
+	(void)lseek(afd, (off_t)SARMAG, L_SET);
 
 	SETCF(tfd1, tname, afd, archive, NOPAD);
-	tsize = size = lseek(tfd1, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd1, (off_t)0, SEEK_SET);
+	tsize = size = lseek(tfd1, (off_t)0, L_INCR);
+	(void)lseek(tfd1, (off_t)0, L_SET);
 	copy_ar(&cf, size);
 
-	tsize += size = lseek(tfd2, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd2, (off_t)0, SEEK_SET);
+	tsize += size = lseek(tfd2, (off_t)0, L_INCR);
+	(void)lseek(tfd2, (off_t)0, L_SET);
 	cf.rfd = tfd2;
 	copy_ar(&cf, size);
 
-	tsize += size = lseek(tfd3, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd3, (off_t)0, SEEK_SET);
+	tsize += size = lseek(tfd3, (off_t)0, L_INCR);
+	(void)lseek(tfd3, (off_t)0, L_SET);
 	cf.rfd = tfd3;
 	copy_ar(&cf, size);
 

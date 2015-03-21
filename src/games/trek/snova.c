@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)snova.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -25,9 +30,9 @@
 **	try stopping in such a quadrant, you will go into emergency
 **	override mode.
 */
-void
+
 snova(x, y)
-        int	x, y;
+int	x, y;
 {
 	int			qx, qy;
 	register int		ix, iy;
@@ -103,15 +108,17 @@ snova(x, y)
 	dx = q->klings;
 	dy = q->stars;
 	Now.klings -= dx;
-	if (x >= 0) {
+	if (x >= 0)
+	{
 		/* Enterprise caused supernova */
 		Game.kills += dy;
 		if (q->bases)
-			killb(qx, qy);
+			killb(qx, qy, -1);
 		Game.killk += dx;
-	} else
+	}
+	else
 		if (q->bases)
-			killb(qx, qy);
+			killb(qx, qy, 0);
 	killd(qx, qy, (x >= 0));
 	q->stars = -1;
 	q->klings = 0;
@@ -120,4 +127,5 @@ snova(x, y)
 		printf("Lucky devil, that supernova destroyed the last klingon\n");
 		win();
 	}
+	return;
 }

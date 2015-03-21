@@ -3,10 +3,14 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)computer.c	4.3 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
 # include	"getpar.h"
-# include	<stdlib.h>
-
+# include	<stdio.h>
 /*
 **  On-Board Computer
 **
@@ -55,67 +59,23 @@
 
 struct cvntab	Cputab[] =
 {
-	{ "ch",			"art",			(void (*)())1,		0 },
-	{ "t",			"rajectory",		(void (*)())2,		0 },
-	{ "c",			"ourse",		(void (*)())3,		0 },
-	{ "m",			"ove",			(void (*)())3,		1 },
-	{ "s",			"core",			(void (*)())4,		0 },
-	{ "p",			"heff",			(void (*)())5,		0 },
-	{ "w",			"arpcost",		(void (*)())6,		0 },
-	{ "i",			"mpcost",		(void (*)())7,		0 },
-	{ "d",			"istresslist",		(void (*)())8,		0 },
-	{ 0 },
+	"ch",			"art",			(int (*)())1,		0,
+	"t",			"rajectory",		(int (*)())2,		0,
+	"c",			"ourse",		(int (*)())3,		0,
+	"m",			"ove",			(int (*)())3,		1,
+	"s",			"core",			(int (*)())4,		0,
+	"p",			"heff",			(int (*)())5,		0,
+	"w",			"arpcost",		(int (*)())6,		0,
+	"i",			"mpcost",		(int (*)())7,		0,
+	"d",			"istresslist",		(int (*)())8,		0,
+	0
 };
 
-void
-prkalc(course, dist)
-        int	course;
-        double	dist;
-{
-	printf(": course %d  dist %.3f\n", course, dist);
-}
-
-/*
-**  Course Calculation
-**
-**	Computes and outputs the course and distance from position
-**	sqx,sqy/ssx,ssy to tqx,tqy/tsx,tsy.
-*/
-int
-kalc(tqx, tqy, tsx, tsy, dist)
-        int	tqx;
-        int	tqy;
-        int	tsx;
-        int	tsy;
-        double	*dist;
-{
-	double			dx, dy;
-	double			quadsize;
-	double			angle;
-	register int		course;
-
-	/* normalize to quadrant distances */
-	quadsize = NSECTS;
-	dx = (Ship.quadx + Ship.sectx / quadsize) - (tqx + tsx / quadsize);
-	dy = (tqy + tsy / quadsize) - (Ship.quady + Ship.secty / quadsize);
-
-	/* get the angle */
-	angle = atan2(dy, dx);
-	/* make it 0 -> 2 pi */
-	if (angle < 0.0)
-		angle += 6.283185307;
-	/* convert from radians to degrees */
-	course = angle * 57.29577951 + 0.5;
-	dx = dx * dx + dy * dy;
-	*dist = sqrt(dx);
-	return (course);
-}
-
-void
 computer()
 {
 	int			ix, iy;
 	register int		i, j;
+	int			numout;
 	int			tqx, tqy;
 	struct cvntab		*r;
 	int			cost;
@@ -130,7 +90,7 @@ computer()
 	while (1)
 	{
 		r = getcodpar("\nRequest", Cputab);
-		switch ((int) r->value)
+		switch (r->value)
 		{
 
 		  case 1:			/* star chart */
@@ -283,7 +243,7 @@ computer()
 				  case E_ENSLV:
 				  case E_REPRO:
 					printf("Starsystem %s in quadrant %d,%d is distressed\n",
-						Systemname[(int)e->systemname], e->x, e->y);
+						systemname(e), e->x, e->y);
 					j = 0;
 					break;
 				}
@@ -297,7 +257,7 @@ computer()
 		/* skip to next semicolon or newline.  Semicolon
 		 * means get new computer request; newline means
 		 * exit computer mode. */
-		while ((i = fgetc(stdin)) != ';')
+		while ((i = cgetc(0)) != ';')
 		{
 			if (i == '\0')
 				exit(1);
@@ -308,4 +268,49 @@ computer()
 			}
 		}
 	}
+}
+
+
+/*
+**  Course Calculation
+**
+**	Computes and outputs the course and distance from position
+**	sqx,sqy/ssx,ssy to tqx,tqy/tsx,tsy.
+*/
+
+kalc(tqx, tqy, tsx, tsy, dist)
+int	tqx;
+int	tqy;
+int	tsx;
+int	tsy;
+double	*dist;
+{
+	double			dx, dy;
+	double			quadsize;
+	double			angle;
+	register int		course;
+
+	/* normalize to quadrant distances */
+	quadsize = NSECTS;
+	dx = (Ship.quadx + Ship.sectx / quadsize) - (tqx + tsx / quadsize);
+	dy = (tqy + tsy / quadsize) - (Ship.quady + Ship.secty / quadsize);
+
+	/* get the angle */
+	angle = atan2(dy, dx);
+	/* make it 0 -> 2 pi */
+	if (angle < 0.0)
+		angle += 6.283185307;
+	/* convert from radians to degrees */
+	course = angle * 57.29577951 + 0.5;
+	dx = dx * dx + dy * dy;
+	*dist = sqrt(dx);
+	return (course);
+}
+
+
+prkalc(course, dist)
+int	course;
+double	dist;
+{
+	printf(": course %d  dist %.3f\n", course, dist);
 }

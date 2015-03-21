@@ -3,9 +3,13 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)misc.c	1.2 4/24/85";
+#endif
+
 #include "externs.h"
 
-int
 card(array, size)		/* for beenthere, injuries */
 	register char *array;
 	int size;
@@ -19,7 +23,6 @@ card(array, size)		/* for beenthere, injuries */
 	return (i);
 }
 
-int
 ucard(array)
 	register unsigned *array;
 {

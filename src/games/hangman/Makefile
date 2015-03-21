@@ -1,28 +1,22 @@
-TOPSRC          = $(shell cd ../../..; pwd)
-include $(TOPSRC)/target.mk
-#include $(TOPSRC)/cross.mk
+OBJS=		endgame.o extern.o getguess.o getword.o main.o playgame.o \
+		prdata.o prman.o prword.o setup.o
+CFILES=		endgame.c extern.c getguess.c getword.c main.c playgame.c \
+		prdata.c prman.c prword.c setup.c
+HDRS=		hangman.h
+CFLAGS=		-O
+LDFLAGS=
+SEPFLAG= -i
 
-CFLAGS  	+= -Werror -Wall
+all: hangman
 
-OBJS            = endgame.o extern.o getguess.o getword.o main.o playgame.o \
-		  prdata.o prman.o prword.o setup.o
-MAN             = hangman.0
-LIBS            = -lcurses -ltermcap -lc
+tags: $(HDRS) $(CFILES)
+	ctags $(HDRS) $(CFILES)
 
-all:            hangman $(MAN)
-
-hangman:       $(OBJS)
-		$(CC) $(LDFLAGS) -o $@.elf $(OBJS) $(LIBS)
-		$(OBJDUMP) -S $@.elf > $@.dis
-		$(SIZE) $@.elf
-		$(ELF2AOUT) $@.elf $@ && rm $@.elf
-
-$(MAN):         hangman.6
-		nroff -man $< > $@
+install: hangman
+	install -s hangman $(DESTDIR)/usr/games/hangman
+	
+hangman: $(OBJS)
+	$(CC) ${SEPFLAG} $(LDFLAGS) -o hangman $(OBJS) -lcurses -ltermlib
 
 clean:
-		rm -f *.o core hangman *.0 *.dis
-
-install:        all
-		install hangman $(DESTDIR)/games/
-		install -m 644 $(MAN) $(DESTDIR)/share/man/cat6/
+	rm -f $(OBJS) hangman ? core

@@ -1,26 +1,15 @@
-#include <string.h>
-#include <stdlib.h>
-#include "hangman.h"
+# include	"hangman.h"
 
-/*
- * abs:
- *	Return the absolute value of an integer
- */
-off_t
-offabs(i)
-off_t	i;
-{
-	if (i < 0)
-		return -(off_t) i;
-	else
-		return (off_t) i;
-}
+# if pdp11
+#	define	RN	(((off_t) rand() << 16) | (off_t) rand())
+# else
+#	define	RN	rand()
+# endif
 
 /*
  * getword:
  *	Get a valid word out of the dictionary file
  */
-void
 getword()
 {
 	register FILE		*inf;
@@ -28,7 +17,7 @@ getword()
 
 	inf = Dict;
 	for (;;) {
-		fseek(inf, offabs(random() % Dict_size), 0);
+		fseek(inf, abs(RN % Dict_size), 0);
 		if (fgets(Word, BUFSIZ, inf) == NULL)
 			continue;
 		if (fgets(Word, BUFSIZ, inf) == NULL)
@@ -49,4 +38,18 @@ cont:		;
 		wp++;
 	}
 	*gp = '\0';
+}
+
+/*
+ * abs:
+ *	Return the absolute value of an integer
+ */
+off_t
+abs(i)
+off_t	i;
+{
+	if (i < 0)
+		return -(off_t) i;
+	else
+		return (off_t) i;
 }

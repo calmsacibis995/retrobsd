@@ -35,6 +35,8 @@
 #include <string.h>
 #include "rogue.h"
 
+boolean tc_tname();
+
 #define BS 010
 #define LF 012
 #define CR 015
@@ -42,9 +44,11 @@
 #define TAB '\011'
 
 #define ST_MASK 0x80
+#define BUFLEN 256
 
 char terminal[DROWS][DCOLS];
 char buffer[DROWS][DCOLS];
+char *tc_file;
 
 char cm_esc[16];
 char cm_sep[16];
@@ -79,16 +83,312 @@ char *SE = "";
 short cur_row;
 short cur_col;
 
-#ifndef ANSI
-#define BUFLEN 256
-
-static boolean
-tc_tname(fp, term, buf)
-        FILE *fp;
-        char *term;
-        char *buf;
+initscr()
 {
-	int i, j;
+	clear();
+	get_term_info();
+	printf("%s%s", TI, VS);
+}
+
+endwin()
+{
+	printf("%s%s", TE, VE);
+	md_cbreak_no_echo_nonl(0);
+}
+
+move(row, col)
+short row, col;
+{
+	curscr->_cury = row;
+	curscr->_curx = col;
+	screen_dirty = 1;
+}
+
+mvaddstr(row, col, str)
+short row, col;
+char *str;
+{
+	move(row, col);
+	addstr(str);
+}
+
+addstr(str)
+char *str;
+{
+	while (*str) {
+		addch((int) *str++);
+	}
+}
+
+addch(ch)
+register int ch;
+{
+	short row, col;
+
+	row = curscr->_cury;
+	col = curscr->_curx++;
+
+	if (buf_stand_out) {
+		ch |= ST_MASK;
+	}
+	buffer[row][col] = (char) ch;
+	lines_dirty[row] = 1;
+	screen_dirty = 1;
+}
+
+mvaddch(row, col, ch)
+short row, col;
+int ch;
+{
+	move(row, col);
+	addch(ch);
+}
+
+refresh()
+{
+	register i, j, line;
+	short old_row, old_col, first_row;
+
+	if (screen_dirty) {
+
+		old_row = curscr->_cury;
+		old_col = curscr->_curx;
+		first_row = cur_row;
+
+		for (i = 0; i < DROWS; i++) {
+			line = (first_row + i) % DROWS;
+			if (lines_dirty[line]) {
+				for (j = 0; j < DCOLS; j++) {
+					if (buffer[line][j] != terminal[line][j]) {
+						put_char_at(line, j, buffer[line][j]);
+					}
+				}
+				lines_dirty[line] = 0;
+			}
+		}
+		put_cursor(old_row, old_col);
+		screen_dirty = 0;
+		fflush(stdout);
+	}
+}
+
+wrefresh(scr)
+WINDOW *scr;
+{
+	short i, col;
+
+	printf("%s", CL);
+	cur_row = cur_col = 0;
+
+	for (i = 0; i < DROWS; i++) {
+		col = 0;
+		while (col < DCOLS) {
+			while ((col < DCOLS) && (buffer[i][col] == ' ')) {
+				col++;
+			}
+			if (col < DCOLS) {
+				put_cursor(i, col);
+			}
+			while ((col < DCOLS) && (buffer[i][col] != ' ')) {
+				put_st_char((int) buffer[i][col]);
+				cur_col++;
+				col++;
+			}
+		}
+	}
+	put_cursor(curscr->_cury, curscr->_curx);
+	fflush(stdout);
+	scr = scr;		/* make lint happy */
+}
+
+mvinch(row, col)
+short row, col;
+{
+	move(row, col);
+	return((int) buffer[row][col]);
+}
+
+clear()
+{
+	printf("%s", CL);
+	fflush(stdout);
+	cur_row = cur_col = 0;
+	move(0, 0);
+	clear_buffers();
+}
+
+clrtoeol()
+{
+	short row, col;
+
+	row = curscr->_cury;
+
+	for (col = curscr->_curx; col < DCOLS; col++) {
+		buffer[row][col] = ' ';
+	}
+	lines_dirty[row] = 1;
+}
+
+standout()
+{
+	buf_stand_out = 1;
+}
+
+standend()
+{
+	buf_stand_out = 0;
+}
+
+crmode()
+{
+	md_cbreak_no_echo_nonl(1);
+}
+
+noecho()
+{
+	/* crmode() takes care of this */
+}
+
+nonl()
+{
+	/* crmode() takes care of this */
+}
+
+clear_buffers()
+{
+	register i, j;
+
+	screen_dirty = 0;
+
+	for (i = 0; i < DROWS; i++) {
+		lines_dirty[i] = 0;
+		for (j = 0; j < DCOLS; j++) {
+			terminal[i][j] = ' ';
+			buffer[i][j] = ' ';
+		}
+	}
+}
+
+put_char_at(row, col, ch)
+register row, col, ch;
+{
+	put_cursor(row, col);
+	put_st_char(ch);
+	terminal[row][col] = (char) ch;
+	cur_col++;
+}
+
+put_cursor(row, col)
+register row, col;
+{
+	register i, rdif, cdif;
+	short ch, t;
+
+	rdif = (row > cur_row) ? row - cur_row : cur_row - row;
+	cdif = (col > cur_col) ? col - cur_col : cur_col - col;
+
+	if (((row > cur_row) && DO) || ((cur_row > row) && UC)) {
+		if ((rdif < 4) && (cdif < 4)) {
+			for (i = 0; i < rdif; i++) {
+				printf("%s", ((row < cur_row) ? UC : DO));
+			}
+			cur_row = row;
+			if (col == cur_col) {
+				return;
+			}
+		}
+	}
+	if (row == cur_row) {
+		if (cdif <= 6) {
+		for (i = 0; i < cdif; i++) {
+				ch = (col < cur_col) ? BS :
+						terminal[row][cur_col + i];
+				put_st_char((int) ch);
+			}
+			cur_row = row;
+			cur_col = col;
+			return;
+		}
+	}
+	cur_row = row;
+	cur_col = col;
+
+	row += cm_inc;
+	col += cm_inc;
+
+	if (cm_reverse) {
+		t = row;
+		row = col;
+		col = t;
+	}
+	if (cm_two) {
+		printf("%s%02d%s%02d%s", cm_esc, row, cm_sep, col, cm_end);
+	} else if (cm_three) {
+		printf("%s%03d%s%03d%s", cm_esc, row, cm_sep, col, cm_end);
+	} else if (cm_char) {
+		printf("%s%c%s%c%s", cm_esc, row, cm_sep, col, cm_end);
+	} else {
+		printf("%s%d%s%d%s", cm_esc, row, cm_sep, col, cm_end);
+	}
+}
+
+put_st_char(ch)
+register ch;
+{
+	if ((ch & ST_MASK) && (!term_stand_out)) {
+		ch &= ~ST_MASK;
+		printf("%s%c", SO, ch);
+		term_stand_out = 1;
+	} else if ((!(ch & ST_MASK)) && term_stand_out) {
+		printf("%s%c", SE, ch);
+		term_stand_out = 0;
+	} else {
+		ch &= ~ST_MASK;
+		putchar(ch);
+	}
+}
+
+get_term_info()
+{
+	FILE *fp;
+	char *term, *tcf;
+	char buf[BUFLEN];
+
+	if (tcf = md_getenv("TERMCAP")) {
+		if (strlen(tcf) > 40) {
+			clean_up("TERMCAP file name too long");
+		}
+		tc_file = tcf;
+	} else {
+		if (!(tc_file = md_gdtcf())) {
+			clean_up("I need a termcap file");
+		}
+	}
+
+	if (!(term = md_getenv("TERM"))) {
+		clean_up("Cannot find TERM variable in environ");
+	}
+	if ((fp = fopen(tc_file, "r")) == NULL) {
+		sprintf(buf, "Cannot open TERMCAP file: %s", tc_file);
+		clean_up(buf);
+	}
+
+	if (!tc_tname(fp, term, buf)) {
+		sprintf(buf, "Cannot find TERM type: %s in TERMCAP file: %s", term,
+			tc_file);
+		clean_up(buf);
+	}
+	tc_gtdata(fp, buf);
+	fclose(fp);
+}
+
+boolean
+tc_tname(fp, term, buf)
+FILE *fp;
+char *term;
+char *buf;
+{
+	short i, j;
 	boolean found = 0;
 	char *fg;
 
@@ -96,9 +396,8 @@ tc_tname(fp, term, buf)
 		i = 0;
 		fg = fgets(buf, BUFLEN, fp);
 		if (fg != NULL) {
-			if ((buf[0] != '#') && (buf[0] != ' ') && (buf[0] != TAB) &&
-					(buf[0] != CR) && (buf[0] != LF))
-                        {
+			if (	(buf[0] != '#') && (buf[0] != ' ') && (buf[0] != TAB) &&
+					(buf[0] != CR) && (buf[0] != LF)) {
 				while (buf[i] && (!found)) {
 					j = 0;
 					while (buf[i] == term[j]) {
@@ -124,12 +423,71 @@ tc_tname(fp, term, buf)
 	return(found);
 }
 
-static void
-tc_gets(ibuf, tcstr)
-        char *ibuf;
-        char **tcstr;
+tc_gtdata(fp, buf)
+FILE *fp;
+char *buf;
 {
-	int i, j, k, n;
+	short i;
+	boolean first = 1;
+
+	do {
+		if (!first) {
+			if ((buf[0] != TAB) && (buf[0] != ' ')) {
+				break;
+			}
+		}
+		first = 0;
+		i = 0;
+		while (buf[i]) {
+			while (buf[i] && (buf[i] != ':')) {
+				i++;
+			}
+			if (buf[i] == ':') {
+				if (!strncmp(buf + i, ":cl=", 4)) {
+					tc_gets(buf + i, &CL);
+				} else if (!strncmp(buf + i, ":cm=", 4)) {
+					tc_gets(buf + i, &CM);
+				} else if (!strncmp(buf + i, ":up=", 4)) {
+					tc_gets(buf + i, &UC);
+				} else if (!strncmp(buf + i, ":do=", 4)) {
+					tc_gets(buf + i, &DO);
+				} else if (!strncmp(buf + i, ":vs=", 4)) {
+					tc_gets(buf + i, &VS);
+				} else if (!strncmp(buf + i, ":ve=", 4)) {
+					tc_gets(buf + i, &VE);
+				} else if (!strncmp(buf + i, ":ti=", 4)) {
+					tc_gets(buf + i, &TI);
+				} else if (!strncmp(buf + i, ":te=", 4)) {
+					tc_gets(buf + i, &TE);
+				} else if (!strncmp(buf + i, ":vs=", 4)) {
+					tc_gets(buf + i, &VS);
+				} else if (!strncmp(buf + i, ":ve=", 4)) {
+					tc_gets(buf + i, &VE);
+				} else if (!strncmp(buf + i, ":so=", 4)) {
+					tc_gets(buf + i, &SO);
+				} else if (!strncmp(buf + i, ":se=", 4)) {
+					tc_gets(buf + i, &SE);
+				} else if (!strncmp(buf + i, ":li#", 4)) {
+					tc_gnum(buf + i, &LINES);
+				} else if (!strncmp(buf + i, ":co#", 4)) {
+					tc_gnum(buf + i, &COLS);
+				}
+				i++;
+			}
+		}
+	} while (fgets(buf, BUFLEN, fp) != NULL);
+
+	if ((!CM) || (!CL)) {
+		clean_up("Terminal and termcap must have cm and cl");
+	}
+	tc_cmget();
+}
+
+tc_gets(ibuf, tcstr)
+char *ibuf;
+char **tcstr;
+{
+	short i, j, k, n;
 	char obuf[BUFLEN];
 
 	i = 4;
@@ -201,12 +559,12 @@ tc_gets(ibuf, tcstr)
 	(void) strcpy(*tcstr, obuf);
 }
 
-static void
 tc_gnum(ibuf, n)
-        char *ibuf;
-        int *n;
+char *ibuf;
+int *n;
 {
-	int i, r = 0;
+	short i;
+	int r = 0;
 
 	i = 4;
 
@@ -217,10 +575,20 @@ tc_gnum(ibuf, n)
 	*n = r;
 }
 
-static void
+tstp()
+{
+	endwin();
+	md_tstp();
+
+	start_window();
+	printf("%s%s", TI, VS);
+	wrefresh(curscr);
+	md_slurp();
+}
+
 tc_cmget()
 {
-	int i = 0, j = 0, rc_spec = 0;
+	short i = 0, j = 0, rc_spec = 0;
 
 	while (CM[i] && (CM[i] != '%') && (j < 15)) {
 		cm_esc[j++] = CM[i++];
@@ -278,411 +646,4 @@ tc_cmget()
 	cm_end[j] = 0;
 }
 
-static void
-tc_gtdata(fp, buf)
-        FILE *fp;
-        char *buf;
-{
-	int i;
-	boolean first = 1;
-
-	do {
-		if (!first) {
-			if ((buf[0] != TAB) && (buf[0] != ' ')) {
-				break;
-			}
-		}
-		first = 0;
-		i = 0;
-		while (buf[i]) {
-			while (buf[i] && (buf[i] != ':')) {
-				i++;
-			}
-			if (buf[i] == ':') {
-				if (!strncmp(buf + i, ":cl=", 4)) {
-					tc_gets(buf + i, &CL);
-				} else if (!strncmp(buf + i, ":cm=", 4)) {
-					tc_gets(buf + i, &CM);
-				} else if (!strncmp(buf + i, ":up=", 4)) {
-					tc_gets(buf + i, &UC);
-				} else if (!strncmp(buf + i, ":do=", 4)) {
-					tc_gets(buf + i, &DO);
-				} else if (!strncmp(buf + i, ":vs=", 4)) {
-					tc_gets(buf + i, &VS);
-				} else if (!strncmp(buf + i, ":ve=", 4)) {
-					tc_gets(buf + i, &VE);
-				} else if (!strncmp(buf + i, ":ti=", 4)) {
-					tc_gets(buf + i, &TI);
-				} else if (!strncmp(buf + i, ":te=", 4)) {
-					tc_gets(buf + i, &TE);
-				} else if (!strncmp(buf + i, ":so=", 4)) {
-					tc_gets(buf + i, &SO);
-				} else if (!strncmp(buf + i, ":se=", 4)) {
-					tc_gets(buf + i, &SE);
-				} else if (!strncmp(buf + i, ":li#", 4)) {
-					tc_gnum(buf + i, &LINES);
-				} else if (!strncmp(buf + i, ":co#", 4)) {
-					tc_gnum(buf + i, &COLS);
-				}
-				i++;
-			}
-		}
-	} while (fgets(buf, BUFLEN, fp) != NULL);
-
-	if ((!CM) || (!CL)) {
-		clean_up("Terminal and termcap must have cm and cl");
-	}
-	tc_cmget();
-}
-#endif /* ANSI */
-
-static void
-get_term_info()
-{
-#ifdef ANSI
-        /* Generic ANSI display. */
-        LINES = DROWS;
-        COLS  = DCOLS;
-
-        CL = "\33[H\33[2J";
-        UC = "\33[A";
-        DO = "\12";
-        SO = "\33[7m";
-        SE = "\33[m";
-
-        cm_inc = 1;
-        strcpy (cm_esc, "\33[");
-        strcpy (cm_sep, ";");
-        strcpy (cm_end, "H");
-#else
-	FILE *fp;
-	char *term, *tcf;
-	char buf[BUFLEN];
-        char *tc_file = "/etc/termcap";
-
-        tcf = md_getenv("TERMCAP");
-	if (tcf) {
-		if (strlen(tcf) > 40) {
-			clean_up("TERMCAP file name too long");
-		}
-		tc_file = tcf;
-	}
-
-	term = md_getenv("TERM");
-	if (! term) {
-		clean_up("Cannot find TERM variable in environ");
-	}
-	fp = fopen(tc_file, "r");
-	if (! fp) {
-		sprintf(buf, "Cannot open TERMCAP file: %s", tc_file);
-		clean_up(buf);
-	}
-
-	if (! tc_tname(fp, term, buf)) {
-		sprintf(buf, "Cannot find TERM type: %s in TERMCAP file: %s", term,
-			tc_file);
-		clean_up(buf);
-	}
-	tc_gtdata(fp, buf);
-	fclose(fp);
 #endif
-}
-
-void
-initscr()
-{
-	clear();
-	get_term_info();
-	printf("%s%s", TI, VS);
-}
-
-void
-endwin()
-{
-	printf("%s%s", TE, VE);
-	md_cbreak_no_echo_nonl(0);
-}
-
-void
-move(row, col)
-        int row, col;
-{
-	curscr->_cury = row;
-	curscr->_curx = col;
-	screen_dirty = 1;
-}
-
-void
-mvaddstr(row, col, str)
-        int row, col;
-        char *str;
-{
-	move(row, col);
-	addstr(str);
-}
-
-void
-addstr(str)
-        char *str;
-{
-	while (*str) {
-		addch((int) *str++);
-	}
-}
-
-void
-addch(ch)
-        register int ch;
-{
-	int row, col;
-
-	row = curscr->_cury;
-	col = curscr->_curx++;
-
-	if (buf_stand_out) {
-		ch |= ST_MASK;
-	}
-	buffer[row][col] = (char) ch;
-	lines_dirty[row] = 1;
-	screen_dirty = 1;
-}
-
-void
-mvaddch(row, col, ch)
-        int row, col, ch;
-{
-	move(row, col);
-	addch(ch);
-}
-
-static void
-put_st_char(ch)
-        register int ch;
-{
-	if ((ch & ST_MASK) && (!term_stand_out)) {
-		ch &= ~ST_MASK;
-		printf("%s%c", SO, ch);
-		term_stand_out = 1;
-	} else if ((!(ch & ST_MASK)) && term_stand_out) {
-		printf("%s%c", SE, ch);
-		term_stand_out = 0;
-	} else {
-		ch &= ~ST_MASK;
-		putchar(ch);
-	}
-}
-
-static void
-put_cursor(row, col)
-        register int row, col;
-{
-	register int i, rdif, cdif;
-	int ch, t;
-
-	rdif = (row > cur_row) ? row - cur_row : cur_row - row;
-	cdif = (col > cur_col) ? col - cur_col : cur_col - col;
-
-	if (((row > cur_row) && DO) || ((cur_row > row) && UC)) {
-		if ((rdif < 4) && (cdif < 4)) {
-			for (i = 0; i < rdif; i++) {
-				printf("%s", ((row < cur_row) ? UC : DO));
-			}
-			cur_row = row;
-			if (col == cur_col) {
-				return;
-			}
-		}
-	}
-	if (row == cur_row) {
-		if (cdif <= 6) {
-		for (i = 0; i < cdif; i++) {
-				ch = (col < cur_col) ? BS :
-						terminal[row][cur_col + i];
-				put_st_char((int) ch);
-			}
-			cur_row = row;
-			cur_col = col;
-			return;
-		}
-	}
-	cur_row = row;
-	cur_col = col;
-
-	row += cm_inc;
-	col += cm_inc;
-
-	if (cm_reverse) {
-		t = row;
-		row = col;
-		col = t;
-	}
-	if (cm_two) {
-		printf("%s%02d%s%02d%s", cm_esc, row, cm_sep, col, cm_end);
-	} else if (cm_three) {
-		printf("%s%03d%s%03d%s", cm_esc, row, cm_sep, col, cm_end);
-	} else if (cm_char) {
-		printf("%s%c%s%c%s", cm_esc, row, cm_sep, col, cm_end);
-	} else {
-		printf("%s%d%s%d%s", cm_esc, row, cm_sep, col, cm_end);
-	}
-}
-
-static void
-put_char_at(row, col, ch)
-        register int row, col, ch;
-{
-	put_cursor(row, col);
-	put_st_char(ch);
-	terminal[row][col] = (char) ch;
-	cur_col++;
-}
-
-void
-refresh()
-{
-	register int i, j, line;
-	int old_row, old_col, first_row;
-
-	if (screen_dirty) {
-
-		old_row = curscr->_cury;
-		old_col = curscr->_curx;
-		first_row = cur_row;
-
-		for (i = 0; i < DROWS; i++) {
-			line = (first_row + i) % DROWS;
-			if (lines_dirty[line]) {
-				for (j = 0; j < DCOLS; j++) {
-					if (buffer[line][j] != terminal[line][j]) {
-						put_char_at(line, j, buffer[line][j]);
-					}
-				}
-				lines_dirty[line] = 0;
-			}
-		}
-		put_cursor(old_row, old_col);
-		screen_dirty = 0;
-		fflush(stdout);
-	}
-}
-
-void
-wrefresh(scr)
-        WINDOW *scr;
-{
-	int i, col;
-
-	printf("%s", CL);
-	cur_row = cur_col = 0;
-
-	for (i = 0; i < DROWS; i++) {
-		col = 0;
-		while (col < DCOLS) {
-			while ((col < DCOLS) && (buffer[i][col] == ' ')) {
-				col++;
-			}
-			if (col < DCOLS) {
-				put_cursor(i, col);
-			}
-			while ((col < DCOLS) && (buffer[i][col] != ' ')) {
-				put_st_char((int) buffer[i][col]);
-				cur_col++;
-				col++;
-			}
-		}
-	}
-	put_cursor(curscr->_cury, curscr->_curx);
-	fflush(stdout);
-	scr = scr;		/* make lint happy */
-}
-
-int
-mvinch(row, col)
-        int row, col;
-{
-	move(row, col);
-	return((int) buffer[row][col]);
-}
-
-static void
-clear_buffers()
-{
-	register int i, j;
-
-	screen_dirty = 0;
-
-	for (i = 0; i < DROWS; i++) {
-		lines_dirty[i] = 0;
-		for (j = 0; j < DCOLS; j++) {
-			terminal[i][j] = ' ';
-			buffer[i][j] = ' ';
-		}
-	}
-}
-
-void
-clear()
-{
-	printf("%s", CL);
-	fflush(stdout);
-	cur_row = cur_col = 0;
-	move(0, 0);
-	clear_buffers();
-}
-
-void
-clrtoeol()
-{
-	int row, col;
-
-	row = curscr->_cury;
-
-	for (col = curscr->_curx; col < DCOLS; col++) {
-		buffer[row][col] = ' ';
-	}
-	lines_dirty[row] = 1;
-}
-
-void
-standout()
-{
-	buf_stand_out = 1;
-}
-
-void
-standend()
-{
-	buf_stand_out = 0;
-}
-
-void
-crmode()
-{
-	md_cbreak_no_echo_nonl(1);
-}
-
-void
-noecho()
-{
-	/* crmode() takes care of this */
-}
-
-void
-nonl()
-{
-	/* crmode() takes care of this */
-}
-
-void
-tstp()
-{
-	endwin();
-	md_tstp();
-
-	start_window();
-	printf("%s%s", TI, VS);
-	wrefresh(curscr);
-	md_slurp();
-}
-
-#endif /* CURSES */

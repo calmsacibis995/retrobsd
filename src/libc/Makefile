@@ -26,7 +26,7 @@
 TOPSRC		= $(shell cd ../..; pwd)
 include $(TOPSRC)/target.mk
 
-DEFS		= -Wall -Werror
+DEFS		=
 ALL		= gen stdio stdlib string inet compat ${MACHINE}
 
 all:            ../libc.a
@@ -40,20 +40,20 @@ all:            ../libc.a
 		rm -rf tmp
 
 ${ALL}:		FRC
-		cd $@; ${MAKE} ${MFLAGS} DEFS="${DEFS}"
+		cd $@; make ${MFLAGS} DEFS=${DEFS}
 
 FRC:
 
 install:	../libc.a
 		${INSTALLDIR} ${DESTDIR}/lib
-#		${INSTALL} ../libc.a ${DESTDIR}/lib/libc.a
-#		$(RANLIB) ${DESTDIR}/lib/libc.a
+		${INSTALL} ../libc.a ${DESTDIR}/lib/libc.a
+		$(RANLIB) ${DESTDIR}/lib/libc.a
 
 clean:
 		for i in ${ALL}; \
-			do (cd $$i; ${MAKE} ${MFLAGS} clean); done
+			do (cd $$i; make ${MFLAGS} clean); done
 		rm -rf tmp *.a *~
 
 depend:
 		for i in ${ALL}; \
-			do (cd $$i; ${MAKE} ${MFLAGS} DEFS="${DEFS}" depend); done
+			do (cd $$i; make ${MFLAGS} DEFS=${DEFS} depend); done

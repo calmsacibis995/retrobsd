@@ -7,13 +7,58 @@
 #include "r.defs.h"
 #include <sys/wait.h>
 
-static int insert_mode = 1;     /* Insert mode */
-static int clr_arg_area;        /* Need to erase the arg area */
-static int fname_cvt_flag;      /* Disable filename conversion on "re -" */
+char use0flg;   /* используется для блокировки преобразования первого имени файла при "lcase" и "red - */
+int clrsw;      /* 1 - чистить окно параметров */
+int csrsw;      /* 1 - показать текущую позицию меткой  */
+int imodesw = 1; /* 1 - insert mode  */
+int oldccol;    /* используется для отметки положения курсора */
+int oldcline;   /* - - / / - - */
 
 /*
- * Run an external filter.
- * Return 0 in case of errors.
+ * Add a tab stop.
+ */
+static void settab(tabcol)
+    int tabcol;
+{
+    register int i, j;
+
+    if (tabstops[NTABS-1] == BIGTAB) {
+        error("Too many tabstops; can't set more.");
+        return;
+    }
+    for (i=0; i<NTABS; i++) {
+        if (tabstops[i] == tabcol)
+            return;
+        if (tabstops[i] > tabcol) {
+            for (j=NTABS-1; j>i; j--)
+                tabstops[j] = tabstops[j-1];
+            tabstops[i] = tabcol;
+            return;
+        }
+    }
+    error("Error in settab!");
+}
+
+/*
+ * Clear a tab stop.
+ */
+static void clrtab(tabcol)
+    int tabcol;
+{
+    register int i, j;
+
+    for (i=0; i<NTABS; i++)
+        if (tabstops[i] == tabcol) {
+            for (j=i; j<NTABS-1; j++)
+                tabstops[j] = tabstops[j+1];
+            tabstops[NTABS-1] = 0;
+            return;
+        }
+}
+
+/*
+ * Выполнить команду "exec"
+ * Ответ 1, если не было ошибок
  */
 static int callexec()
 {
@@ -25,35 +70,30 @@ static int callexec()
 #define NARGS 20
 
     /*
-     * Get a counter of paragraphs (positive) or lines (negative or 'l').
-     * Assume 1 paragraph by default.
+     * 1. Разбираем размер области.
      */
-    i = curwksp->topline + cursorline;
+    i = curwksp->ulhclno + cursorline;
     m = 1;
-    cp = param_str;
+    cp = paramv;
     if (*cp == '-' || (*cp >= '0' && *cp <= '9')) {
-        cp = s2i(param_str, &m);
-        if (cp == 0) {
-noargerr:   error("Invalid argument.");
-            return(0);
-        }
+        cp = s2i(paramv, &m);
+        if (cp == 0)
+            goto noargerr;
     }
-    m = -m;
+    m = -m;           /* По умолчанию - 1 параграф */
     if (*cp == 'l') {
         cp++;
         m = -m;
-    }
-
+    }  /* nl == -n */
     /*
-     * Build an arg vector.
+     * 2. Готовим строку аргументов.
      */
-    e = execargs = (char**) salloc(NARGS*(sizeof (char *)));
-    while (*cp == ' ')
-        cp++;
+    e = execargs = (char **)salloc(NARGS*(sizeof (char *)));
+    while (*cp == ' ') cp++;
     while (*cp != 0) {
-        *e++ = cp;              /* arg address */
-        if (e >= execargs + NARGS)
-            goto noargerr;      /* too much */
+        *e++ = cp;              /* адрес аргумента */
+        if ((e - execargs) >= NARGS)
+            goto noargerr; /* Слишком много */
         if (*cp == '"') {
             cp++;
             e[-1]++;
@@ -77,165 +117,51 @@ noargerr:   error("Invalid argument.");
             *cp++ = 0;
     }
     *e = 0;
-
     /*
-     * Run the command through pipe.
-     * (re) | (command; re)
-     * Second copy of re will fetch the rest from the pipe.
+     * 3. Запускаем команду через pipe
+     * (red) | (команда;red)
+     * Вторая копия red занимается тем, что дочитывает
+     * остаток информации из трубы.
      */
-    if (pipe(pipef) < 0) {
-nopiperr:
-        error("Can not fork or write pipe.");
-        return(0);
-    }
-    j = fork();
-    if (j < 0)
+    if (pipe(pipef) == -1)
         goto nopiperr;
-    if (j == 0) {               /* command; re */
-        close(0);               /* set as stdin */
+    if ((j = fork()) == -1)
+        goto nopiperr;
+    if (j == 0) {               /* команда;red */
+        close(0);               /* Замыкаем в станд. ввод */
         if (dup(pipef[0]) < 0)
             exit(-1);
-        close(1);               /* output to temporary file */
+        close(1);               /* Вывод в рабочий файл */
         open(tmpname, 1);
-        lseek(1, tempseek, 0);
+        lseek(1, tempfl, 0);
         j = 2;
-
-        /* Close all other descriptors. */
+        /* Закрываем все, что осталось открыто */
         while ((k = dup(1)) >= 0)
             if (k > j)
                 j = k;
         while (j >= 2)
             close(j--);
-        i = fork();
-        if (i < 0)
+        if ((i = fork()) == -1)
             goto nopiperr;
-        if (i != 0) {                       /* re */
-            while (wait(&m) != i);          /* wait, then read */
-            while (read(0, pwbuf, 100));    /* until exhausted */
-            exit(m >> 8);                   /* and return the status */
+        if (i != 0) {                       /* ;red   */
+            while (wait(&m) != i);          /* Ждем, затем читаем */
+            while (read(0, pwbuf, 100));    /* Пока не надоест */
+            exit(m >> 8);                   /* И возвр. статус      */
         }
-        execvp(execargs[0], execargs);
-        exit(0xDF);                         /* exit code matches doreplace */
+        execr(execargs);
+        /* exit теперь в EXECR, -1 если ошибка */
     }
-
-    /* Parent. */
+    /* Отец: */
     telluser("Executing ...",0);
-    free((char*)execargs);
+    free((char *)execargs);
     doreplace(i, m, j, pipef);
     return(1);
-}
-
-/*
- * Insert a symbol to current line at a current position.
- */
-static void cline_insert_char(keysym)
-{
-    int i, c;
-
-    /* Check the window margin. */
-    if (cursorcol > curwin->text_maxcol) {
-        if (cline_modified)
-            putline();
-        wksp_offset(defroffset);
-        i = curwksp->topline + cursorline;
-        if (clineno != i)
-            getlin(i);
-    }
-    cline_modified = 1;
-    c = cursorcol + curwksp->offset;
-    if (c >= cline_max - 2) {
-        /* Expand the line. */
-        cline_expand(c + 2);
-    }
-    if (c >= cline_len - 1) {
-        /* Append spaces to the line. */
-        for (i=cline_len-1; i<=c; i++)
-            cline[i] = ' ';
-        cline[c+1] = '\n';
-        cline_len = c + 2;
-    }
-    else if (insert_mode) {
-        /* Push the rest of the line. */
-        if (cline_len >= cline_max)
-            cline_expand(cline_len + 1);
-        for (i=cline_len; i>c; i--)
-            cline[i] = cline[i-1];
-        cline_len++;
-        drawlines(- c + curwksp->offset - 1, cursorline);
-        poscursor(c - curwksp->offset, cursorline);
-    }
-
-    /* Store the symbol. */
-    if (keysym == CCCTRLQUOTE)
-        keysym = COCURS;
-    cline[c] = keysym;
-    wputc(keysym, 1);
-}
-
-/*
- * Draw the bottom line: message, file name, current line number.
- */
-static void drawstatus()
-{
-    window_t *owin;
-    char numstr[16], *cp;
-    int i, ccol, cline;
-
-    /* Switch to param window. */
-    owin = curwin;
-    cline = cursorline;
-    ccol = cursorcol;
-    win_switch(&paramwin);
-    paramwin.text_maxcol = NCOLS;
-    if (clr_arg_area) {
-        if (! message_displayed) {
-            poscursor(0, 0);
-            //putch(COERLN);
-            for (i=PARAMWIDTH; i>0; i--)
-                wputc('~', 0);
-        }
-        if (owin->wksp->wfile) {
-            i = strlen(file[owin->wksp->wfile].name);
-            if (i < PARAMWIDTH-4) {
-                poscursor(PARAMWIDTH-i-2, 0);
-                wputc('"', 0);
-                wputs(file[owin->wksp->wfile].name, NCOLS-2);
-                wputc('"', 0);
-            }
-        }
-        poscursor(PARAMWIDTH, 0);
-        wputs(insert_mode ? "~~Ins~~Line:~~~~~~~" :
-                            "~~~~~~~Line:~~~~~~~", NCOLS);
-    }
-    /* Display the current line number. */
-    i = owin->wksp->topline + cline + 1;
-    cp = numstr + sizeof(numstr);
-    *--cp = '\0';
-    *--cp = '~';
-    *--cp = '~';
-    *--cp = '~';
-    *--cp = '~';
-    *--cp = '~';
-    do {
-        (*--cp = '0' + (i % 10));
-        i /= 10;
-    } while (i);
-    cp[6] = '\0';
-    poscursor(PARAMWIDTH+12, 0);
-    wputs(cp, NCOLS-2);
-
-    /* Switch back to editor window. */
-    win_switch(owin);
-    paramwin.text_maxcol = PARAMWIDTH;
-    poscursor(ccol, cline);
-    if (highlight_position) {
-        wputc(COCURS, 1);
-        poscursor(ccol, cline);
-        dumpcbuf();
-        sleep(1);
-        drawlines(cline, cline);
-        poscursor(ccol, cline);
-    }
+nopiperr:
+    error("Can not fork or write pipe.");
+    return(0);
+noargerr:
+    error("Invalid argument.");
+    return(0);
 }
 
 /*
@@ -243,235 +169,269 @@ static void drawstatus()
  */
 void mainloop()
 {
-    void (*linefunc)(int, int);
-    void (*blockfunc)(int, int, int, int);
-    int i, m;
+    int i, m, first = 1;
+    register int j;
+    int clsave = 0, ccsave = 0, k;
+    /* Хитрости с экономией памяти */
+    int thiscol, thisrow;
+    char ich[8], *cp;
+    /* Для команд с тремя вариантами аргументов */
+    void (*lnfun)(int, int);
+    void (*spfun)(int, int, int, int);
+    struct viewport *oport;
 
+    /*
+     * Обработка одного символа или команды
+     */
+    if (cursorline == 0)
+        oldcline = 1;
+    if (cursorcol == 0)
+        oldccol  = 1;
+#ifndef lint
+    goto funcdone;
+#endif
     for (;;) {
-        clr_arg_area = 1;
-newnumber:
-        keysym = -1;        /* mark the symbol as used */
-errclear:
-        drawstatus();
-nextkey:
-        highlight_position = 0;
-        clr_arg_area = 0;
-        getkeysym();
-        if (message_displayed) {
-            /* Clear the message after any key pressed. */
-            message_displayed = 0;
-            clr_arg_area = 1;
+        csrsw = clrsw = 0;
+        read1();
+        if (errsw) {
+            errsw = 0;
+            clrsw = 1;
             goto errclear;
         }
-
         /*
-         * Edit the current line.
+         * Редактирование в строке
          */
-        if (! CTRLCHAR(keysym) || keysym == CCCTRLQUOTE ||
-            keysym == CCBACKSPACE || keysym == CCDELCH ||
-            (keysym == CCTAB && insert_mode))
+        if (! CTRLCHAR(lread1) || lread1 == CCCTRLQUOTE ||
+            lread1 == CCBACKSPACE || lread1 == CCDELCH)
         {
-            /* Backspace at column 0: join lines. */
-            if (keysym == CCBACKSPACE && cursorcol + curwksp->offset == 0) {
-                int lnum = curwksp->topline + cursorline;
-                if (lnum > file[curfile].nlines) {
-                    /* Beyond end of file - move up. */
-                    movecursor(CCMOVEUP);
-                    keysym = -1;
-                    goto nextkey;
-                }
-                if (file[curfile].writable == 0 || lnum == 0) {
-                    /* File not writable or at line 0. */
-                    keysym = -1;
-                    goto nextkey;
-                }
-                /* Append the current line to the previous one. */
-                putline();
-                getlin(lnum - 1);
-                combineline(lnum - 1, cline_len - 1);
-                continue;
+            /* Отмена в 1 колонке */
+            if (lread1 == CCBACKSPACE && cursorcol == 0)
+            {
+                lread1 = -1;
+                goto contin;
             }
-            if (file[curfile].writable == 0)
+            if (openwrite[curfile] == 0)
                 goto nowriterr;
 
-            /* No current line? Get it! */
-            i = curwksp->topline + cursorline;
-            if (clineno != i)
+            /* Строки у нас нет? Дай! */
+            if (clineno != (i = curwksp->ulhclno+cursorline))
                 getlin(i);
 
-            /* Delete char after line end: join lines. */
-            if (keysym == CCDELCH &&
-                cursorcol + curwksp->offset >= cline_len - 1)
+            /* исключение символа */
+            if (lread1==CCDELCH || (imodesw && lread1==CCBACKSPACE))
             {
-                int lnum = curwksp->topline + cursorline;
-                if (lnum >= file[curfile].nlines) {
-                    /* Beyond end of file. */
-                    keysym = -1;
-                    goto nextkey;
-                }
-                if (file[curfile].writable == 0) {
-                    /* File not writable. */
-                    keysym = -1;
-                    goto nowriterr;
-                }
-                /* Append the next line to the current one. */
-                putline();
-                combineline(lnum, cursorcol + curwksp->offset);
-                continue;
-            }
-
-            /* Delete the symbol. */
-            if (keysym == CCDELCH || keysym == CCBACKSPACE) {
-                int thiscol = cursorcol + curwksp->offset;
-                int thisrow = cursorline;
-
-                if (keysym == CCBACKSPACE)
+                thiscol = cursorcol + curwksp->ulhccno;
+                thisrow = cursorline;
+                if (lread1 == CCBACKSPACE)
                     thiscol--;
-                if (cline_len < thiscol + 2) {
-                    if (keysym == CCBACKSPACE)
+                if (ncline < thiscol + 2) {
+                    if (lread1 == CCBACKSPACE)
                         movecursor(CCMOVELEFT);
-                    keysym = -1;
-                    goto nextkey;
+                    lread1 = -1;
+                    goto contin;
                 }
-                for (i=thiscol; i<cline_len-2; i++)
+                for (i=thiscol; i<ncline-2; i++)
                     cline[i] = cline[i+1];
-                cline_len--;
-                thiscol -= curwksp->offset;
-                drawlines(-thiscol-1, cursorline);
-                poscursor(thiscol, thisrow);
-                cline_modified = 1;
-                keysym = -1;
-                goto nextkey;
+                ncline--;
+                thiscol -= curwksp->ulhccno;
+                putup(-(1+thiscol),cursorline);
+                poscursor(thiscol,thisrow);
+                fcline = 1;
+                lread1 = -1;
+                goto contin;
             }
-            if (keysym == CCTAB) {
-                /* Expand tabs to 4 spaces. */
-                do {
-                    cline_insert_char(' ');
-                } while ((cursorcol + curwksp->offset) & 3);
-            } else
-                cline_insert_char(keysym);
-            keysym = -1;
-            goto nextkey;
+            /* Проверка на границу окна */
+            if (cursorcol > curport->rtext) {
+                if (fcline) {
+                    putline(0);
+                    movep(defrport);
+                    goto contin;
+                }
+                goto margerr;
+            }
+            fcline = 1;
+            j = (lread1 == CCBACKSPACE);
+            if (j) {
+                movecursor(CCMOVELEFT);
+                lread1 = ' ';
+            }
+            i = cursorcol + curwksp->ulhccno;
+            if (i >= (lcline - 2))
+                excline(i + 2);
+            if (i >= ncline-1) {
+                for (k=ncline-1; k<=i; k++)
+                    cline[k] = ' ';
+                cline[i+1] = NEWLINE;
+                ncline = i+2;
+            }
+            else if (imodesw) {
+                thiscol = cursorcol + curwksp->ulhccno;
+                thisrow = cursorline;
+                if (ncline >= lcline)
+                    excline(ncline+1);
+                for (i=ncline; i>thiscol; i--)
+                    cline[i] = cline[i-1];
+                ncline++;
+                thiscol -= curwksp->ulhccno;
+                putup(-(1 + thiscol), cursorline);
+                poscursor(thiscol, thisrow);
+            }
+            /* Выставим границу */
+            if (cursorcol >= curport->rtext)
+                curport->redit = curport->rtext + 1;
+
+            /* Замена символа */
+            if (lread1 == CCCTRLQUOTE)
+                lread1 = esc0;
+            if (cursorcol == curport->rtext - 10)
+                putcha(COBELL);
+            cline[i] = lread1;
+            putch(lread1, 1);
+
+            /* Если переехали границу */
+            curport->redit = curport->rtext;
+            if (j)
+                movecursor(CCMOVELEFT);
+            lread1 = -1;
+            goto contin;
         }
-        if (keysym == CCRETURN) {
-            /* <Enter> - split the line. */
-            if (file[curfile].writable == 0)
-                goto nowriterr;
-            putline();
-            splitline(curwksp->topline + cursorline,
-                cursorcol + curwksp->offset);
-            movecursor(keysym);
-            keysym = -1;
+        /* Сдвиг вниз, если последняя строка  */
+        if (lread1 == CCRETURN) {
+            putline(0);
+            if (cursorline == curport->btext)
+                movew(defplline);
+            i = curwksp->ulhccno;
+            if (i !=0)
+                movep(-i);
+            movecursor(lread1);
+            lread1 = -1;
             goto errclear;
         }
-
         /*
-         * Cursor movement.
+         * Если команда перемещения
          */
-        if (keysym <= CCEND) {
-            movecursor(keysym);
-            if (keysym == CCMOVEUP || keysym == CCMOVEDOWN ||
-                keysym == CCPGDOWN || keysym == CCPGUP ||
-                keysym == CCRETURN || keysym == CCHOME) {
+        if (lread1 <= CCBACKTAB) {
+            movecursor(lread1);
+            if (lread1 == CCMOVEUP || lread1 == CCMOVEDOWN ||
+                lread1 == CCRETURN || lread1 == CCHOME)
+            {
                 /* Row changed: save current line. */
-                putline();
+                putline(0);
                 goto newnumber;
             }
-            keysym = -1;
-            goto nextkey;
+            lread1 = -1;
+            goto contin;
         }
+        /* Если граница поля */
+        if (cursorcol > curport->rtext)
+            poscursor(curport->rtext, cursorline);
+        putline(0);
+        if (lread1 == CCQUIT) {
+            if (endit() == 0)
+                goto funcdone;
+            return;
+        }
+        switch (lread1) {
+        case CCENTER:
+            goto gotarg;
 
-        /* Window margin. */
-        if (cursorcol > curwin->text_maxcol)
-            poscursor(curwin->text_maxcol, cursorline);
-        putline();
-        switch (keysym) {
-        case CCQUIT:
-            if (endit())
-                return;
-            continue;
-
-        case CCPARAM:
-            break;
-
-        case CCLOFFSET:
-            wksp_offset(- defloffset);
-            continue;
+        case CCLPORT:
+            movep(- deflport);
+            goto funcdone;
 
         case CCSETFILE:
             switchfile();
-            continue;
+            goto funcdone;
 
-        case CCINSLIN:
-            if (file[curfile].writable == 0)
+        case CCCHPORT:
+            chgport(-1);
+            goto funcdone;
+
+        case CCOPEN:
+            if (openwrite[curfile] == 0)
                 goto nowriterr;
-            insertlines(curwksp->topline + cursorline, 1);
-            continue;
+            openlines(curwksp->ulhclno + cursorline, definsert);
+            goto funcdone;
 
         case CCMISRCH:
             search(-1);
-            continue;
+            goto funcdone;
 
-        case CCDELLIN:
-            if (file[curfile].writable == 0)
+        case CCCLOSE:
+            if (openwrite[curfile]==0)
                 goto nowriterr;
-            deletelines(curwksp->topline + cursorline, 1);
-            continue;
+            closelines(curwksp->ulhclno + cursorline, defdelete);
+            goto funcdone;
 
-        case CCPASTE:
-            if (file[curfile].writable == 0)
+        case CCPUT:
+            if (openwrite[curfile] == 0)
                 goto nowriterr;
-            if (pickbuf->nrows == 0) {
-                error("Clipboard is empty.");
-                continue;
-            }
-            paste(pickbuf, curwksp->topline + cursorline,
-                curwksp->offset + cursorcol);
-            continue;
+            if (pickbuf->nrows == 0)
+                goto nopickerr;
+            put(pickbuf, curwksp->ulhclno + cursorline,
+                curwksp->ulhccno + cursorcol);
+            goto funcdone;
 
-        case CCCOPY:
-            picklines(curwksp->topline + cursorline, 1);
-            continue;
+        case CCPICK:
+            picklines(curwksp->ulhclno + cursorline, defpick);
+            goto funcdone;
 
         case CCINSMODE:
-            insert_mode = 1 - insert_mode;  /* change it */
-            continue;
+            imodesw = 1 - imodesw;  /* change it */
+            goto funcdone;
 
         case CCGOTO:
             gtfcn(0);
-            continue;
+            goto funcdone;
+
+        case CCMIPAGE:
+            movew(- defmipage * (1 + curport->btext));
+            goto funcdone;
 
         case CCPLSRCH:
             search(1);
-            continue;
+            goto funcdone;
 
-        case CCROFFSET:
-            wksp_offset(defroffset);
-            continue;
+        case CCRPORT:
+            movep(defrport);
+            goto funcdone;
+
+        case CCPLLINE:
+            movew(defplline);
+            goto funcdone;
 
         case CCDELCH:
             goto notimperr;
 
         case CCSAVEFILE:
-            savefile(NULL, curfile);
-            continue;
+            savefile(NULL,curfile);
+            goto funcdone;
+
+        case CCMILINE:
+            movew(-defmiline);
+            goto funcdone;
 
         case CCDOCMD:
             goto notstrerr;
 
-        case CCREDRAW:                  /* Redraw screen */
-            redisplay();
-            keysym = -1;
-            continue;
-#if MULTIWIN
-        case CCMAKEWIN:
-            win_open(deffile);
-            continue;
+        case CCPLPAGE:
+            movew(defplpage * (1 + curport->btext));
+            goto funcdone;
 
-        case CCCHWINDOW:
-            win_goto(-1);
-            continue;
-#endif
+        case CCMAKEPORT:
+            makeport(deffile);
+            goto funcdone;
+
+        case CCTABS:
+            settab(curwksp->ulhccno + cursorcol);
+            goto funcdone;
+
+        case CCREDRAW:                  /* Redraw screen */
+        case CCEND:                     /* TODO */
+            rescreen();
+            lread1 = -1;
+            goto funcdone;
+
         /* case CCMOVELEFT: */
         /* case CCTAB:      */
         /* case CCMOVEDOWN: */
@@ -481,284 +441,402 @@ nextkey:
         default:
             goto badkeyerr;
         }
-
+        /* Повтор ввода аргумента */
+reparg:
+        read1();
+        if (CTRLCHAR(lread1))
+            goto yesarg;
+        goto noargerr;
         /*
-         * Cmd: prompt.
+         * Дай аргумент!
          */
-        param();
-gotcmd:
-        switch (keysym) {
-        case CCQUIT:
-            if (param_len > 0 &&
-                (int_to_ext(param_str, param_len), *param_str) == 'a')
+gotarg:
+        param(0);
+yesarg:
+        if (lread1 == CCQUIT) {
+            if (paraml > 0 &&
+                (dechars(paramv, paraml), *paramv) == 'a')
             {
-                if (param_str[1] != 'd')
+                if (*(paramv+1) != 'd')
                     return;
                 cleanup();
                 inputfile = -1; /* to force a dump */
                 fatal("ABORTED");
             }
-            if (endit())
-                return;
-            continue;
+            if (endit() == 0)
+                goto funcdone;
+            return;
+        }
+        switch (lread1) {
+        case CCENTER:
+            goto funcdone;
 
-        case CCPARAM:
-            continue;
-
-        case CCLOFFSET:
-            if (param_type <= 0)
+        case CCLPORT:
+            if (paramtype <= 0)
                 goto notstrerr;
-            if (s2i(param_str, &i))
+            if (s2i(paramv, &i))
                 goto notinterr;
-            wksp_offset(-i);
-            continue;
+            movep(-i);
+            goto funcdone;
 
         case CCSETFILE:
-            if (param_type <= 0)
+            if (paramtype <= 0)
                 goto notstrerr;
-            if (param_str == 0)
+            if (paramv == 0)
                 goto noargerr;
-            if (fname_cvt_flag || ! inputfile)
-                int_to_ext(param_str, param_len);
-            fname_cvt_flag = 1;
-            editfile(param_str, 0, 0, 1, 1);
-            continue;
+            if (use0flg || ! inputfile)
+                dechars(paramv, paraml);
+            use0flg = 1;
+            editfile(paramv, 0, 0, 1, 1);
+            goto funcdone;
 
-        case CCINSLIN:
-            if (file[curfile].writable == 0)
+        case CCCHPORT:
+            if (paramtype <= 0)
+                goto notstrerr;
+            if (s2i(paramv, &i))
+                goto notinterr;
+            if (i <= 0)
+                goto notposerr;
+            chgport(i - 1);
+            goto funcdone;
+
+        case CCOPEN:
+            if (openwrite[curfile] == 0)
                 goto nowriterr;
-            if (param_type != 0) {
-                linefunc = insertlines;
-                blockfunc = openspaces;
-                break;
+            if (paramtype != 0) {
+                lnfun = openlines;
+                spfun = openspaces;
+                goto spdir;
             }
-            splitline(param_r0, param_c0);
-            continue;
+            splitline(curwksp->ulhclno + paramr0,
+                paramc0 + curwksp->ulhccno);
+            goto funcdone;
 
         case CCMISRCH:
         case CCPLSRCH:
-            if (param_type <= 0)
+            if (paramtype <= 0)
                 goto notstrerr;
-            if (param_str == 0)
+            if (paramv == 0)
                 goto noargerr;
             if (searchkey)
                 free(searchkey);
-            searchkey = param_str;
-            param_len = 0;
-            search(keysym == CCPLSRCH ? 1 : -1);
-            continue;
+            searchkey = paramv;
+            paraml = 0;
+            search(lread1 == CCPLSRCH ? 1 : -1);
+            goto funcdone;
 
-        case CCDELLIN:
-            if (file[curfile].writable == 0)
+        case CCCLOSE:
+            if (openwrite[curfile] == 0)
                 goto nowriterr;
-            if (param_type != 0) {
-                if (param_type > 0 && param_str && param_str[0] == '>') {
-                    mstore(deletebuf, param_str + 1);
-                    continue;
+            if (paramtype != 0) {
+                if (paramtype > 0 && paramv && paramv[0] == '>') {
+                    msrbuf(deletebuf, paramv+1, 0);
+                    goto funcdone;
                 }
-                linefunc = deletelines;
-                blockfunc = closespaces;
-                break;
+                lnfun = closelines;
+                spfun = closespaces;
+                goto spdir;
             }
-            combineline(param_r0, param_c0);
-            continue;
+            combineline(curwksp->ulhclno + paramr0,
+                paramc0 + curwksp->ulhccno);
+            goto funcdone;
 
-        case CCPASTE:
-            if (param_type > 0 && param_str && param_str[0] == '$') {
-                if (mfetch(deletebuf, param_str + 1))
+        case CCPUT:
+            if (paramtype > 0 && paramv && paramv[0] == '$') {
+                if (msrbuf(pickbuf, paramv+1, 1))
                     goto errclear;
-                continue;
+                goto funcdone;
             }
-            if (param_type != 0)
+            if (paramtype != 0)
                 goto notstrerr;
-            if (file[curfile].writable == 0)
+            if (openwrite[curfile] == 0)
                 goto nowriterr;
-            if (deletebuf->nrows == 0) {
-                error ("Delete buffer is empty.");
-                continue;
-            }
-            paste(deletebuf, curwksp->topline + cursorline,
-                curwksp->offset + cursorcol);
-            continue;
+            if (deletebuf->nrows == 0)
+                goto nodelerr;
+            put(deletebuf, curwksp->ulhclno + cursorline,
+                curwksp->ulhccno + cursorcol);
+            goto funcdone;
 
         case CCMOVELEFT:
         case CCTAB:
         case CCMOVEDOWN:
         case CCHOME:
-        case CCEND:
         case CCMOVEUP:
         case CCMOVERIGHT:
-            if (s2i(param_str, &i))
+        case CCBACKTAB:
+            if (s2i(paramv, &i))
                 goto notinterr;
             if (i <= 0)
                 goto notposerr;
-            m = ((keysym <= CCEND) ? keysym : 0);
+            m = ((lread1 <= CCBACKTAB) ? lread1 : 0);
             while (--i >= 0)
                 movecursor(m);
-            continue;
+            goto funcdone;
 
         case CCRETURN:
-            if (param_type <= 0 || ! param_str)
+            if (paramtype <= 0 || ! paramv)
                 goto notimperr;
-            int_to_ext(param_str, param_len);
-            switch (param_str[0]) {
+            dechars(paramv, paraml);
+            switch (paramv[0]) {
             case '>':
-                msvtag(param_str + 1);
+                msvtag(paramv + 1);
                 break;
             case '$':
-                if (mdeftag(param_str + 1)) {
-                    /* Wait again on a Cmd: prompt. */
-                    keysym = -1;
-                    getkeysym();
-                    if (! CTRLCHAR(keysym))
-                        goto noargerr;
-                    goto gotcmd;
+                if(mdeftag(paramv + 1)){
+                    lread1 = -1;
+                    goto reparg;
                 }
                 break;
             case 'w':
-                if(param_str[1] == ' ' && param_str[2] == '+')
-                    file[curwksp->wfile].writable = 1;
+                if(paramv[1] == ' ' && paramv[2] == '+')
+                    openwrite[curwksp->wfile] = 1;
                 else
-                    file[curwksp->wfile].writable = 0;
+                    openwrite[curwksp->wfile] = 0;
+                break;
+            case 'k':
+                defkey();
                 break;
             case 'r':           /* Redraw screen */
-                redisplay();
+                rescreen();
+                break;
+            case 'd':
+                if (paramv[1] == ' ')
+                    defmac(&paramv[2]);
                 break;
             case 'q':
-                keysym = CCQUIT;
-                if (param_str[1] == 'a') {
+                lread1 = CCQUIT;
+                if (paramv[1] == 'a') {
                     return;
                 }
-                goto nextkey;
+                goto contin;
             default:
                 goto noargerr;
             }
-            continue;
+            goto funcdone;
 
-        case CCCOPY:
-            if (param_type == 0)
+        case CCPICK:
+            if (paramtype == 0)
                 goto notimperr;
-            if (param_type > 0 && param_str && param_str[0] == '>') {
-                mstore(pickbuf, param_str + 1);
-                continue;
+            if (paramtype > 0 && paramv && paramv[0] == '>') {
+                msrbuf(pickbuf, paramv+1, 0);
+                goto funcdone;
             }
-            linefunc = picklines;
-            blockfunc = pickspaces;
-            break;
+            lnfun = picklines;
+            spfun = pickspaces;
+            goto spdir;
 
         case CCINSMODE:
-            insert_mode = ! insert_mode;
-            continue;
+            imodesw = ! imodesw;
+            goto funcdone;
 
         case CCGOTO:
-            if (param_type == 0)
-                gtfcn(file[curfile].nlines);
-            else if (param_type > 0) {
-                if(param_str && param_str[0] == '$') {
-                    mgotag(param_str + 1);
-                    continue;
+            if (paramtype == 0)
+                gtfcn(nlines[curfile]);
+            else if (paramtype > 0) {
+                if(paramv && paramv[0] == '$') {
+                    mgotag(paramv + 1);
+                    goto funcdone;
                 }
-                if (s2i(param_str, &i))
+                if (s2i(paramv, &i))
                     goto notinterr;
                 gtfcn(i - 1);
             } else
                 goto noargerr;
-            continue;
+            goto funcdone;
 
-        case CCROFFSET:
-            if (param_type <= 0)
+        case CCMIPAGE:
+            if (paramtype <= 0)
                 goto notstrerr;
-            if (s2i(param_str, &i))
+            if (s2i(paramv, &i))
                 goto notinterr;
-            wksp_offset(i);
-            continue;
+            movew(- i * (1 + curport->btext));
+            goto funcdone;
+
+        case CCRPORT:
+            if (paramtype <= 0)
+                goto notstrerr;
+            if (s2i(paramv, &i))
+                goto notinterr;
+            movep(i);
+            goto funcdone;
+
+        case CCPLLINE:
+            if (paramtype < 0)
+                goto notstrerr;
+            else if (paramtype == 0)
+                movew(cursorline);
+            else if (paramtype > 0) {
+                if (s2i(paramv, &i))
+                    goto notinterr;
+                movew(i);
+            }
+            goto funcdone;
 
         case CCDELCH:
             goto notimperr;
 
         case CCSAVEFILE:
-            if (param_type <= 0)
+            if (paramtype <= 0)
                 goto notstrerr;
-            if (param_str == 0)
+            if (paramv == 0)
                 goto noargerr;
-            int_to_ext(param_str, param_len);
-            savefile(param_str, curfile);
-            continue;
+            dechars(paramv, paraml);
+            savefile(paramv, curfile);
+            goto funcdone;
+
+        case CCMILINE:
+            if (paramtype < 0)
+                goto notstrerr;
+            else if (paramtype == 0)
+                movew(cursorline - curport->btext);
+            else if (paramtype > 0) {
+                if (s2i(paramv, &i))
+                    goto notinterr;
+                movew(-i);
+            }
+            goto funcdone;
 
         case CCDOCMD:
-            if (param_type <= 0)
+            if (paramtype <= 0)
                 goto notstrerr;
-            int_to_ext(param_str, param_len);
-            if (file[curfile].writable == 0)
+            dechars(paramv, paraml);
+            if (openwrite[curfile] == 0)
                 goto nowriterr;
             callexec();
-            continue;
-#if MULTIWIN
-        case CCMAKEWIN:
-            if (param_type == 0)
-                win_remove();
-            else if (param_type < 0)
+            goto funcdone;
+
+        case CCPLPAGE:
+            if (paramtype <= 0)
+                goto notstrerr;
+            if (s2i(paramv, &i))
+                goto notinterr;
+            movew(i * (1 + curport->btext));
+            goto funcdone;
+
+        case CCMAKEPORT:
+            if (paramtype == 0)
+                removeport();
+            else if (paramtype < 0)
                 goto notstrerr;
             else {
-                int_to_ext(param_str, param_len);
-                win_open(param_str);
+                dechars(paramv, paraml);
+                makeport(paramv);
             }
-            continue;
+            goto funcdone;
 
-        case CCCHWINDOW:
-            if (param_type <= 0)
-                goto notstrerr;
-            if (s2i(param_str, &i))
-                goto notinterr;
-            if (i <= 0)
-                goto notposerr;
-            win_goto(i - 1);
-            continue;
-#endif
+        case CCTABS:
+            clrtab(curwksp->ulhccno + cursorcol);
+            goto funcdone;
+
         default:
             goto badkeyerr;
         }
 spdir:
-        if (param_type > 0) {
-            if(param_str[0] == '$') {
-                if (mdeftag(param_str + 1))
+        if (paramtype > 0) {
+            if(paramv[0] == '$') {
+                if (mdeftag(paramv + 1))
                     goto spdir;
-                continue;
+                goto funcdone;
             }
-            if (s2i(param_str, &i))
+            if (s2i(paramv, &i))
                 goto notinterr;
             if (i <= 0)
                 goto notposerr;
-            linefunc(curwksp->topline + cursorline, i);
-
-        } else if (param_c1 == param_c0) {
-            linefunc(param_r0, (param_r1 - param_r0) + 1);
+            (*lnfun)(curwksp->ulhclno + cursorline, i);
         } else {
-            blockfunc(param_r0, param_c0,
-                (param_c1 - param_c0), (param_r1 - param_r0) + 1);
+            if (paramc1 == paramc0) {
+                (*lnfun)(curwksp->ulhclno + paramr0,
+                    (paramr1 - paramr0) + 1);
+            } else
+                (*spfun)(curwksp->ulhclno + paramr0,
+                    curwksp->ulhccno + paramc0,
+                    (paramc1 - paramc0),
+                    (paramr1 - paramr0) + 1);
         }
-        continue;
+        goto funcdone;
 badkeyerr:
-        error("Unknown command.");
-        continue;
+        error("Illegal key or unnown macro");
+        goto funcdone;
 notstrerr:
-        error("Need a string parameter.");
-        continue;
+        error("Argument must be a string.");
+        goto funcdone;
 noargerr:
         error("Invalid argument.");
-        continue;
+        goto funcdone;
 notinterr:
-        error("Need a numeric parameter.");
-        continue;
+        error("Argument must be numerik.");
+        goto funcdone;
 notposerr:
-        error("Need a positive parameter.");
-        continue;
+        error("Argument must be positive.");
+        goto funcdone;
+nopickerr:
+        error("Nothing in the pick buffer.");
+        goto funcdone;
+nodelerr:
+        error ("Nothing in the close buffer.");
+        goto funcdone;
 notimperr:
         error("Feature not implemented yet.");
-        continue;
+        goto funcdone;
+margerr:
+        error("Margin stusk; move cursor to free.");
+        goto funcdone;
 nowriterr:
         error("You cannot modify this file!");
-        continue;
+        goto funcdone;
+funcdone:
+        clrsw = 1;
+newnumber:
+        lread1 = -1;        /* signify char read was used */
+errclear:
+        oport = curport;
+        k = cursorline;
+        j = cursorcol;
+        switchport(&paramport);
+        paramport.redit = PARAMRINFO;
+        if (clrsw) {
+            if (! errsw && ! first) {
+                poscursor(0, 0);
+                putstr(blanks, PARAMRINFO);
+            }
+            poscursor(PARAMREDIT + 2, 0);
+            if (oport->wksp->wfile) {
+                putstr("file ", PARAMRINFO);
+                putstr(openfnames[oport->wksp->wfile], PARAMRINFO);
+            }
+            putstr(" line ", PARAMRINFO);
+            clsave = cursorline;
+            first = 0;
+            ccsave = cursorcol;
+        }
+        poscursor(ccsave, clsave);
+        i = oport->wksp->ulhclno + k + 1; /* Рисуем номер строки */
+        cp = ich + 8;
+        *--cp = '\0';
+        do {
+            (*--cp = '0' + (i % 10));
+            i /= 10;
+        } while (i);
+        putstr(cp, PARAMRINFO);
+        *cp = '\0';
+        while (cp != ich)
+            *--cp = ' ';
+        putstr(ich, PARAMRINFO);
+        switchport(oport);
+        paramport.redit = PARAMREDIT;
+        poscursor(j, k);
+        if (csrsw) {
+            putch(COCURS, 1);
+            poscursor(j, k);
+            dumpcbuf();
+            sleep(1);
+            putup(k, k);
+            poscursor(j, k);
+        }
+        if (imodesw && clrsw && ! errsw)
+            telluser("     ***** i n s e r t m o d e *****",0);
+contin:
+        ;
     }
 }
 
@@ -774,7 +852,7 @@ void search(delta)
     register char *at, *sk, *fk;
     int ln, lkey, col, lin, slin, i;
 
-    param_len = 0;
+    paraml = 0;
     if (searchkey == 0 || *searchkey == 0) {
         error("Nothing to search for.");
         return;
@@ -785,45 +863,46 @@ void search(delta)
         telluser("+", 0);
     else
         telluser("-", 0);
-    telluser("Search: ", 1);
+    telluser("search: ", 1);
     telluser(searchkey, 9);
-    wputc(COCURS, 1);
+    putch(COCURS, 1);
     poscursor(col, lin);
     dumpcbuf();
     lkey = 0;
     sk = searchkey;
     while (*sk++)
         lkey++;
-    ln = lin + curwksp->topline;
+    ln = lin + curwksp->ulhclno;
     getlin (ln);
-    putline();
-    at = cline + col + curwksp->offset;
+    putline(0);
+    at = cline + col + curwksp->ulhccno;
     for (;;) {
         at += delta;
-        while (at < cline || at >  cline + cline_len - lkey) {
-            /* Abort on interrupt from the tty. */
+        while (at < cline || at >  cline + ncline - lkey) {
+            /* Прервать, если было прерывание с терминала */
             i = interrupt();
             if (i || (ln += delta) < 0 ||
-                (wksp_position(curwksp, ln) && delta == 1))
+                (wposit(curwksp, ln) && delta == 1))
             {
-                drawlines(lin, lin);
+                putup(lin, lin);
                 poscursor(col, lin);
                 error(i ? "Interrupt." : "Search key not found.");
-                highlight_position = 0;
+                csrsw = 0;
+                symac = 0;
                 return;
             }
             getlin(ln);
-            putline();
+            putline(0);
             at = cline;
             if (delta < 0)
-                at += cline_len - lkey;
+                at += ncline - lkey;
         }
         sk = searchkey;
         fk = at;
         while (*sk == *fk++ && *++sk);
         if (*sk == 0) {
             cgoto(ln, at - cline, slin, 0);
-            highlight_position = 1;
+            csrsw = 1;  /* put up a bullit briefly */
             return;
         }
     }

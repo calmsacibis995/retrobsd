@@ -1,12 +1,11 @@
-#include "mille.h"
+# include	"mille.h"
 
 /*
  * @(#)comp.c	1.1 (Berkeley) 4/1/82
  */
 
-#define	V_VALUABLE	40
+# define	V_VALUABLE	40
 
-void
 calcmove()
 {
 	register CARD		card;
@@ -34,8 +33,7 @@ calcmove()
 		switch (card) {
 		  case C_STOP:	case C_CRASH:
 		  case C_FLAT:	case C_EMPTY:
-		        playit[i] = canplay(pp, op, card);
-			if (playit[i])
+			if (playit[i] = canplay(pp, op, card))
 				canstop = TRUE;
 			goto norm;
 		  case C_LIMIT:
@@ -352,7 +350,6 @@ play_it:
 	mvprintw(MOVE_Y + 2, MOVE_X, "%16s", C_name[pp->hand[Card_no]]);
 }
 
-int
 onecard(pp)
 register PLAY	*pp;
 {
@@ -385,7 +382,6 @@ register PLAY	*pp;
 	return FALSE;
 }
 
-int
 canplay(pp, op, card)
 register PLAY	*pp, *op;
 register CARD	card;

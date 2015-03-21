@@ -20,20 +20,13 @@
 #include "uio.h"
 #include "kernel.h"
 #include "inode.h"
-#include "types.h"
-#include "ttydev.h"
-
-const struct devspec ptsdevs[] = {
-    { 0, "ttyp0" }, { 1, "ttyp1" }, { 2, "ttyp2" }, { 3, "ttyp3" },
-    { 0, 0 }
-};
-
-const struct devspec ptcdevs[] = {
-    { 0, "ptyp0" }, { 1, "ptyp1" }, { 2, "ptyp2" }, { 3, "ptyp3" },
-    { 0, 0 }
-};
 
 extern	int	TTYHOG;		/* see tty.c */
+
+#if NPTY == 1
+#undef NPTY
+#define	NPTY	16		/* crude XXX */
+#endif
 
 #define BUFSIZ 100		/* Chunk size iomoved to/from user */
 
@@ -59,7 +52,8 @@ int	npty = NPTY;		/* for pstat -t */
 #define PF_UCNTL	0x80		/* user control mode */
 
 /*ARGSUSED*/
-int ptsopen(dev_t dev, int flag, int mode)
+ptsopen(dev, flag)
+	dev_t dev;
 {
 	register struct tty *tp;
 	int error;
@@ -72,7 +66,7 @@ int ptsopen(dev_t dev, int flag, int mode)
 	tp = &pt_tty[minor(dev)];
 	if ((tp->t_state & TS_ISOPEN) == 0) {
 		ttychars(tp);		/* Set up default chars */
-		tp->t_ispeed = tp->t_ospeed = B115200;
+		tp->t_ispeed = tp->t_ospeed = EXTB;
 		tp->t_flags = 0;	/* No features (nor raw mode) */
 	} else if (tp->t_state&TS_XCLUDE && u.u_uid != 0)
 		return (EBUSY);
@@ -82,22 +76,31 @@ int ptsopen(dev_t dev, int flag, int mode)
 		tp->t_state |= TS_WOPEN;
 		sleep((caddr_t)&tp->t_rawq, TTIPRI);
 	}
-	error = ttyopen(dev, tp);
+	if (linesw[tp->t_line].l_open)
+		error = (*linesw[tp->t_line].l_open)(dev, tp);
+	else
+		error = ENODEV;
 	ptcwakeup (tp, FREAD | FWRITE);
 	return (error);
 }
 
-int ptsclose(dev_t dev, int flag, int mode)
+ptsclose(dev, flag)
+	dev_t dev;
+	int flag;
 {
 	register struct tty *tp;
 
 	tp = &pt_tty[minor(dev)];
+	if (linesw[tp->t_line].l_close)
+		(*linesw[tp->t_line].l_close)(tp, flag);
 	ttyclose(tp);
 	ptcwakeup(tp, FREAD|FWRITE);
-        return 0;
 }
 
-int ptsread(dev_t dev, register struct uio *uio, int flag)
+ptsread(dev, uio, flag)
+	dev_t dev;
+	register struct uio *uio;
+	int flag;
 {
 	register struct tty *tp = &pt_tty[minor(dev)];
 	register struct pt_ioctl *pti = &pt_ioctl[minor(dev)];
@@ -129,8 +132,8 @@ again:
 		if (tp->t_canq.c_cc)
 			return (error);
 	} else
-		if (tp->t_oproc)
-			error = ttread(tp, uio, flag);
+		if (tp->t_oproc && linesw[tp->t_line].l_read)
+			error = (*linesw[tp->t_line].l_read)(tp, uio, flag);
 	ptcwakeup(tp, FWRITE);
 	return (error);
 }
@@ -140,21 +143,27 @@ again:
  * Wakeups of controlling tty will happen
  * indirectly, when tty driver calls ptsstart.
  */
-int ptswrite(dev_t dev, register struct uio *uio, int flag)
+ptswrite(dev, uio, flag)
+	dev_t dev;
+	register struct uio *uio;
+	int flag;
 {
 	register struct tty *tp;
 
 	tp = &pt_tty[minor(dev)];
 	if (tp->t_oproc == 0)
 		return (EIO);
-	return ttwrite(tp, uio, flag);
+	if (! linesw[tp->t_line].l_write)
+		return (ENODEV);
+	return ((*linesw[tp->t_line].l_write) (tp, uio, flag));
 }
 
 /*
  * Start output on pseudo-tty.
  * Wake up process selecting or sleeping for input from controlling tty.
  */
-void ptsstart(struct tty *tp)
+ptsstart(tp)
+	struct tty *tp;
 {
 	register struct pt_ioctl *pti = &pt_ioctl[minor(tp->t_dev)];
 
@@ -167,7 +176,8 @@ void ptsstart(struct tty *tp)
 	ptcwakeup(tp, FREAD);
 }
 
-void ptcwakeup(struct tty *tp, int flag)
+ptcwakeup(tp, flag)
+	struct tty *tp;
 {
 	struct pt_ioctl *pti = &pt_ioctl[minor(tp->t_dev)];
 
@@ -190,7 +200,9 @@ void ptcwakeup(struct tty *tp, int flag)
 }
 
 /*ARGSUSED*/
-int ptcopen(dev_t dev, int flag, int mode)
+ptcopen(dev, flag)
+	dev_t dev;
+	int flag;
 {
 	register struct tty *tp;
 	struct pt_ioctl *pti;
@@ -201,7 +213,8 @@ int ptcopen(dev_t dev, int flag, int mode)
 	if (tp->t_oproc)
 		return (EIO);
 	tp->t_oproc = ptsstart;
-	ttymodem(tp, 1);
+	if (linesw[tp->t_line].l_modem)
+		(void)(*linesw[tp->t_line].l_modem) (tp, 1);
 	pti = &pt_ioctl[minor(dev)];
 	pti->pt_flags = 0;
 	pti->pt_send = 0;
@@ -209,18 +222,23 @@ int ptcopen(dev_t dev, int flag, int mode)
 	return (0);
 }
 
-int ptcclose(dev_t dev, int flag, int mode)
+ptcclose(dev, flag)
+	dev_t dev;
+	int flag;
 {
 	register struct tty *tp;
 
 	tp = &pt_tty[minor(dev)];
-	ttymodem(tp, 0);
+	if (linesw[tp->t_line].l_modem)
+		(void)(*linesw[tp->t_line].l_modem) (tp, 0);
 	tp->t_state &= ~TS_CARR_ON;
 	tp->t_oproc = 0;		/* mark closed */
-        return 0;
 }
 
-int ptcread(dev_t dev, register struct uio *uio, int flag)
+ptcread(dev, uio, flag)
+	dev_t dev;
+	register struct uio *uio;
+	int flag;
 {
 	register struct tty *tp = &pt_tty[minor(dev)];
 	struct pt_ioctl *pti = &pt_ioctl[minor(dev)];
@@ -280,7 +298,9 @@ int ptcread(dev_t dev, register struct uio *uio, int flag)
 	return (error);
 }
 
-void ptsstop(register struct tty *tp, int flush)
+ptsstop(tp, flush)
+	register struct tty *tp;
+	int flush;
 {
 	struct pt_ioctl *pti = &pt_ioctl[minor(tp->t_dev)];
 	int flag;
@@ -301,7 +321,9 @@ void ptsstop(register struct tty *tp, int flush)
 	ptcwakeup(tp, flag);
 }
 
-int ptcselect(dev_t dev, int rw)
+ptcselect(dev, rw)
+	dev_t dev;
+	int rw;
 {
 	register struct tty *tp = &pt_tty[minor(dev)];
 	struct pt_ioctl *pti = &pt_ioctl[minor(dev)];
@@ -327,8 +349,8 @@ int ptcselect(dev_t dev, int rw)
 
 	case 0:					/* exceptional */
 		if ((tp->t_state&TS_ISOPEN) &&
-		    ((pti->pt_flags&PF_PKT && pti->pt_send) ||
-		     (pti->pt_flags&PF_UCNTL && pti->pt_ucntl)))
+		    (pti->pt_flags&PF_PKT && pti->pt_send ||
+		     pti->pt_flags&PF_UCNTL && pti->pt_ucntl))
 			return (1);
 		if ((p = pti->pt_selr) && p->p_wchan == (caddr_t)&selwait)
 			pti->pt_flags |= PF_RCOLL;
@@ -360,10 +382,13 @@ int ptcselect(dev_t dev, int rw)
 	return (0);
 }
 
-int ptcwrite(dev_t dev, register struct uio *uio, int flag)
+ptcwrite(dev, uio, flag)
+	dev_t dev;
+	register struct uio *uio;
+	int flag;
 {
 	register struct tty *tp = &pt_tty[minor(dev)];
-	register char *cp = NULL;
+	register char *cp;
 	register int cc = 0;
 	char locbuf[BUFSIZ];
 	int cnt = 0;
@@ -415,7 +440,8 @@ again:
 				wakeup((caddr_t)&tp->t_rawq);
 				goto block;
 			}
-			ttyinput(*cp++, tp);
+			if (linesw[tp->t_line].l_rint)
+				(*linesw[tp->t_line].l_rint) (*cp++, tp);
 			cnt++;
 			cc--;
 		}
@@ -440,7 +466,12 @@ block:
 	goto again;
 }
 
-int ptyioctl(dev_t dev, u_int cmd, caddr_t data, int flag)
+/*ARGSUSED*/
+ptyioctl(dev, cmd, data, flag)
+	caddr_t data;
+	u_int cmd;
+	dev_t dev;
+	int flag;
 {
 	register struct tty *tp = &pt_tty[minor(dev)];
 	register struct pt_ioctl *pti = &pt_ioctl[minor(dev)];
@@ -486,7 +517,31 @@ int ptyioctl(dev_t dev, u_int cmd, caddr_t data, int flag)
 				;
 			break;
 		}
+/*
+ * Unsure if the comment below still applies or not.  For now put the
+ * new code in ifdef'd out.
+ */
+#ifdef	four_four_bsd
+	if (linesw[t->t_line].l_ioctl)
+		error = (*linesw[t->t_line].l_ioctl) (tp, cmd, data, flag);
+	else
+		error = ttioctl (tp, cmd, data, flag);
+#else
 	error = ttioctl (tp, cmd, data, flag);
+	/*
+	 * Since we use the tty queues internally,
+	 * pty's can't be switched to disciplines which overwrite
+	 * the queues.  We can't tell anything about the discipline
+	 * from here...
+	 */
+	if (linesw[tp->t_line].l_rint &&
+	    linesw[tp->t_line].l_rint != ttyinput) {
+		(*linesw[tp->t_line].l_close)(tp, flag);
+		tp->t_line = 0;
+		(void)(*linesw[tp->t_line].l_open)(dev, tp);
+		error = ENOTTY;
+	}
+#endif
 	if (error < 0) {
 		if (pti->pt_flags & PF_UCNTL &&
 		    (cmd & ~0xff) == UIOCCMD(0)) {

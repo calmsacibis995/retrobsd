@@ -3,6 +3,11 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)words.c	1.3 4/24/85";
+#endif
+
 #include "externs.h"
 
 struct wlist wlist[] = {
@@ -170,5 +175,5 @@ struct wlist wlist[] = {
 	{ "move",	0,		ADJS },
 	{ "make",	0,		ADJS },
 	{ "to",		0,		ADJS },
-	{ 0 },
+	0
 };

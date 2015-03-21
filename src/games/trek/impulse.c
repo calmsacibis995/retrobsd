@@ -3,13 +3,17 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)impulse.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-# include	"getpar.h"
 
 /**
  **	move under impulse power
  **/
-void
+
 impulse()
 {
 	int			course;
@@ -18,14 +22,10 @@ impulse()
 	register int		percent;
 	extern double		move();
 
-	if (Ship.cond == DOCKED) {
-	        printf("Scotty: Sorry captain, but we are still docked.\n");
-		return;
-        }
-	if (damaged(IMPULSE)) {
-	        out(IMPULSE);
-		return;
-        }
+	if (Ship.cond == DOCKED)
+		return (printf("Scotty: Sorry captain, but we are still docked.\n"));
+	if (damaged(IMPULSE))
+		return (out(IMPULSE));
 	if (getcodi(&course, &dist))
 		return;
 	power = 20 + 100 * dist;

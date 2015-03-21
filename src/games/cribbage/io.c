@@ -3,38 +3,32 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)io.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
+# include	<curses.h>
 # include	<ctype.h>
 # include	<signal.h>
-# include	<stdlib.h>
-# include	<string.h>
-# include	<stdarg.h>
-# include	<unistd.h>
 # include	"deck.h"
 # include	"cribbage.h"
 # include	"cribcur.h"
 
-# define	LINESIZE	128
+# define	LINESIZE		128
 
 # ifdef CTRL
 # undef CTRL
 # endif
-# define	CTRL(X)		('X' - 'A' + 1)
+# define	CTRL(X)			('X' - 'A' + 1)
 
-# ifdef CROSS
-#   define	erasechar()	('H' & 31)
-# endif
+# ifndef	erasechar()
+#	define	erasechar()	_tty.sg_erase
+# endif		erasechar()
 
-# ifndef	killchar
-#   define	killchar()	('U' & 31)
-# endif
-
-# ifndef	erasechar
-#   define	erasechar()	_tty.sg_erase
-# endif
-
-# ifndef	killchar
-#   define	killchar()	_tty.sg_kill
-# endif
+# ifndef	killchar()
+#	define	killchar()	_tty.sg_kill
+# endif		killchar()
 
 char		linebuf[ LINESIZE ];
 
@@ -51,14 +45,32 @@ char            *suitname[ SUITS ]      = { "SPADES", "HEARTS", "DIAMONDS",
 
 char            *suitchar[ SUITS ]      = { "S", "H", "D", "C" };
 
+
+
+/*
+ * msgcard:
+ *	Call msgcrd in one of two forms
+ */
+msgcard(c, brief)
+CARD		c;
+BOOLEAN		brief;
+{
+	if (brief)
+		return msgcrd(c, TRUE, (char *) NULL, TRUE);
+	else
+		return msgcrd(c, FALSE, " of ", FALSE);
+}
+
+
+
 /*
  * msgcrd:
  *	Print the value of a card in ascii
  */
-BOOLEAN msgcrd(c, brfrank, mid, brfsuit)
-    CARD	c;
-    char	*mid;
-    BOOLEAN	brfrank,  brfsuit;
+msgcrd(c, brfrank, mid, brfsuit)
+CARD		c;
+char		*mid;
+BOOLEAN		brfrank,  brfsuit;
 {
 	if (c.rank == EMPTY || c.suit == EMPTY)
 	    return FALSE;
@@ -76,28 +88,14 @@ BOOLEAN msgcrd(c, brfrank, mid, brfsuit)
 }
 
 /*
- * msgcard:
- *	Call msgcrd in one of two forms
- */
-BOOLEAN msgcard(c, brief)
-    CARD	c;
-    BOOLEAN	brief;
-{
-	if (brief)
-		return msgcrd(c, TRUE, (char *) NULL, TRUE);
-	else
-		return msgcrd(c, FALSE, " of ", FALSE);
-}
-
-/*
  * printcard:
  *	Print out a card.
  */
-void printcard(win, cardno, c, blank)
-    WINDOW	*win;
-    int		cardno;
-    CARD	c;
-    BOOLEAN	blank;
+printcard(win, cardno, c, blank)
+WINDOW		*win;
+int		cardno;
+CARD		c;
+BOOLEAN		blank;
 {
 	prcard(win, cardno * 2, cardno, c, blank);
 }
@@ -106,11 +104,11 @@ void printcard(win, cardno, c, blank)
  * prcard:
  *	Print out a card on the window at the specified location
  */
-void prcard(win, y, x, c, blank)
-    WINDOW	*win;
-    int		y, x;
-    CARD	c;
-    BOOLEAN	blank;
+prcard(win, y, x, c, blank)
+WINDOW		*win;
+int		y, x;
+CARD		c;
+BOOLEAN		blank;
 {
 	if (c.rank == EMPTY)
 	    return;
@@ -131,11 +129,11 @@ void prcard(win, y, x, c, blank)
  * prhand:
  *	Print a hand of n cards
  */
-void prhand(h, n, win, blank)
-    CARD	h[];
-    int		n;
-    WINDOW	*win;
-    BOOLEAN	blank;
+prhand(h, n, win, blank)
+CARD		h[];
+int		n;
+WINDOW		*win;
+BOOLEAN		blank;
 {
 	register int	i;
 
@@ -145,96 +143,17 @@ void prhand(h, n, win, blank)
 	wrefresh(win);
 }
 
-/*
- * incard:
- *	Inputs a card in any format.  It reads a line ending with a CR
- *	and then parses it.
- */
-BOOLEAN incard(crd)
-    CARD	*crd;
-{
-	register int	i;
-	int		rnk, sut;
-	char		*line, *p, *p1;
-	BOOLEAN		retval;
 
-	retval = FALSE;
-	rnk = sut = EMPTY;
-	if (!(line = getlin()))
-		goto gotit;
-	p = p1 = line;
-	while(*p1 != ' ' && *p1 != 0)
-                ++p1;
-	*p1++ = 0;
-	if(*p == 0)
-                goto gotit;
-			/* IMPORTANT: no real card has 2 char first name */
-	if(  strlen(p) == 2  )  {               /* check for short form */
-	    rnk = EMPTY;
-	    for( i = 0; i < RANKS; i++ )  {
-		if(  *p == *rankchar[i]  )  {
-		    rnk = i;
-		    break;
-		}
-	    }
-	    if(  rnk == EMPTY  )  goto  gotit;     /* it's nothing... */
-	    ++p;                                /* advance to next char */
-	    sut = EMPTY;
-	    for( i = 0; i < SUITS; i++ )  {
-		if(  *p == *suitchar[i]  )  {
-		    sut = i;
-		    break;
-		}
-	    }
-	    if(  sut != EMPTY  )  retval = TRUE;
-	    goto  gotit;
-	}
-	rnk = EMPTY;
-	for( i = 0; i < RANKS; i++ )  {
-	    if(  !strcmp( p, rankname[i] )  ||  !strcmp( p, rankchar[i] )  )  {
-		rnk = i;
-		break;
-	    }
-	}
-	if(  rnk == EMPTY  )  goto  gotit;
-	p = p1;
-	while(*p1 != ' ' && *p1 != 0)
-                ++p1;
-	*p1++ = 0;
-	if(*p == 0)
-            goto  gotit;
-	if(! strcmp("OF", p)) {
-	    p = p1;
-	    while(*p1 != ' ' && *p1 != 0)
-                    ++p1;
-	    *p1++ = 0;
-	    if(*p == 0)
-                goto gotit;
-	}
-	sut = EMPTY;
-	for( i = 0; i < SUITS; i++ )  {
-	    if(  !strcmp( p, suitname[i] )  ||  !strcmp( p, suitchar[i] )  )  {
-		sut = i;
-		break;
-	    }
-	}
-	if(  sut != EMPTY  )
-                retval = TRUE;
-gotit:
-	(*crd).rank = rnk;
-	(*crd).suit = sut;
-	return( retval );
-}
 
 /*
  * infrom:
  *	reads a card, supposedly in hand, accepting unambigous brief
  *	input, returns the index of the card found...
  */
-int infrom(hand, n, prompt)
-    CARD	hand[];
-    int		n;
-    char	*prompt;
+infrom(hand, n, prompt)
+CARD		hand[];
+int		n;
+char		*prompt;
 {
 	register int           i, j;
 	CARD                    crd;
@@ -283,35 +202,90 @@ int infrom(hand, n, prompt)
 	/* NOTREACHED */
 }
 
-/*
- * readchar:
- *	Reads and returns a character, checking for gross input errors
- */
-int readchar()
-{
-    register int	cnt, y, x;
-    auto char		c;
 
-over:
-    cnt = 0;
-    while (read(0, &c, 1) <= 0)
-	if (cnt++ > 100)	/* if we are getting infinite EOFs */
-	    bye(0);		/* quit the game */
-    if (c == CTRL(L)) {
-	wrefresh(curscr);
-	goto over;
-    }
-    if (c == '\r')
-	return '\n';
-    else
-	return c;
+
+/*
+ * incard:
+ *	Inputs a card in any format.  It reads a line ending with a CR
+ *	and then parses it.
+ */
+incard(crd)
+CARD		*crd;
+{
+	char		*getline();
+	register int	i;
+	int		rnk, sut;
+	char		*line, *p, *p1;
+	BOOLEAN		retval;
+
+	retval = FALSE;
+	rnk = sut = EMPTY;
+	if (!(line = getline()))
+		goto gotit;
+	p = p1 = line;
+	while(  *p1 != ' '  &&  *p1 != NULL  )  ++p1;
+	*p1++ = NULL;
+	if(  *p == NULL  )  goto  gotit;
+			/* IMPORTANT: no real card has 2 char first name */
+	if(  strlen(p) == 2  )  {               /* check for short form */
+	    rnk = EMPTY;
+	    for( i = 0; i < RANKS; i++ )  {
+		if(  *p == *rankchar[i]  )  {
+		    rnk = i;
+		    break;
+		}
+	    }
+	    if(  rnk == EMPTY  )  goto  gotit;     /* it's nothing... */
+	    ++p;                                /* advance to next char */
+	    sut = EMPTY;
+	    for( i = 0; i < SUITS; i++ )  {
+		if(  *p == *suitchar[i]  )  {
+		    sut = i;
+		    break;
+		}
+	    }
+	    if(  sut != EMPTY  )  retval = TRUE;
+	    goto  gotit;
+	}
+	rnk = EMPTY;
+	for( i = 0; i < RANKS; i++ )  {
+	    if(  !strcmp( p, rankname[i] )  ||  !strcmp( p, rankchar[i] )  )  {
+		rnk = i;
+		break;
+	    }
+	}
+	if(  rnk == EMPTY  )  goto  gotit;
+	p = p1;
+	while(  *p1 != ' '  &&  *p1 != NULL  )  ++p1;
+	*p1++ = NULL;
+	if(  *p == NULL  )  goto  gotit;
+	if(  !strcmp( "OF", p )  )  {
+	    p = p1;
+	    while(  *p1 != ' '  &&  *p1 != NULL  )  ++p1;
+	    *p1++ = NULL;
+	    if(  *p == NULL  )  goto  gotit;
+	}
+	sut = EMPTY;
+	for( i = 0; i < SUITS; i++ )  {
+	    if(  !strcmp( p, suitname[i] )  ||  !strcmp( p, suitchar[i] )  )  {
+		sut = i;
+		break;
+	    }
+	}
+	if(  sut != EMPTY  )  retval = TRUE;
+gotit:
+	(*crd).rank = rnk;
+	(*crd).suit = sut;
+	return( retval );
 }
+
+
 
 /*
  * getuchar:
  *	Reads and converts to upper case
  */
-int getuchar()
+getuchar()
 {
 	register int		c;
 
@@ -327,17 +301,18 @@ int getuchar()
  *	Reads in a decimal number and makes sure it is between "lo" and
  *	"hi" inclusive.
  */
-int number(lo, hi, prompt)
-    int		lo, hi;
-    char	*prompt;
+number(lo, hi, prompt)
+int		lo, hi;
+char		*prompt;
 {
+	char			*getline();
 	register char		*p;
 	register int		sum;
 
 	sum = 0;
 	for (;;) {
 	    msg(prompt);
-	    if(!(p = getlin()) || *p == 0) {
+	    if(!(p = getline()) || *p == NULL) {
 		msg(quiet ? "Not a number" : "That doesn't look like a number");
 		continue;
 	    }
@@ -351,7 +326,7 @@ int number(lo, hi, prompt)
 		    ++p;
 		}
 
-	    if (*p != ' ' && *p != '\t' && *p != 0)
+	    if (*p != ' ' && *p != '\t' && *p != NULL)
 		sum = lo - 1;
 	    if (sum >= lo && sum <= hi)
 		return sum;
@@ -363,46 +338,22 @@ int number(lo, hi, prompt)
 	}
 }
 
+/*
+ * msg:
+ *	Display a message at the top of the screen.
+ */
 char		Msgbuf[BUFSIZ] = { '\0' };
 
 int		Mpos = 0;
 
 static int	Newpos = 0;
 
-/*
- * doadd:
- *	Perform an add onto the message buffer
- */
-void doadd(char *fmt, va_list ap)
+/* VARARGS1 */
+msg(fmt, args)
+char	*fmt;
+int	args;
 {
-#ifdef CROSS
-    vsnprintf(Msgbuf, BUFSIZ, fmt, ap);
-#else
-    static FILE	junk;
-
-    /*
-     * Do the printf into Msgbuf
-     */
-    junk._flag = _IOWRT + _IOSTRG;
-    junk._ptr = &Msgbuf[Newpos];
-    junk._cnt = BUFSIZ - 1;
-    _doprnt(fmt, ap, &junk);
-    putc('\0', &junk);
-#endif
-    Newpos = strlen(Msgbuf);
-}
-
-/*
- * msg:
- *	Display a message at the top of the screen.
- */
-void msg(char *fmt, ...)
-{
-    va_list ap;
-
-    va_start(ap, fmt);
-    doadd(fmt, ap);
-    va_end(ap);
+    doadd(fmt, &args);
     endmsg();
 }
 
@@ -411,22 +362,21 @@ void msg(char *fmt, ...)
  *	Add things to the current message
  */
 /* VARARGS1 */
-void addmsg(char *fmt, ...)
+addmsg(fmt, args)
+char	*fmt;
+int	args;
 {
-    va_list ap;
-
-    va_start(ap, fmt);
-    doadd(fmt, ap);
-    va_end(ap);
+    doadd(fmt, &args);
 }
-
-int	Lineno = 0;
 
 /*
  * endmsg:
  *	Display a new msg.
  */
-void endmsg()
+
+int	Lineno = 0;
+
+endmsg()
 {
     register int	len;
     register char	*mp, *omp;
@@ -473,27 +423,31 @@ void endmsg()
 }
 
 /*
- * wait_for
- *	Sit around until the guy types the right key
+ * doadd:
+ *	Perform an add onto the message buffer
  */
-void wait_for(ch)
-    register int ch;
+doadd(fmt, args)
+char	*fmt;
+int	*args;
 {
-    register int c;
+    static FILE	junk;
 
-    if (ch == '\n')
-	while ((c = readchar()) != '\n')
-	    continue;
-    else
-	while (readchar() != ch)
-	    continue;
+    /*
+     * Do the printf into Msgbuf
+     */
+    junk._flag = _IOWRT + _IOSTRG;
+    junk._ptr = &Msgbuf[Newpos];
+    junk._cnt = 32767;
+    _doprnt(fmt, args, &junk);
+    putc('\0', &junk);
+    Newpos = strlen(Msgbuf);
 }
 
 /*
  * do_wait:
  *	Wait for the user to type ' ' before doing anything else
  */
-void do_wait()
+do_wait()
 {
     register int line;
     static char prompt[] = { '-', '-', 'M', 'o', 'r', 'e', '-', '-', '\0' };
@@ -512,11 +466,53 @@ void do_wait()
 }
 
 /*
- * getlin:
+ * wait_for
+ *	Sit around until the guy types the right key
+ */
+wait_for(ch)
+register char	ch;
+{
+    register char	c;
+
+    if (ch == '\n')
+	while ((c = readchar()) != '\n')
+	    continue;
+    else
+	while (readchar() != ch)
+	    continue;
+}
+
+/*
+ * readchar:
+ *	Reads and returns a character, checking for gross input errors
+ */
+readchar()
+{
+    register int	cnt, y, x;
+    auto char		c;
+
+over:
+    cnt = 0;
+    while (read(0, &c, 1) <= 0)
+	if (cnt++ > 100)	/* if we are getting infinite EOFs */
+	    bye();		/* quit the game */
+    if (c == CTRL(L)) {
+	wrefresh(curscr);
+	goto over;
+    }
+    if (c == '\r')
+	return '\n';
+    else
+	return c;
+}
+
+/*
+ * getline:
  *      Reads the next line up to '\n' or EOF.  Multiple spaces are
  *	compressed to one space; a space is inserted before a ','
  */
-char *getlin()
+char *
+getline()
 {
     register char	*sp;
     register int	c, oy, ox;
@@ -568,7 +564,7 @@ char *getlin()
  * bye:
  *	Leave the program, cleaning things up as we go.
  */
-void bye(int sig)
+bye()
 {
 	signal(SIGINT, SIG_IGN);
 	mvcur(0, COLS - 1, LINES - 1, 0);

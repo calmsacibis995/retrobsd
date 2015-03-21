@@ -3,7 +3,7 @@
 /* $Log:	object.c,v $
  * Revision 7.0  86/10/08  15:12:55  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -25,10 +25,14 @@ int px, py, vx, vy;
 long energ, mas;
 OBJECT *where;
 {
-    register OBJECT *obj;
+    Reg1 OBJECT *obj;
 
     if (free_root.next == &free_root)
+#ifndef lint
 	obj = (OBJECT *) malloc(sizeof root);
+#else
+	obj = Null(OBJECT*);
+#endif
     else {
 	obj = free_root.next;
 	free_root.next = obj->next;
@@ -57,7 +61,7 @@ OBJECT *where;
 
 void
 unmake_object(curobj)
-register OBJECT *curobj;
+Reg1 OBJECT *curobj;
 {
     curobj->prev->next = curobj->next;
     curobj->next->prev = curobj->prev;
@@ -69,7 +73,7 @@ register OBJECT *curobj;
 
 void
 free_object(curobj)
-register OBJECT *curobj;
+Reg1 OBJECT *curobj;
 {
     curobj->next = free_root.next;
     curobj->prev = &free_root;

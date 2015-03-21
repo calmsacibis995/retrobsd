@@ -117,9 +117,6 @@
 #define HOWMANY 133
 #endif
 
-// PITO: 
-#define readline_timeout 1
-
 /* Ward Christensen / CP/M parameters - Don't change these! */
 #define ENQ 005
 #define CAN ('X'&037)
@@ -212,7 +209,6 @@ char zconv;		/* ZMODEM file conversion request */
 char zmanag;		/* ZMODEM file management request */
 char ztrans;		/* ZMODEM file transport request */
 int Zctlesc;		/* Encode control characters */
-
 int Zrwindow = 1400;	/* RX window size (controls garbage count) */
 
 jmp_buf tohere;		/* For the interrupt on RX timeout */
@@ -362,22 +358,15 @@ char *argv[];
 usage()
 {
 	cucheck();
-	fprintf(stderr,"Usage:	rz [-+abDepqtuvy]		(ZMODEM)\n");
+	fprintf(stderr,"Usage:	rz [-abeuvy]		(ZMODEM)\n");
 	fprintf(stderr,"or	rb [-abuvy]		(YMODEM)\n");
 	fprintf(stderr,"or	rx [-abcv] file	(XMODEM or XMODEM-1k)\n");
-	fprintf(stderr,"	  -+ append transmitted data to an existing file\n");
 	fprintf(stderr,"	  -a ASCII transfer (strip CR)\n");
 	fprintf(stderr,"	  -b Binary transfer for all files\n");
 #ifndef vax11c
 	fprintf(stderr,"	  -c Use 16 bit CRC	(XMODEM)\n");
 #endif
-    fprintf(stderr,"	  -D Output file to /dev/null\n");
 	fprintf(stderr,"	  -e Escape control characters	(ZMODEM)\n");
-    fprintf(stderr,"	  -p Skip file if destination exists\n");
-    fprintf(stderr,"	  -q Quiet suppresses verbosity\n");
-    fprintf(stderr,"	  -t tim Change Rxtimeout to tim tenths of seconds (10-1000)\n");
-	fprintf(stderr,"	  -u Do not make file pathnames lower case \n");
-	fprintf(stderr,"	  -w n Rx window size to n bytes (ZMODEM)\n");
 	fprintf(stderr,"	  -v Verbose more v's give more info\n");
 	fprintf(stderr,"	  -y Yes, clobber existing file if any\n");
 	fprintf(stderr,"%s %s for %s by Chuck Forsberg, Omen Technology INC\n",
@@ -477,7 +466,7 @@ char *rpn;	/* receive a pathname */
 	register c;
 
 #ifdef NFGVMIN
-	readline(readline_timeout);
+	readline(1);
 #else
 	purgeline();
 #endif
@@ -491,7 +480,7 @@ et_tu:
 			zperr( "Pathname fetch returned %d", c);
 			sendline(ACK);
 			Lleft=0;	/* Do read next time ... */
-			readline(readline_timeout);
+			readline(1);
 			goto et_tu;
 		}
 		return ERROR;
@@ -518,7 +507,7 @@ wcrx()
 	for (;;) {
 		sendline(sendchar);	/* send it now, we're ready! */
 		Lleft=0;	/* Do read next time ... */
-		sectcurr=wcgetsec(secbuf, (sectnum&0177)?50:130);  
+		sectcurr=wcgetsec(secbuf, (sectnum&0177)?50:130);
 		report(sectcurr);
 		if (sectcurr==(sectnum+1 &0377)) {
 			sectnum++;
@@ -576,20 +565,20 @@ int maxtime;
 		if (firstch==SOH) {
 			Blklen=128;
 get2:
-			sectcurr=readline(readline_timeout);
-			if ((sectcurr+(oldcrc=readline(readline_timeout)))==0377) {
+			sectcurr=readline(1);
+			if ((sectcurr+(oldcrc=readline(1)))==0377) {
 				oldcrc=checksum=0;
 				for (p=rxbuf,wcj=Blklen; --wcj>=0; ) {
-					if ((firstch=readline(readline_timeout)) < 0)
+					if ((firstch=readline(1)) < 0)
 						goto bilge;
 					oldcrc=updcrc(firstch, oldcrc);
 					checksum += (*p++ = firstch);
 				}
-				if ((firstch=readline(readline_timeout)) < 0)
+				if ((firstch=readline(1)) < 0)
 					goto bilge;
 				if (Crcflg) {
 					oldcrc=updcrc(firstch, oldcrc);
-					if ((firstch=readline(readline_timeout)) < 0)
+					if ((firstch=readline(1)) < 0)
 						goto bilge;
 					oldcrc=updcrc(firstch, oldcrc);
 					if (oldcrc & 0xFFFF)
@@ -611,7 +600,7 @@ get2:
 		}
 		/* make sure eot really is eot and not just mixmash */
 #ifdef NFGVMIN
-		else if (firstch==EOT && readline(readline_timeout)==TIMEOUT)
+		else if (firstch==EOT && readline(1)==TIMEOUT)
 			return WCEOT;
 #else
 		else if (firstch==EOT && Lleft==0)
@@ -637,13 +626,13 @@ bilge:
 
 humbug:
 		Lastrx=0;
-		while(readline(readline_timeout)!=TIMEOUT)
+		while(readline(1)!=TIMEOUT)
 			;
 		if (Firstsec) {
 			sendline(Crcflg?WANTCRC:NAK);
 			Lleft=0;	/* Do read next time ... */
 		} else {
-			maxtime=40; sendline(NAK);  
+			maxtime=40; sendline(NAK);
 			Lleft=0;	/* Do read next time ... */
 		}
 	}
@@ -661,12 +650,10 @@ humbug:
  * timeout is in tenths of seconds
  */
 readline(timeout)
-unsigned int timeout;
+int timeout;
 {
-	unsigned int n;
-    register char *p;
+	register n;
 	static char *cdq;	/* pointer for removing chars from linbuf */
-    int c;
 
 	if (--Lleft >= 0) {
 		if (Verbose > 8) {
@@ -674,11 +661,9 @@ unsigned int timeout;
 		}
 		return (*cdq++ & 0377);
 	}
-		n = timeout/10;
-		if (n < 2 && timeout!=1)
-			n = 3;
-		else if (n==0)
-			n=1;
+	n = timeout/10;
+	if (n < 2)
+		n = 3;
 	if (Verbose > 5)
 		fprintf(stderr, "Calling read: alarm=%d  Readnum=%d ",
 		  n, Readnum);
@@ -692,7 +677,6 @@ unsigned int timeout;
 		return TIMEOUT;
 	}
 	signal(SIGALRM, alrm); alarm(n);
-    //errno=0;
 	Lleft=read(0, cdq=linbuf, Readnum);
 	alarm(0);
 	if (Verbose > 5) {
@@ -700,22 +684,10 @@ unsigned int timeout;
 	}
 	if (Lleft < 1)
 		return TIMEOUT;
-
+	--Lleft;
 	if (Verbose > 8) {
-		for (p=cdq, n = Lleft; --n >= 0; ) {
-			fprintf(stderr, "%02x ", *p++ &0377);
-		}
-		fprintf(stderr, "\n");
-		for (p=cdq, n = Lleft; --n >= 0; ) {
-			c = *p++ & 0177;
-			if (!isprint(c))
-				c = '.';
-			fprintf(stderr, " %c ", c);
-		}
-		fprintf(stderr, "\n");
+		fprintf(stderr, "%02x ", *cdq&0377);
 	}
-
-    --Lleft;
 	return (*cdq++ & 0377);
 }
 
@@ -1511,7 +1483,7 @@ ackbibi()
 		zshhdr(4,ZFIN, Txhdr);
 		switch (readline(100)) {
 		case 'O':
-			readline(readline_timeout);	/* Discard 2nd 'O' */
+			readline(1);	/* Discard 2nd 'O' */
 			vfile("ackbibi complete");
 			return;
 		case RCDO:

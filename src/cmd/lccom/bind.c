@@ -18,8 +18,8 @@ Binding bindings[] = {
         { "alpha-osf",            &alphaIR },
 #endif
 #ifdef TARGET_MIPS
-        { "mips-el",              &mipselIR },
         { "mips-eb",              &mipsebIR },
+        { "mips-el",              &mipselIR },
 #endif
 #ifdef TARGET_SPARC
         { "sparc-sun",            &sparcIR },

@@ -1,5 +1,3 @@
-/*	$Id: token.c,v 1.48.2.2 2011/03/12 17:08:26 ragge Exp $	*/
-
 /*
  * Copyright (c) 2004,2009 Anders Magnusson. All rights reserved.
  *
@@ -39,19 +37,12 @@
  *	- inch() is like inpch but \\n and trigraphs are expanded.
  *	- unch() pushes back a character to the input stream.
  */
-
-#include "config.h"
-
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
-#ifdef HAVE_UNISTD_H
 #include <unistd.h>
-#endif
 #include <fcntl.h>
 #include <errno.h>
 
-#include "compat.h"
 #include "cpp.h"
 #include "y.tab.h"
 
@@ -80,8 +71,9 @@ extern void yyset_lineno (int);
 
 static int inch(void);
 
+size_t strlcat(char *dst, const char *src, size_t siz);
+
 int inif;
-extern int dflag;
 
 #define	PUTCH(ch) if (!flslvl) putch(ch)
 /* protection against recursion in #include */
@@ -91,16 +83,25 @@ static int inclevel;
 /* get next character unaltered */
 #define	NXTCH() (ifiles->curptr < ifiles->maxread ? *ifiles->curptr++ : inpch())
 
-usch yytext[CPPBUF];
+#ifdef YYTEXT_POINTER
+static char buf[CPPBUF];
+char *yytext = buf;
+#else
+char yytext[CPPBUF];
+#endif
 
-char spechr[256] = {
-	0,	0,	0,	0,	C_SPEC,	C_SPEC,	0,	0,
-	0,	C_WSNL,	C_SPEC|C_WSNL,	0,
-	0,	C_WSNL,	0,	0,
+#define	C_SPEC	1
+#define	C_EP	2
+#define	C_ID	4
+#define	C_I	(C_SPEC|C_ID)
+#define	C_2	8		/* for yylex() tokenizing */
+static const char spechr[256] = {
+	0,	0,	0,	0,	0,	0,	0,	0,
+	0,	0,	C_SPEC,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 	0,	0,	0,	0,	0,	0,	0,	0,
 
-	C_WSNL,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
+	0,	C_2,	C_SPEC,	0,	0,	0,	C_2,	C_SPEC,
 	0,	0,	0,	C_2,	0,	C_2,	0,	C_SPEC|C_2,
 	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,	C_I,
 	C_I,	C_I,	0,	0,	C_2,	C_2,	C_2,	C_SPEC,
@@ -117,55 +118,14 @@ char spechr[256] = {
 
 };
 
-/*
- * No-replacement array.  If a macro is found and exists in this array
- * then no replacement shall occur.  This is a stack.
- */
-struct symtab *norep[RECMAX];	/* Symbol table index table */
-int norepptr = 1;			/* Top of index table */
-unsigned short bptr[RECMAX];	/* currently active noexpand macro stack */
-int bidx;			/* Top of bptr stack */
-
 static void
 unch(int c)
 {
-		
+
 	--ifiles->curptr;
 	if (ifiles->curptr < ifiles->bbuf)
 		error("pushback buffer full");
 	*ifiles->curptr = (usch)c;
-}
-
-static int
-eatcmnt(void)
-{
-	int ch;
-
-	if (Cflag) { PUTCH('/'); PUTCH('*'); }
-	for (;;) {
-		ch = inch();
-		if (ch == '\n') {
-			ifiles->lineno++;
-			PUTCH('\n');
-		}
-		if (ch == -1)
-			return -1;
-		if (ch == '*') {
-			ch = inch();
-			if (ch == '/') {
-				if (Cflag) {
-					PUTCH('*');
-					PUTCH('/');
-				} else
-					PUTCH(' ');
-				break;
-			}
-			unch(ch);
-			ch = '*';
-		}
-		if (Cflag) PUTCH(ch);
-	}
-	return 0;
 }
 
 /*
@@ -182,38 +142,51 @@ static void
 fastscan(void)
 {
 	struct symtab *nl;
-	int ch, i, ccnt/*, onemore*/;
-	usch *cp;
+	int ch, i;
 
 	goto run;
 	for (;;) {
 		ch = NXTCH();
 xloop:		if (ch == -1)
 			return;
-		if (dflag>1)
-			printf("fastscan ch %d (%c)\n", ch, ch > 31 ? ch : '@');
 		if ((spechr[ch] & C_SPEC) == 0) {
 			PUTCH(ch);
 			continue;
 		}
 		switch (ch) {
-		case EBLOCK:
-		case WARN:
-		case CONC:
-			error("bad char passed");
-			break;
-
 		case '/': /* Comments */
 			if ((ch = inch()) == '/') {
-cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
+				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 				do {
 					if (Cflag) PUTCH(ch);
 					ch = inch();
 				} while (ch != -1 && ch != '\n');
 				goto xloop;
 			} else if (ch == '*') {
-				if (eatcmnt())
-					return;
+				if (Cflag) { PUTCH('/'); PUTCH('*'); }
+				for (;;) {
+					ch = inch();
+					if (ch == '\n') {
+						ifiles->lineno++;
+						PUTCH('\n');
+					}
+					if (ch == -1)
+						return;
+					if (ch == '*') {
+						ch = inch();
+						if (ch == '/') {
+							if (Cflag) {
+								PUTCH('*');
+								PUTCH('/');
+							} else
+								PUTCH(' ');
+							break;
+						}
+						unch(ch);
+						ch = '*';
+					}
+					if (Cflag) PUTCH(ch);
+				}
 			} else {
 				PUTCH('/');
 				goto xloop;
@@ -236,30 +209,11 @@ cppcmt:				if (Cflag) { PUTCH(ch); } else { PUTCH(' '); }
 			goto xloop;
 
 		case '\n': /* newlines, for pp directives */
-run2:			ifiles->lineno++;
+			ifiles->lineno++;
 			do {
 				PUTCH(ch);
 run:				ch = NXTCH();
-				if (ch == '/') {
-					ch = NXTCH();
-					if (ch == '/')
-						goto cppcmt;
-					if (ch == '*') {
-						if (eatcmnt())
-							return;
-						goto run;
-					} 
-					unch(ch);
-					ch = '/';
-				}
 			} while (ch == ' ' || ch == '\t');
-			if (ch == '\\') {
-				ch = NXTCH();
-				if (ch == '\n')
-					goto run2;
-				unch(ch);
-				ch = '\\';
-			}
 			if (ch == '#') {
 				ppdir();
 				continue;
@@ -278,7 +232,7 @@ run:				ch = NXTCH();
 		case '\"': /* strings */
 str:			PUTCH(ch);
 			while ((ch = inch()) != '\"') {
-					PUTCH(ch);
+				PUTCH(ch);
 				if (ch == '\\') {
 					ch = inch();
 					PUTCH(ch);
@@ -299,16 +253,7 @@ str:			PUTCH(ch);
 		case '5': case '6': case '7': case '8': case '9':
 			do {
 				PUTCH(ch);
-nxt:				ch = NXTCH();
-				if (ch == '\\') {
-					ch = NXTCH();
-					if (ch == '\n') {
-						goto nxt;
-					} else {
-						unch(ch);
-						ch = '\\';
-					}
-				}
+				ch = NXTCH();
 				if (spechr[ch] & C_EP) {
 					PUTCH(ch);
 					ch = NXTCH();
@@ -356,7 +301,7 @@ con:			PUTCH(ch);
 					ch = NXTCH();
 				goto xloop;
 			}
-			/*onemore =*/ i = ccnt = 0;
+			i = 0;
 			do {
 				yytext[i++] = (usch)ch;
 				ch = NXTCH();
@@ -373,17 +318,14 @@ con:			PUTCH(ch);
 				if (ch < 0)
 					return;
 			} while (spechr[ch] & C_ID);
-
 			yytext[i] = 0;
 			unch(ch);
-
-			cp = stringbuf;
-			if ((nl = lookup((usch *)yytext, FIND)) && kfind(nl)) {
-				putstr(stringbuf);
+			if ((nl = lookup((usch *)yytext, FIND)) != 0) {
+				usch *op = stringbuf;
+				putstr(gotident(nl));
+				stringbuf = op;
 			} else
 				putstr((usch *)yytext);
-			stringbuf = cp;
-
 			break;
 		}
 	}
@@ -411,7 +353,7 @@ zagain:
 		yyp = 0;
 		break;
 
-	case '0': case '1': case '2': case '3': case '4': case '5': 
+	case '0': case '1': case '2': case '3': case '4': case '5':
 	case '6': case '7': case '8': case '9':
 		/* readin a "pp-number" */
 ppnum:		for (;;) {
@@ -428,7 +370,7 @@ ppnum:		for (;;) {
 			if ((spechr[ch] & C_ID) || ch == '.') {
 				yytext[yyp++] = (usch)ch;
 				continue;
-			} 
+			}
 			break;
 		}
 		unch(ch);
@@ -437,7 +379,7 @@ ppnum:		for (;;) {
 		return NUMBER;
 
 	case '\'':
-chlit:		
+chlit:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
 				yytext[yyp++] = (usch)ch;
@@ -489,10 +431,7 @@ chlit:
 		more:	while ((c = inch()) && c != '*') {
 				if (c == '\n')
 					putch(c), ifiles->lineno++;
-				else if (c == EBLOCK) {
-					(void)inch();
-					(void)inch();
-				} else if (c == 1) /* WARN */
+				else if (c == 1) /* WARN */
 					wrn = 1;
 			}
 			if (c == 0)
@@ -525,15 +464,13 @@ chlit:
 		goto any;
 
 	case '\"':
-		if (tflag)
-			goto any;
 	strng:
 		for (;;) {
 			if ((ch = inch()) == '\\') {
 				yytext[yyp++] = (usch)ch;
 				yytext[yyp++] = (usch)inch();
 				continue;
-			} else 
+			} else
 				yytext[yyp++] = (usch)ch;
 			if (ch == '\"')
 				break;
@@ -542,10 +479,10 @@ chlit:
 		return(STRING);
 
 	case 'L':
-		if ((ch = inch()) == '\"' && !tflag) {
+		if ((ch = inch()) == '\"') {
 			yytext[yyp++] = (usch)ch;
 			goto strng;
-		} else if (ch == '\'' && !tflag) {
+		} else if (ch == '\'') {
 			yytext[yyp++] = (usch)ch;
 			goto chlit;
 		}
@@ -553,15 +490,15 @@ chlit:
 		/* FALLTHROUGH */
 
 	/* Yetch, all identifiers */
-	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': 
-	case 'g': case 'h': case 'i': case 'j': case 'k': case 'l': 
-	case 'm': case 'n': case 'o': case 'p': case 'q': case 'r': 
-	case 's': case 't': case 'u': case 'v': case 'w': case 'x': 
+	case 'a': case 'b': case 'c': case 'd': case 'e': case 'f':
+	case 'g': case 'h': case 'i': case 'j': case 'k': case 'l':
+	case 'm': case 'n': case 'o': case 'p': case 'q': case 'r':
+	case 's': case 't': case 'u': case 'v': case 'w': case 'x':
 	case 'y': case 'z':
-	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F': 
+	case 'A': case 'B': case 'C': case 'D': case 'E': case 'F':
 	case 'G': case 'H': case 'I': case 'J': case 'K':
-	case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R': 
-	case 'S': case 'T': case 'U': case 'V': case 'W': case 'X': 
+	case 'M': case 'N': case 'O': case 'P': case 'Q': case 'R':
+	case 'S': case 'T': case 'U': case 'V': case 'W': case 'X':
 	case 'Y': case 'Z':
 	case '_': /* {L}({L}|{D})* */
 
@@ -650,7 +587,7 @@ yylex()
 		return NUMBER;
 
 	case IDENT:
-		if (strcmp((char *)yytext, "defined") == 0) {
+		if (strcmp(yytext, "defined") == 0) {
 			ifdef = 1;
 			return DEFINED;
 		}
@@ -659,15 +596,11 @@ yylex()
 			yylval.node.nd_val = nl != NULL;
 			ifdef = 0;
 		} else if (nl && noex == 0) {
-			usch *och = stringbuf;
-			int i;
+			usch *c, *och = stringbuf;
 
-			i = kfind(nl);
-			unch(WARN);
-			if (i)
-				unpstr(stringbuf);
-			else
-				unpstr(nl->namep);
+			c = gotident(nl);
+			unch(1);
+			unpstr(c);
 			stringbuf = och;
 			noex = 1;
 			return yylex();
@@ -676,7 +609,7 @@ yylex()
 		}
 		yylval.node.op = NUMBER;
 		return NUMBER;
-	case WARN:
+	case 1: /* WARN */
 		noex = 0;
 		return yylex();
 	default:
@@ -732,6 +665,41 @@ msdos:		if ((c = inpch()) == '\n') {
 	default:
 		return c;
 	}
+}
+
+/*
+ * Appends src to string dst of size siz (unlike strncat, siz is the
+ * full size of dst, not space left).  At most siz-1 characters
+ * will be copied.  Always NUL terminates (unless siz <= strlen(dst)).
+ * Returns strlen(initial dst) + strlen(src); if retval >= siz,
+ * truncation occurred.
+ */
+size_t
+strlcat(char *dst, const char *src, size_t siz)
+{
+	char *d = dst;
+	const char *s = src;
+	size_t n = siz;
+	size_t dlen;
+
+	/* Find the end of dst and adjust bytes left but don't go past end */
+	while (n-- != 0 && *d != '\0')
+		d++;
+	dlen = d - dst;
+	n = siz - dlen;
+
+	if (n == 0)
+		return(dlen + strlen(s));
+	while (*s != '\0') {
+		if (n != 1) {
+			*d++ = *s;
+			n--;
+		}
+		s++;
+	}
+	*d = '\0';
+
+	return(dlen + (s - src));	/* count does not include NUL */
 }
 
 /*
@@ -802,9 +770,6 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		ic->infil = 0;
 		ic->orgfn = ic->fname = (const usch *)"<stdin>";
 	}
-#ifndef BUF_STACK
-	ic->bbuf = malloc(BBUFSZ);
-#endif
 	ic->buffer = ic->bbuf+NAMEMAX;
 	ic->curptr = ic->buffer;
 	ifiles = ic;
@@ -821,7 +786,8 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 		prinit(initar, ic);
 		initar = NULL;
 		if (dMflag)
-			write(ofd, ic->buffer, strlen((char *)ic->buffer));
+			if (write(ofd, ic->buffer, strlen((char *)ic->buffer)) < 0)
+                            /* ignore */;
 		fastscan();
 		prtline();
 		ic->infil = oin;
@@ -834,9 +800,6 @@ pushfile(const usch *file, const usch *fn, int idx, void *incs)
 	if (otrulvl != trulvl || flslvl)
 		error("unterminated conditional");
 
-#ifndef BUF_STACK
-	free(ic->bbuf);
-#endif
 	ifiles = ic->next;
 	close(ic->infil);
 	inclevel--;
@@ -856,7 +819,8 @@ prtline()
 			return; /* no output */
 		if (ifiles->lineno == 1) {
 			s = sheap("%s: %s\n", Mfile, ifiles->fname);
-			write(ofd, s, strlen((char *)s));
+			if (write(ofd, s, strlen((char *)s)) < 0)
+                            /* ignore */;
 		}
 	} else if (!Pflag)
 		putstr(sheap("\n# %d \"%s\"\n", ifiles->lineno, ifiles->fname));
@@ -867,8 +831,8 @@ void
 cunput(int c)
 {
 #ifdef CPP_DEBUG
-//	extern int dflag;
-//	if (dflag)printf(": '%c'(%d)\n", c > 31 ? c : ' ', c);
+	extern int dflag;
+	if (dflag)printf(": '%c'(%d)", c > 31 ? c : ' ', c);
 #endif
 #if 0
 if (c == 10) {
@@ -900,7 +864,7 @@ cvtdig(int rad)
 {
 	unsigned long long rv = 0;
 	unsigned long long rv2 = 0;
-	usch *y = yytext;
+	char *y = yytext;
 	int c;
 
 	c = *y++;
@@ -1020,8 +984,8 @@ skpln(void)
 }
 
 static void
-ifdefstmt(void)		 
-{ 
+ifdefstmt(void)
+{
 	int t;
 
 	if (flslvl) {
@@ -1042,8 +1006,8 @@ ifdefstmt(void)
 }
 
 static void
-ifndefstmt(void)	  
-{ 
+ifndefstmt(void)
+{
 	int t;
 
 	if (flslvl) {
@@ -1064,7 +1028,7 @@ ifndefstmt(void)
 }
 
 static void
-endifstmt(void)		 
+endifstmt(void)
 {
 	if (flslvl) {
 		flslvl--;
@@ -1198,7 +1162,7 @@ pragmastmt(void)
 	if (sloscan() != WSPACE)
 		error("bad pragma");
 	if (!flslvl)
-		putstr((const usch *)"\n#pragma ");
+		putstr((const usch *)"#pragma ");
 	do {
 		c = inch();
 		if (!flslvl)

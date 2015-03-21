@@ -5,7 +5,7 @@
  */
 #define	BSD		211	/* 2.11 * 100, as cpp doesn't do floats */
 
-#define offsetof(type, member)  ((size_t)(&((type *)0)->member))
+#include <sys/stddef.h>		/* for 'offsetof' */
 
 /*
  * Machine type dependent parameters.
@@ -15,10 +15,7 @@
 /*
  * Machine-independent constants
  */
-#ifndef NMOUNT
 #define NMOUNT		2	/* number of mountable file systems */
-#endif
-
 #define	MAXUPRC		20	/* max processes per user */
 #define	NOFILE		30	/* max open files per process */
 #define	NCARGS		5120	/* # characters in exec arglist */

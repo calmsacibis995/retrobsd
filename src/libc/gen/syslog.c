@@ -33,7 +33,6 @@
 #include <sys/types.h>
 #include <syslog.h>
 #include <sys/uio.h>
-#include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -73,7 +72,7 @@ vsyslog(pri, fmt, ap)
 	register char *p, *t;
 	time_t now;
 	int fd, saved_errno;
-	char *stdp = 0, tbuf[640], fmt_cpy[512];
+	char *stdp, tbuf[640], fmt_cpy[512];
 	pid_t	pid;
 
 #define	INTERNALLOG	LOG_ERR|LOG_CONS|LOG_PERROR|LOG_PID
@@ -85,7 +84,7 @@ vsyslog(pri, fmt, ap)
 	}
 
 	/* Check priority against setlogmask values. */
-	if (! LOG_MASK(LOG_PRI(pri)) && LogMask)
+	if (!LOG_MASK(LOG_PRI(pri)) & LogMask)
 		return;
 
 	saved_errno = errno;
@@ -113,7 +112,7 @@ vsyslog(pri, fmt, ap)
 	}
 
 	/* Substitute error message for %m. */
-	for (t = fmt_cpy; (ch = *fmt); ++fmt)
+	for (t = fmt_cpy; ch = *fmt; ++fmt)
 		if (ch == '%' && fmt[1] == 'm') {
 			++fmt;
 			t += sprintf(t, "%s", strerror(saved_errno));

@@ -11,14 +11,17 @@
 
 char msgs[NMESSAGES][DCOLS] = {"", "", "", "", ""};
 short msg_col = 0, imsg = -1;
-char msg_cleared = 1, rmsg = 0;
+boolean msg_cleared = 1, rmsg = 0;
 char hunger_str[8] = "";
 char *more = "-more-";
 
-void
+extern boolean cant_int, did_int, interrupted, save_is_interactive;
+extern short add_strength;
+extern short cur_level;
+
 message(msg, intrpt)
-        char *msg;
-        boolean intrpt;
+char *msg;
+boolean intrpt;
 {
 	cant_int = 1;
 
@@ -54,9 +57,8 @@ message(msg, intrpt)
 	}
 }
 
-void
 remessage(c)
-        int c;
+short c;
 {
 	if (imsg != -1) {
 		check_message();
@@ -71,7 +73,6 @@ remessage(c)
 	}
 }
 
-void
 check_message()
 {
 	if (msg_cleared) {
@@ -83,15 +84,14 @@ check_message()
 	msg_cleared = 1;
 }
 
-int
 get_input_line(prompt, insert, buf, if_cancelled, add_blank, do_echo)
-        char *prompt, *buf, *insert;
-        char *if_cancelled;
-        boolean add_blank;
-        boolean do_echo;
+char *prompt, *buf, *insert;
+char *if_cancelled;
+boolean add_blank;
+boolean do_echo;
 {
-	int ch;
-	int i = 0, n;
+	short ch;
+	short i = 0, n;
 
 	message(prompt, 0);
 	n = strlen(prompt);
@@ -142,40 +142,9 @@ get_input_line(prompt, insert, buf, if_cancelled, add_blank, do_echo)
 	return(i);
 }
 
-static void
-save_screen()
-{
-	FILE *fp;
-	int i, j;
-	char buf[DCOLS+2];
-	boolean found_non_blank;
-
-	fp = fopen("rogue.screen", "w");
-	if (fp != NULL) {
-		for (i = 0; i < DROWS; i++) {
-			found_non_blank = 0;
-			for (j = (DCOLS - 1); j >= 0; j--) {
-				buf[j] = mvinch(i, j);
-				if (!found_non_blank) {
-					if ((buf[j] != ' ') || (j == 0)) {
-						buf[j + ((j == 0) ? 0 : 1)] = 0;
-						found_non_blank = 1;
-					}
-				}
-			}
-			fputs(buf, fp);
-			putc('\n', fp);
-		}
-		fclose(fp);
-	} else {
-		sound_bell();
-	}
-}
-
-int
 rgetchar()
 {
-	register int ch;
+	register ch;
 
 	for(;;) {
 		ch = getchar();
@@ -199,27 +168,13 @@ rgetchar()
 		}
 	}
 }
-
-static void
-pad(s, n)
-        char *s;
-        int n;
-{
-	int i;
-
-	i = strlen(s);
-	while (i++ < n) {
-		addch(' ');
-	}
-}
-
 /*
- * Level: 99 Gold: 999999 Hp: 999(999) Str: 99(99) Arm: 99 Exp: 21/10000000 Hungry
- * 0    5    1    5    2    5    3    5    4    5    5    5    6    5    7    5
- */
-void
+Level: 99 Gold: 999999 Hp: 999(999) Str: 99(99) Arm: 99 Exp: 21/10000000 Hungry
+0    5    1    5    2    5    3    5    4    5    5    5    6    5    7    5
+*/
+
 print_stats(stat_mask)
-        register int stat_mask;
+register stat_mask;
 {
 	char buf[16];
 	boolean label;
@@ -304,7 +259,45 @@ print_stats(stat_mask)
 	refresh();
 }
 
-void
+pad(s, n)
+char *s;
+short n;
+{
+	short i;
+
+	for (i = strlen(s); i < n; i++) {
+		addch(' ');
+	}
+}
+
+save_screen()
+{
+	FILE *fp;
+	short i, j;
+	char buf[DCOLS+2];
+	boolean found_non_blank;
+
+	if ((fp = fopen("rogue.screen", "w")) != NULL) {
+		for (i = 0; i < DROWS; i++) {
+			found_non_blank = 0;
+			for (j = (DCOLS - 1); j >= 0; j--) {
+				buf[j] = mvinch(i, j);
+				if (!found_non_blank) {
+					if ((buf[j] != ' ') || (j == 0)) {
+						buf[j + ((j == 0) ? 0 : 1)] = 0;
+						found_non_blank = 1;
+					}
+				}
+			}
+			fputs(buf, fp);
+			putc('\n', fp);
+		}
+		fclose(fp);
+	} else {
+		sound_bell();
+	}
+}
+
 sound_bell()
 {
 	putchar(7);
@@ -313,16 +306,15 @@ sound_bell()
 
 boolean
 is_digit(ch)
-        int ch;
+short ch;
 {
 	return((ch >= '0') && (ch <= '9'));
 }
 
-int
 r_index(str, ch, last)
-        char *str;
-        int ch;
-        boolean last;
+char *str;
+int ch;
+boolean last;
 {
 	int i = 0;
 

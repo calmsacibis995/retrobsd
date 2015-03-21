@@ -8,11 +8,10 @@
 TOPSRC		= $(shell cd ../../..; pwd)
 include $(TOPSRC)/target.mk
 
-CFLAGS		+= -Wall -Werror -DMULTIWIN=0
-#CFLAGS		+= -DDEBUG
+CFLAGS		+= -DDEBUG -Wall -Werror
 
-OBJS            = r.cmd.o r.edit.o r.file.o r.gettc.o r.misc.o \
-                  r.macro.o r.main.o r.display.o r.termcap.o r.ttyio.o r.window.o
+OBJS            = r.cmd.o r.edit.o r.file.o r.gettc.o r.hlam.o \
+                  r.mac.o r.main.o r.tele.o r.termc.o r.ttyio.o r.wind.o
 
 all:            re
 

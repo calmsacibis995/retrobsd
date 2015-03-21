@@ -10,7 +10,11 @@
 #include "rogue.h"
 
 room rooms[MAXROOMS];
-char rooms_visited[MAXROOMS];
+boolean rooms_visited[MAXROOMS];
+
+extern short blind;
+extern boolean detect_monster, jump, passgo, no_skull, ask_quit;
+extern char *nick_name, *fruit, *save_file, *press_space;
 
 #define NOPTS 7
 
@@ -18,7 +22,7 @@ struct option {
 	char *prompt;
 	boolean is_bool;
 	char **strval;
-	char *bval;
+	boolean *bval;
 } options[NOPTS] = {
 	{
 		"Show position only at end of run (\"jump\"): ",
@@ -50,11 +54,10 @@ struct option {
 	}
 };
 
-void
 light_up_room(rn)
-        int rn;
+int rn;
 {
-	int i, j;
+	short i, j;
 
 	if (!blind) {
 		for (i = rooms[rn].top_row;
@@ -64,8 +67,7 @@ light_up_room(rn)
 				if (dungeon[i][j] & MONSTER) {
 					object *monster;
 
-					monster = object_at(&level_monsters, i, j);
-					if (monster) {
+					if (monster = object_at(&level_monsters, i, j)) {
 						dungeon[monster->row][monster->col] &= (~MONSTER);
 						monster->trail_char =
 							get_dungeon_char(monster->row, monster->col);
@@ -79,10 +81,9 @@ light_up_room(rn)
 	}
 }
 
-void
 light_passage(row, col)
 {
-	int i, j, i_end, j_end;
+	short i, j, i_end, j_end;
 
 	if (blind) {
 		return;
@@ -99,11 +100,10 @@ light_passage(row, col)
 	}
 }
 
-void
 darken_room(rn)
-        int rn;
+short rn;
 {
-	int i, j;
+	short i, j;
 
 	for (i = rooms[rn].top_row + 1; i < rooms[rn].bottom_row; i++) {
 		for (j = rooms[rn].left_col + 1; j < rooms[rn].right_col; j++) {
@@ -124,11 +124,10 @@ darken_room(rn)
 	}
 }
 
-int
 get_dungeon_char(row, col)
-        register int row, col;
+register row, col;
 {
-	register unsigned mask = dungeon[row][col];
+	register unsigned short mask = dungeon[row][col];
 
 	if (mask & MONSTER) {
 		return(gmc_row_col(row, col));
@@ -173,9 +172,8 @@ get_dungeon_char(row, col)
 	return(' ');
 }
 
-int
 get_mask_char(mask)
-        register unsigned int mask;
+register unsigned short mask;
 {
 		switch(mask) {
 		case SCROL:
@@ -201,13 +199,12 @@ get_mask_char(mask)
 		}
 }
 
-void
 gr_row_col(row, col, mask)
-        int *row, *col;
-        unsigned mask;
+short *row, *col;
+unsigned short mask;
 {
-	int rn;
-	int r, c;
+	short rn;
+	short r, c;
 
 	do {
 		r = get_rand(MIN_ROW, DROWS-2);
@@ -223,10 +220,9 @@ gr_row_col(row, col, mask)
 	*col = c;
 }
 
-int
 gr_room()
 {
-	int i;
+	short i;
 
 	do {
 		i = get_rand(0, MAXROOMS-1);
@@ -235,12 +231,11 @@ gr_room()
 	return(i);
 }
 
-int
 party_objects(rn)
 {
-	int i, j, nf = 0;
+	short i, j, nf = 0;
 	object *obj;
-	int n, N, row, col;
+	short n, N, row, col;
 	boolean found;
 
 	N = ((rooms[rn].bottom_row - rooms[rn].top_row) - 1) *
@@ -268,11 +263,10 @@ party_objects(rn)
 	return(nf);
 }
 
-int
 get_room_number(row, col)
-        register int row, col;
+register row, col;
 {
-	int i;
+	short i;
 
 	for (i = 0; i < MAXROOMS; i++) {
 		if ((row >= rooms[i].top_row) && (row <= rooms[i].bottom_row) &&
@@ -283,26 +277,9 @@ get_room_number(row, col)
 	return(NO_ROOM);
 }
 
-static void
-visit_rooms(rn)
-        int rn;
-{
-	int i, oth_rn;
-
-	rooms_visited[rn] = 1;
-
-	for (i = 0; i < 4; i++) {
-		oth_rn = rooms[rn].doors[i].oth_room;
-		if ((oth_rn >= 0) && (!rooms_visited[oth_rn])) {
-			visit_rooms(oth_rn);
-		}
-	}
-}
-
-int
 is_all_connected()
 {
-	int i, starting_room = 0;
+	short i, starting_room;
 
 	for (i = 0; i < MAXROOMS; i++) {
 		rooms_visited[i] = 0;
@@ -321,12 +298,28 @@ is_all_connected()
 	return(1);
 }
 
-void
+visit_rooms(rn)
+int rn;
+{
+	short i;
+	short oth_rn;
+
+	rooms_visited[rn] = 1;
+
+	for (i = 0; i < 4; i++) {
+		oth_rn = rooms[rn].doors[i].oth_room;
+		if ((oth_rn >= 0) && (!rooms_visited[oth_rn])) {
+			visit_rooms(oth_rn);
+		}
+	}
+}
+
 draw_magic_map()
 {
-	int i, j, ch, och;
-	unsigned mask = (HORWALL | VERTWALL | DOOR | TUNNEL | TRAP | STAIRS | MONSTER);
-	unsigned s;
+	short i, j, ch, och;
+	unsigned short mask = (HORWALL | VERTWALL | DOOR | TUNNEL | TRAP | STAIRS |
+			MONSTER);
+	unsigned short s;
 
 	for (i = 0; i < DROWS; i++) {
 		for (j = 0; j < DCOLS; j++) {
@@ -357,8 +350,7 @@ draw_magic_map()
 					if (s & MONSTER) {
 						object *monster;
 
-						monster = object_at(&level_monsters, i, j);
-						if (monster) {
+						if (monster = object_at(&level_monsters, i, j)) {
 							monster->trail_char = ch;
 						}
 					}
@@ -368,37 +360,13 @@ draw_magic_map()
 	}
 }
 
-static int
-get_oth_room(rn, row, col)
-        int rn, *row, *col;
-{
-	int d = -1;
-
-	if (*row == rooms[rn].top_row) {
-		d = UPWARD/2;
-	} else if (*row == rooms[rn].bottom_row) {
-		d = DOWN/2;
-	} else if (*col == rooms[rn].left_col) {
-		d = LEFT/2;
-	} else if (*col == rooms[rn].right_col) {
-		d = RIGHT/2;
-	}
-	if ((d != -1) && (rooms[rn].doors[d].oth_room >= 0)) {
-		*row = rooms[rn].doors[d].oth_row;
-		*col = rooms[rn].doors[d].oth_col;
-		return(1);
-	}
-	return(0);
-}
-
-void
 dr_course(monster, entering, row, col)
-        object *monster;
-        boolean entering;
-        int row, col;
+object *monster;
+boolean entering;
+short row, col;
 {
-	int i, j, k, rn;
-	int r, rr;
+	short i, j, k, rn;
+	short r, rr;
 
 	monster->row = row;
 	monster->col = col;
@@ -466,46 +434,33 @@ dr_course(monster, entering, row, col)
 	}
 }
 
-static void
-opt_erase(i)
-        int i;
+get_oth_room(rn, row, col)
+short rn, *row, *col;
 {
-	struct option *opt = &options[i];
+	short d = -1;
 
-	mvaddstr(i, 0, opt->prompt);
-	clrtoeol();
-}
-
-static void
-opt_show(i)
-        int i;
-{
-	char *s;
-	struct option *opt = &options[i];
-
-	opt_erase(i);
-
-	if (opt->is_bool) {
-		s = *(opt->bval) ? "True" : "False";
-	} else {
-		s = *(opt->strval);
+	if (*row == rooms[rn].top_row) {
+		d = UPWARD/2;
+	} else if (*row == rooms[rn].bottom_row) {
+		d = DOWN/2;
+	} else if (*col == rooms[rn].left_col) {
+		d = LEFT/2;
+	} else if (*col == rooms[rn].right_col) {
+		d = RIGHT/2;
 	}
-	addstr(s);
+	if ((d != -1) && (rooms[rn].doors[d].oth_room >= 0)) {
+		*row = rooms[rn].doors[d].oth_row;
+		*col = rooms[rn].doors[d].oth_col;
+		return(1);
+	}
+	return(0);
 }
 
-static void
-opt_go(i)
-        int i;
-{
-	move(i, strlen(options[i].prompt));
-}
-
-void
 edit_opts()
 {
 	char save[NOPTS+1][DCOLS];
-	int i, j;
-	int ch;
+	short i, j;
+	short ch;
 	boolean done = 0;
 	char buf[MAX_OPT_LEN + 2];
 
@@ -599,15 +554,44 @@ CH:
 	}
 }
 
-void
+opt_show(i)
+int i;
+{
+	char *s;
+	struct option *opt = &options[i];
+
+	opt_erase(i);
+
+	if (opt->is_bool) {
+		s = *(opt->bval) ? "True" : "False";
+	} else {
+		s = *(opt->strval);
+	}
+	addstr(s);
+}
+
+opt_erase(i)
+int i;
+{
+	struct option *opt = &options[i];
+
+	mvaddstr(i, 0, opt->prompt);
+	clrtoeol();
+}
+
+opt_go(i)
+int i;
+{
+	move(i, strlen(options[i].prompt));
+}
+
 do_shell()
 {
 #ifdef UNIX
 	char *sh;
 
 	md_ignore_signals();
-	sh = md_getenv("SHELL");
-	if (! sh) {
+	if (!(sh = md_getenv("SHELL"))) {
 		sh = "/bin/sh";
 	}
 	move(LINES-1, 0);

@@ -7,29 +7,32 @@
 CV=`cat .compileversion`
 CV=`expr $CV + 1`
 OV=`cat .oldversion`
-GITREV=`git rev-list HEAD --count`
+SVN=`svnversion`
 
-if [ "x$GITREV" = "x" ]
+if [ "x$SVN" = "xexported" ]
 then
-    GITREV="Untracked"
+    PWD=`pwd`
+    cd ..
+    SVN=`svnversion`
+    cd $PWD
 fi
 
-if [ "x$GITREV" != "x$OV" ]
+if [ "x$SVN" != "x$OV" ]
 then
     CV=1
 fi
 echo $CV >.compileversion
-echo $GITREV >.oldversion
+echo $SVN >.oldversion
 
-echo $GITREV ${USER-root} `pwd` `date +'%Y-%m-%d'` `hostname` $CV| \
+echo $SVN ${USER-root} `pwd` `date +'%Y-%m-%d'` `hostname` $CV| \
 awk ' {
 	version = $1;
-    user = $2;
-    dir = $3;
-    date = $4;
+        user = $2;
+        dir = $3;
+        date = $4;
 	host = $5;
-    cv = $6;
-	printf "const char version[] = \"2.11 BSD Unix for PIC32, revision G%s build %d:\\n", version, cv;
+        cv = $6;
+	printf "const char version[] = \"2.11 BSD Unix for PIC32, revision %s build %d:\\n", version, cv;
 	printf "     Compiled %s by %s@%s:\\n", date, user, host;
 	printf "     %s\\n\";\n", dir;
 }'

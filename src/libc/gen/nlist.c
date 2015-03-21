@@ -22,20 +22,20 @@
 #include <stdio.h>
 #include <string.h>
 
+typedef struct nlist NLIST;
+
 #define	ISVALID(p)	(p->n_name && p->n_name[0])
 
-int
 nlist(name, list)
 	char *name;
-	struct nlist *list;
+	NLIST *list;
 {
-	register struct nlist *p;
+	register NLIST *p, *s;
 	struct exec ebuf;
-	register FILE *fsym;
-	off_t symbol_offset, symbol_size;
-	int entries, len, maxlen, type;
-	register int c;
-	register unsigned value;
+	FILE *fstr, *fsym;
+	NLIST nbuf;
+	off_t strings_offset, symbol_offset, symbol_size;
+	int entries, len, maxlen;
 	char sbuf[128];
 
 	entries = -1;
@@ -44,12 +44,16 @@ nlist(name, list)
 		return(-1);
 	if (fread((char *)&ebuf, 1, sizeof(ebuf), fsym) != sizeof (ebuf) ||
 	    N_BADMAG(ebuf))
-		goto done;
+		goto done1;
 
 	symbol_offset = N_SYMOFF(ebuf);
 	symbol_size = ebuf.a_syms;
+	strings_offset = N_STROFF(ebuf);
 	if (fseek(fsym, symbol_offset, L_SET))
-		goto done;
+		goto done1;
+
+	if (!(fstr = fopen(name, "r")))
+		goto done1;
 
 	/*
 	 * clean out any left-over information for all valid entries.
@@ -67,31 +71,26 @@ nlist(name, list)
 	if (++maxlen > sizeof(sbuf)) {		/* for the NULL */
 		(void)fprintf(stderr, "nlist: sym 2 big\n");
 		entries = -1;
-		goto done;
+		goto done2;
 	}
 
-	for (; symbol_size; symbol_size -= len + 6) {
-                len = getc (fsym);
-                if (len <= 0)
-			break;
-
-                type = getc (fsym);
-                value = getc (fsym);
-                value |= getc (fsym) << 8;
-                value |= getc (fsym) << 16;
-                value |= getc (fsym) << 24;
-                for (c=0; c<len && c<maxlen; c++)
-                        sbuf [c] = getc (fsym);
-                sbuf [c] = '\0';
-
+	for (s = &nbuf; symbol_size; symbol_size -= sizeof(NLIST)) {
+		if (fread((char *)s, sizeof(NLIST), 1, fsym) != 1)
+			goto done2;
+		if (! s->n_name)
+			continue;
+		if (fseek(fstr, strings_offset + (unsigned) s->n_name, L_SET))
+			goto done2;
+		(void)fread(sbuf, sizeof(sbuf[0]), maxlen, fstr);
 		for (p = list; ISVALID(p); p++)
-			if (strcmp(p->n_name, sbuf) == 0) {
-				p->n_value = value;
-				p->n_type = type;
+			if (!strcmp(p->n_name, sbuf)) {
+				p->n_value = s->n_value;
+				p->n_type = s->n_type;
 				if (!--entries)
-					goto done;
+					goto done2;
 			}
 	}
-done:	(void)fclose(fsym);
+done2:	(void)fclose(fstr);
+done1:	(void)fclose(fsym);
 	return(entries);
 }

@@ -1,7 +1,3 @@
-/*
- * Standalone test of SD card driver.
- * Broken since rdisk implemented.
- */
 #include "param.h"
 #include "conf.h"
 #include "systm.h"
@@ -13,7 +9,7 @@
 size_t  physmem;                /* total amount of physical memory */
 u_int   swapstart, nswap;       /* start and size of swap space */
 
-//const struct linesw linesw[] = { { 0 } };
+const struct linesw linesw[] = { { 0 } };
 int nldisp = 1;
 
 char data [SECTSIZE * 2];
@@ -21,8 +17,6 @@ char data [SECTSIZE * 2];
 extern int card_size (int unit, unsigned *nsectors);
 extern int card_read (int unit, unsigned offset, char *data, unsigned bcount);
 extern int card_write (int unit, unsigned offset, char *data, unsigned bcount);
-extern void sd_preinit(int unit);
-extern void usbintr (int chan);
 
 static void
 fill_sector (p, byte0, byte1)
@@ -149,7 +143,9 @@ getcmd:
                 case '\n': case '\r':
 			break;
 		case '1':
-                        sd_preinit(0);
+                        if (sdopen (0, 0, 0) == 0) {
+                                printf ("Card initialized successfully.\n");
+                        }
 			break;
 		case '2':
                         if (card_size (0, &nsectors))
@@ -349,9 +345,10 @@ void
 exception (frame)                       /* exception.c */
 	int *frame;
 {
-	unsigned c, irq, cause;
+	unsigned c, irq, status, cause;
 
         led_control (LED_KERNEL, 1);
+	status = frame [FRAME_STATUS];
 	cause = mips_read_c0_register (C0_CAUSE, 0);
 
 	if ((cause & CA_EXC_CODE) != CA_Int) {
@@ -383,13 +380,11 @@ exception (frame)                       /* exception.c */
                 } while ((int) (c - mips_read_c0_register (C0_COUNT, 0)) < 0);
 
                 IFSCLR(0) = 1 << PIC32_IRQ_CT;
-
-                int status = frame [FRAME_STATUS];
                 hardclock ((caddr_t) frame [FRAME_PC], status);
 #endif
 #ifdef CONSOLE_USB
                 /* Poll USB on every timer tick. */
-                usbintr (0);
+                cnintr (0);
 #endif
                 break;
 #if defined(CONSOLE_UART1) || defined(CONSOLE_UART2) || \
@@ -413,13 +408,13 @@ defined(CONSOLE_UART5) || defined(CONSOLE_UART6)
 #if CONSOLE_UART6
         case PIC32_VECT_U6:     /* UART6 */
 #endif
-                uartintr(makedev(UART_MAJOR,0));
+                cnintr (0);
                 break;
 #endif
 #ifdef CONSOLE_USB
         case PIC32_VECT_USB:    /* USB */
                 IFSCLR(1) = 1 << (PIC32_IRQ_USB - 32);
-                usbintr (0);
+                cnintr (0);
                 break;
 #endif
         default:

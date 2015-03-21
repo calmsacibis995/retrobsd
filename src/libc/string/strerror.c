@@ -34,7 +34,7 @@
 #include <sys/sysctl.h>
 #include <machine/cpu.h>
 
-char *
+const char *
 strerror(errnum)
 	register int errnum;
 {

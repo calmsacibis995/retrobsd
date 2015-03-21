@@ -6,10 +6,12 @@
 #include <sys/param.h>
 #include <sys/dir.h>
 #include <sys/stat.h>
-#include <string.h>
-#include <unistd.h>
+
+#define	NULL	0
 
 static	char	dev[]	= "/dev/";
+char	*strcpy();
+char	*strcat();
 
 char *
 ttyname(f)
@@ -21,15 +23,14 @@ ttyname(f)
 	static char rbuf[32];
 
 	if (isatty(f)==0)
-		return 0;
+		return(NULL);
 	if (fstat(f, &fsb) < 0)
-		return 0;
+		return(NULL);
 	if ((fsb.st_mode&S_IFMT) != S_IFCHR)
-		return 0;
-        df = opendir(dev);
-	if (! df)
-		return 0;
-	while ((db = readdir(df))) {
+		return(NULL);
+	if ((df = opendir(dev)) == NULL)
+		return(NULL);
+	while ((db = readdir(df)) != NULL) {
 		if (db->d_ino != fsb.st_ino)
 			continue;
 		strcpy(rbuf, dev);
@@ -42,5 +43,5 @@ ttyname(f)
 		}
 	}
 	closedir(df);
-	return 0;
+	return(NULL);
 }

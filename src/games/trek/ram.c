@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)ram.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -15,9 +20,9 @@
 **	If you run into something else, you destroy that object.  You
 **	also rack up incredible damages.
 */
-void
+
 ram(ix, iy)
-        int	ix, iy;
+int	ix, iy;
 {
 	register int		i;
 	register char		c;

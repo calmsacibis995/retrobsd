@@ -10,8 +10,7 @@
  * as the vertical delimiting char, and "hor", as the horizontal one.
  *
  */
-void
-box(win, vert, hor)
+int box(win, vert, hor)
         reg WINDOW	*win;
         char		vert, hor;
 {

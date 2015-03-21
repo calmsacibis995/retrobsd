@@ -9,7 +9,6 @@
 #include "vm.h"
 #include "kernel.h"
 #include "systm.h"
-#include "debug.h"
 
 #define	MINFINITY	-32767		/* minus infinity */
 
@@ -36,16 +35,15 @@ sched()
 	register struct proc *rp;
 	struct proc *swapped_out = 0, *in_core = 0;
 	register int out_time, rptime;
-    int s __attribute__((unused));
 
 	for (;;) {
 	        /* Perform swap-out/swap-in action. */
-		s=spl0();
+		spl0();
 		if (in_core)
                         swapout (in_core, X_FREECORE, X_OLDSIZE, X_OLDSIZE);
 		if (swapped_out)
                         swapin (swapped_out);
-		s=splhigh();
+		splhigh();
 		in_core = 0;
 		swapped_out = 0;
 
@@ -72,12 +70,9 @@ sched()
 		/* If there is no one there, wait. */
 		if (! swapped_out) {
 			++runout;
-            //SETVAL(0);
 			sleep ((caddr_t) &runout, PSWP);
 			continue;
 		}
-
-        //SETVAL(swapped_out->p_pid);
 
 		/*
 		 * Look around for somebody to swap out.

@@ -1,8 +1,7 @@
 #include <stdio.h>
 
-int
 fgetc(fp)
-        register FILE *fp;
+register FILE *fp;
 {
-	return getc(fp);
+	return(getc(fp));
 }

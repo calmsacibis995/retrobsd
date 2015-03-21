@@ -5,11 +5,11 @@
 #include "phant.h"
 
 void	treasure(stat,treastyp,size)		/* select a treasure */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 short	treastyp;
-register int	size;
+reg	int	size;
 {
-register int	which;
+reg	int	which;
 int	ch;
 double	temp, temp2;
 char	aline[35];
@@ -52,8 +52,7 @@ FILE	*fp;
 					{
 					stat->gld += floor(0.9 * temp);
 					fp = fopen(goldfile,"r");
-					if (fread((char *) &temp2,sizeof(double),1,fp) != 1)
-					        /*ignore*/;
+					fread((char *) &temp2,sizeof(double),1,fp);
 					fclose(fp);
 					fp = fopen(goldfile,"w");
 					temp2 += floor(temp/10);
@@ -270,7 +269,7 @@ FILE	*fp;
 									{
 									addstr("X Y Coordinates ? ");
 									getstring(aline,80);
-									sscanf(aline,"%lf %lf",&stat->x,&stat->y);
+									sscanf(aline,"%F %F",&stat->x,&stat->y);
 									stat->x = floor(stat->x);
 									stat->y = floor(stat->y);
 									}
@@ -389,21 +388,19 @@ CURSE:	if (stat->chm)
 }
 
 void	callmonster(which,size,mons)		/* fill a structure with monster 'which' of size 'size' */
-register int	which, size;
-register struct	mstats	*mons;
+reg	int	which, size;
+reg	struct	mstats	*mons;
 {
 FILE	*fp;
 char	instr[100];
 
 	which = min(which,99);
 	fp = fopen(monsterfile,"r");
-	for (++which; which; --which) {
-		if (fgets(instr,100,fp) == 0)
-		        /*ignore*/;
-        }
+	for (++which; which; --which)
+		fgets(instr,100,fp);
 	strncpy(mons->name,instr,24);
 	mons->name[24] = '\0';
-	sscanf(instr + 24,"%lf%lf%lf%lf%lf%d%d%d",&mons->str,&mons->brn,&mons->spd,&mons->hit,
+	sscanf(instr + 24,"%F%F%F%F%F%d%d%d",&mons->str,&mons->brn,&mons->spd,&mons->hit,
 		&mons->exp,&mons->trs,&mons->typ,&mons->flk);
 	if (mons->typ == 2)	/* Modnar */
 		{
@@ -417,13 +414,11 @@ char	instr[100];
 	else if (mons->typ == 3)	/* mimic */
 		{
 		fseek(fp,0L,0);
-		for (which = roll(0,100); which; --which) {
-			if (fgets(instr,100,fp) == 0)
-			        /*ignore*/;
-                }
+		for (which = roll(0,100); which; --which)
+			fgets(instr,100,fp);
 		strncpy(mons->name,instr,24);
 		}
-	strunc(mons->name);
+	trunc(mons->name);
 	mons->str += (size-1)*mons->str/2;
 	mons->brn *= size;
 	mons->spd += size * 1.e-9;
@@ -453,7 +448,7 @@ struct	/* lookup table for rolling stats and making increases upon gaining level
 
 void	genchar(res,type)				/* init a charac struct */
 int	type;
-register struct	stats	*res;
+reg	struct	stats	*res;
 {
 register int	subscript;
 
@@ -475,10 +470,10 @@ register int	subscript;
 }
 
 void	movelvl(stat)				/* update stats for new level */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
-register int	type;
-register unsigned new;
+reg	int	type;
+reg	unsigned new;
 double	inc;
 
 	changed = TRUE;
@@ -524,8 +519,8 @@ double	inc;
 char	*printloc(x,y)			/* return a pointer to a string specifying location */
 double	x,y;		/* also, set some global flags */
 {
-register int	size, loc;
-register char	*label;
+reg	int	size, loc;
+reg	char	*label;
 static	char	res[80],
 		*nametable[4][4] =	 /* names of places */
 		{
@@ -581,7 +576,7 @@ static	char	res[80],
 }
 
 void	initchar(stat)				/* put in some default values */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 	stat->x = roll(-125,251);
 	stat->y = roll(-125,251);
@@ -604,7 +599,7 @@ register struct	stats	*stat;
 }
 
 void	trade(stat)				/* trading post */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 static	struct
 		{
@@ -623,7 +618,7 @@ static	struct
 			};
 double	temp;
 int	ch;
-register int	size, loop;
+reg	int	size, loop;
 bool	cheat = FALSE;
 
 	changed = TRUE;
@@ -812,7 +807,7 @@ DISHON:	mvaddstr(17,0,"The merchant stole your money!");
 }
 
 void	printstats(stat)				/* show characteristics */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 	mvprintw(0,0,"%s%s\n",stat->name,printloc(stat->x,stat->y));
 	mvprintw(1,0,"Level :%7u   Energy  :%9.0f(%9.0f)  Manna:%9.0f  Users:%3d\n",
@@ -841,7 +836,7 @@ register struct	stats	*stat;
 }
 
 void	showall(stat)				/* show special items */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 static	char	*flags[] =
 			{
@@ -914,7 +909,7 @@ static	char	*flags[] =
 }
 
 void	neatstuff(stat) 			/* random things */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 double	temp;
 int	ch;

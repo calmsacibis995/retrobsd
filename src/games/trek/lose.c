@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#if	!defined(lint) && defined(DOSCCS)
+static char sccsid[] = "@(#)lose.c	5.1.1 (2.11BSD GTE) 11/20/94";
+#endif
+
 # include	"trek.h"
 # include	<setjmp.h>
 
@@ -31,9 +36,8 @@ char	*Losemsg[] =
 	"Your last crew member died",
 };
 
-void
 lose(why)
-        int	why;
+int	why;
 {
 	extern	jmp_buf	env;
 

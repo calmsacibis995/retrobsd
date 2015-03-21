@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#if	!defined(lint) && defined(DOSCCS)
+static char sccsid[] = "@(#)win.c	5.1.1 (2.11BSD GTE) 11/20/94";
+#endif
+
 # include	"trek.h"
 # include	"getpar.h"
 # include	<setjmp.h>
@@ -19,7 +24,7 @@
 **	Pretty straightforward, although the promotion algorithm is
 **	pretty off the wall.
 */
-void
+
 win()
 {
 	long			s;

@@ -4,9 +4,9 @@ int
 puts(s)
 	register const char *s;
 {
-	register int c;
+	register c;
 
-	while ((c = *s++))
+	while (c = *s++)
 		putchar(c);
 	return(putchar('\n'));
 }

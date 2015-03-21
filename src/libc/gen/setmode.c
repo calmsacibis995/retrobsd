@@ -39,6 +39,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/stddef.h>
 #include <stdlib.h>
 
 #ifdef SETMODE_DEBUG
@@ -168,7 +169,7 @@ setmode(p)
 	sigset_t sigset, sigoset;
 #endif
 	mode_t mask;
-	int equalopdone = 0, permXbits, setlen;
+	int equalopdone, permXbits, setlen;
 
 	if (!*p)
 		return ((void *)NULL);
@@ -414,7 +415,7 @@ compress_mode(set)
 		while ((op = nset->cmd) != '+' && op != '-' && op != 'X') {
 			*set++ = *nset++;
 			if (!op)
-				return 0;
+				return;
 		}
 
 		for (setbits = clrbits = Xbits = 0;; nset++) {

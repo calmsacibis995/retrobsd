@@ -33,7 +33,6 @@
 #include <sys/param.h>
 #include <sys/sysctl.h>
 
-int
 sethostname(name, namelen)
 	char *name;
 	int namelen;

@@ -3,11 +3,31 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)pl_main.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "player.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 
-static void
+int choke(), child();
+
+/*ARGSUSED*/
+pl_main()
+{
+
+	if (!SCREENTEST()) {
+		printf("Can't sail on this terminal.\n");
+		exit(1);
+	}
+	initialize();
+	Signal("Aye aye, Sir", (struct ship *)0);
+	play();
+	return 0;			/* for lint,  play() never returns */
+}
+
 initialize()
 {
 	register struct File *fp;
@@ -21,7 +41,7 @@ initialize()
 
 	if (game < 0) {
 		(void) puts("Choose a scenario:\n");
-		(void) puts("\tNUMBER\tSHIPS\tIN PLAY\tTITLE");
+		(void) puts("\n\tNUMBER\tSHIPS\tIN PLAY\tTITLE");
 		for (n = 0; n < NSCENE; n++) {
 			/* ( */
 			printf("\t%d):\t%d\t%s\t%s\n", n, scene[n].vessels,
@@ -31,12 +51,9 @@ initialize()
 reprint:
 		printf("\nScenario number? ");
 		(void) fflush(stdout);
-		if (scanf("%d", &game) != 1) {
-                        puts("Bad number.");
-                        exit(1);
-                }
-                while (getchar() != '\n')
-                        ;
+		(void) scanf("%d", &game);
+		while (getchar() != '\n')
+			;
 	}
 	if (game < 0 || game >= NSCENE) {
 		(void) puts("Very funny.");
@@ -54,7 +71,7 @@ reprint:
 			exit(1);
 		}
 		sp->file->index = sp - SHIP(0);
-		sp->file->stern = nat[(int)sp->nationality]++;
+		sp->file->stern = nat[sp->nationality]++;
 		sp->file->dir = sp->shipdir;
 		sp->file->row = sp->shiprow;
 		sp->file->col = sp->shipcol;
@@ -97,7 +114,7 @@ reprint:
 			foreachship(sp)
 				printf("  %2d:  %-10s %-15s  (%-2d pts)   %s\n",
 					sp->file->index,
-					countryname[(int)sp->nationality],
+					countryname[sp->nationality],
 					sp->shipname,
 					sp->specs->pts,
 					saywhat(sp, 1));
@@ -105,13 +122,13 @@ reprint:
 			(void) fflush(stdout);
 			if (scanf("%d", &player) != 1 || player < 0
 			    || player >= cc->vessels) {
-                        	while (getchar() != '\n')
-                                	;
+				while (getchar() != '\n')
+					;
 				(void) puts("Say what?");
 				player = -1;
 			} else
-                        	while (getchar() != '\n')
-                                        ;
+				while (getchar() != '\n')
+					;
 		}
 		if (player < 0)
 			continue;
@@ -147,17 +164,14 @@ reprint:
 		}
 
 	printf("Your ship is the %s, a %d gun %s (%s crew).\n",
-		ms->shipname, mc->guns, classname[(int)mc->class],
-		qualname[(int)mc->qual]);
+		ms->shipname, mc->guns, classname[mc->class],
+		qualname[mc->qual]);
 	if ((nameptr = (char *) getenv("SAILNAME")) && *nameptr)
 		(void) strncpy(captain, nameptr, sizeof captain);
 	else {
 		(void) printf("Your name, Captain? ");
 		(void) fflush(stdout);
-		if (! gets(captain)) {
-                        puts("Bad name.");
-                        exit(1);
-                }
+		(void) gets(captain);
 		if (!*captain)
 			(void) strcpy(captain, "no name");
 	}
@@ -169,10 +183,7 @@ reprint:
 		printf("\nInitial broadside %s (grape, chain, round, double): ",
 			n ? "right" : "left");
 		(void) fflush(stdout);
-		if (scanf("%s", buf) != 1) {
-                        puts("Bad value.");
-                        exit(1);
-                }
+		(void) scanf("%s", buf);
 		switch (*buf) {
 		case 'g':
 			load = L_GRAPE;
@@ -198,32 +209,9 @@ reprint:
 		}
 	}
 
-	initscr();
 	initscreen();
 	draw_board();
 	(void) sprintf(message, "Captain %s assuming command", captain);
 	Write(W_SIGNAL, ms, 1, (int)message, 0, 0, 0);
-	newturn(0);
-}
-
-/*ARGSUSED*/
-int
-pl_main()
-{
-	if (! initscr()) {
-failed:		printf("Can't sail on this terminal.\n");
-		exit(1);
-	}
-#ifdef SIGTSTP
-        if (signal(SIGTSTP, SIG_DFL) == SIG_ERR)
-            goto failed;
-#endif
-	if (STAT_R >= COLS || SCROLL_Y <= 0)
-            goto failed;
-        endwin();
-
-	initialize();
-	Signal("Aye aye, Sir", (struct ship *)0, 0, 0, 0, 0);
-	play();
-	return 0;			/* for lint,  play() never returns */
+	newturn();
 }

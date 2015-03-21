@@ -10,14 +10,69 @@
 #include "rogue.h"
 
 short less_hp = 0;
-char being_held;
+boolean being_held;
 
-static void
-freeze(monster)
-        object *monster;
+extern short cur_level, max_level, blind, levitate, ring_exp;
+extern long level_points[];
+extern boolean detect_monster, mon_disappeared;
+extern boolean sustain_strength, maintain_armor;
+extern char *you_can_move_again;
+
+special_hit(monster)
+object *monster;
 {
-	int freeze_percent = 99;
-	int i, n;
+	if ((monster->m_flags & CONFUSED) && rand_percent(66)) {
+		return;
+	}
+	if (monster->m_flags & RUSTS) {
+		rust(monster);
+	}
+	if ((monster->m_flags & HOLDS) && !levitate) {
+		being_held = 1;
+	}
+	if (monster->m_flags & FREEZES) {
+		freeze(monster);
+	}
+	if (monster->m_flags & STINGS) {
+		sting(monster);
+	}
+	if (monster->m_flags & DRAINS_LIFE) {
+		drain_life();
+	}
+	if (monster->m_flags & DROPS_LEVEL) {
+		drop_level();
+	}
+	if (monster->m_flags & STEALS_GOLD) {
+		steal_gold(monster);
+	} else if (monster->m_flags & STEALS_ITEM) {
+		steal_item(monster);
+	}
+}
+
+rust(monster)
+object *monster;
+{
+	if ((!rogue.armor) || (get_armor_class(rogue.armor) <= 1) ||
+		(rogue.armor->which_kind == LEATHER)) {
+		return;
+	}
+	if ((rogue.armor->is_protected) || maintain_armor) {
+		if (monster && (!(monster->m_flags & RUST_VANISHED))) {
+			message("the rust vanishes instantly", 0);
+			monster->m_flags |= RUST_VANISHED;
+		}
+	} else {
+		rogue.armor->d_enchant--;
+		message("your armor weakens", 0);
+		print_stats(STAT_ARMOR);
+	}
+}
+
+freeze(monster)
+object *monster;
+{
+	short freeze_percent = 99;
+	short i, n;
 
 	if (rand_percent(12)) {
 		return;
@@ -46,27 +101,8 @@ freeze(monster)
 	}
 }
 
-static void
-disappear(monster)
-        object *monster;
-{
-	int row, col;
-
-	row = monster->row;
-	col = monster->col;
-
-	dungeon[row][col] &= ~MONSTER;
-	if (rogue_can_see(row, col)) {
-		mvaddch(row, col, get_dungeon_char(row, col));
-	}
-	take_from_pack(monster, &level_monsters);
-	free_object(monster);
-	mon_disappeared = 1;
-}
-
-static void
 steal_gold(monster)
-        object *monster;
+object *monster;
 {
 	int amount;
 
@@ -85,12 +121,11 @@ steal_gold(monster)
 	disappear(monster);
 }
 
-static void
 steal_item(monster)
-        object *monster;
+object *monster;
 {
 	object *obj;
-	int i, n, t = 0;
+	short i, n, t;
 	char desc[80];
 	boolean has_something = 0;
 
@@ -140,157 +175,28 @@ DSPR:
 	disappear(monster);
 }
 
-static void
-sting(monster)
-        object *monster;
+disappear(monster)
+object *monster;
 {
-	int sting_chance = 35;
-	char msg[80];
+	short row, col;
 
-	if ((rogue.str_current <= 3) || sustain_strength) {
-		return;
-	}
-	sting_chance += (6 * (6 - get_armor_class(rogue.armor)));
+	row = monster->row;
+	col = monster->col;
 
-	if ((rogue.exp + ring_exp) > 8) {
-		sting_chance -= (6 * ((rogue.exp + ring_exp) - 8));
+	dungeon[row][col] &= ~MONSTER;
+	if (rogue_can_see(row, col)) {
+		mvaddch(row, col, get_dungeon_char(row, col));
 	}
-	if (rand_percent(sting_chance)) {
-		sprintf(msg, "the %s's bite has weakened you",
-		mon_name(monster));
-		message(msg, 0);
-		rogue.str_current--;
-		print_stats(STAT_STRENGTH);
-	}
+	take_from_pack(monster, &level_monsters);
+	free_object(monster);
+	mon_disappeared = 1;
 }
 
-static void
-drop_level()
-{
-	int hp;
-
-	if (rand_percent(80) || (rogue.exp <= 5)) {
-		return;
-	}
-	rogue.exp_points = level_points[rogue.exp-2] - get_rand(9, 29);
-	rogue.exp -= 2;
-	hp = hp_raise();
-	if ((rogue.hp_current -= hp) <= 0) {
-		rogue.hp_current = 1;
-	}
-	if ((rogue.hp_max -= hp) <= 0) {
-		rogue.hp_max = 1;
-	}
-	add_exp(1, 0);
-}
-
-static void
-drain_life()
-{
-	int n;
-
-	if (rand_percent(60) || (rogue.hp_max <= 30) || (rogue.hp_current < 10)) {
-		return;
-	}
-	n = get_rand(1, 3);		/* 1 Hp, 2 Str, 3 both */
-
-	if ((n != 2) || (!sustain_strength)) {
-		message("you feel weaker", 0);
-	}
-	if (n != 2) {
-		rogue.hp_max--;
-		rogue.hp_current--;
-		less_hp++;
-	}
-	if (n != 1) {
-		if ((rogue.str_current > 3) && (!sustain_strength)) {
-			rogue.str_current--;
-			if (coin_toss()) {
-				rogue.str_max--;
-			}
-		}
-	}
-	print_stats((STAT_STRENGTH | STAT_HP));
-}
-
-void
-special_hit(monster)
-        object *monster;
-{
-	if ((monster->m_flags & CONFUSED) && rand_percent(66)) {
-		return;
-	}
-	if (monster->m_flags & RUSTS) {
-		rust(monster);
-	}
-	if ((monster->m_flags & HOLDS) && !levitate) {
-		being_held = 1;
-	}
-	if (monster->m_flags & FREEZES) {
-		freeze(monster);
-	}
-	if (monster->m_flags & STINGS) {
-		sting(monster);
-	}
-	if (monster->m_flags & DRAINS_LIFE) {
-		drain_life();
-	}
-	if (monster->m_flags & DROPS_LEVEL) {
-		drop_level();
-	}
-	if (monster->m_flags & STEALS_GOLD) {
-		steal_gold(monster);
-	} else if (monster->m_flags & STEALS_ITEM) {
-		steal_item(monster);
-	}
-}
-
-void
-rust(monster)
-        object *monster;
-{
-	if ((!rogue.armor) || (get_armor_class(rogue.armor) <= 1) ||
-		(rogue.armor->which_kind == LEATHER)) {
-		return;
-	}
-	if ((rogue.armor->is_protected) || maintain_armor) {
-		if (monster && (!(monster->m_flags & RUST_VANISHED))) {
-			message("the rust vanishes instantly", 0);
-			monster->m_flags |= RUST_VANISHED;
-		}
-	} else {
-		rogue.armor->d_enchant--;
-		message("your armor weakens", 0);
-		print_stats(STAT_ARMOR);
-	}
-}
-
-static int
-try_to_cough(row, col, obj)
-        int row, col;
-        object *obj;
-{
-	if ((row < MIN_ROW) || (row > (DROWS-2)) || (col < 0) || (col>(DCOLS-1))) {
-		return(0);
-	}
-	if ((!(dungeon[row][col] & (OBJECT | STAIRS | TRAP))) &&
-		(dungeon[row][col] & (TUNNEL | FLOOR | DOOR))) {
-		place_at(obj, row, col);
-		if (((row != rogue.row) || (col != rogue.col)) &&
-			(!(dungeon[row][col] & MONSTER))) {
-			mvaddch(row, col, get_dungeon_char(row, col));
-		}
-		return(1);
-	}
-	return(0);
-}
-
-void
 cough_up(monster)
-        object *monster;
+object *monster;
 {
 	object *obj;
-	int row, col, i, n;
+	short row, col, i, n;
 
 	if (cur_level < max_level) {
 		return;
@@ -330,29 +236,31 @@ cough_up(monster)
 	free_object(obj);
 }
 
-static int
-gold_at(row, col)
-        int row, col;
+try_to_cough(row, col, obj)
+short row, col;
+object *obj;
 {
-	if (dungeon[row][col] & OBJECT) {
-		object *obj;
-
-		obj = object_at(&level_objects, row, col);
-		if (obj && (obj->what_is == GOLD)) {
-			return(1);
+	if ((row < MIN_ROW) || (row > (DROWS-2)) || (col < 0) || (col>(DCOLS-1))) {
+		return(0);
+	}
+	if ((!(dungeon[row][col] & (OBJECT | STAIRS | TRAP))) &&
+		(dungeon[row][col] & (TUNNEL | FLOOR | DOOR))) {
+		place_at(obj, row, col);
+		if (((row != rogue.row) || (col != rogue.col)) &&
+			(!(dungeon[row][col] & MONSTER))) {
+			mvaddch(row, col, get_dungeon_char(row, col));
 		}
+		return(1);
 	}
 	return(0);
 }
 
-int
 seek_gold(monster)
-        object *monster;
+object *monster;
 {
-	int i, j, rn, s;
+	short i, j, rn, s;
 
-	rn = get_room_number(monster->row, monster->col);
-	if (rn < 0) {
+	if ((rn = get_room_number(monster->row, monster->col)) < 0) {
 		return(0);
 	}
 	for (i = rooms[rn].top_row+1; i < rooms[rn].bottom_row; i++) {
@@ -379,16 +287,28 @@ seek_gold(monster)
 	return(0);
 }
 
-void
+gold_at(row, col)
+short row, col;
+{
+	if (dungeon[row][col] & OBJECT) {
+		object *obj;
+
+		if ((obj = object_at(&level_objects, row, col)) &&
+				(obj->what_is == GOLD)) {
+			return(1);
+		}
+	}
+	return(0);
+}
+
 check_gold_seeker(monster)
-        object *monster;
+object *monster;
 {
 	monster->m_flags &= (~SEEKS_GOLD);
 }
 
-int
 check_imitator(monster)
-        object *monster;
+object *monster;
 {
 	char msg[80];
 
@@ -406,24 +326,93 @@ check_imitator(monster)
 	return(0);
 }
 
-int
 imitating(row, col)
-        register int row, col;
+register short row, col;
 {
-	object *monster;
-
 	if (dungeon[row][col] & MONSTER) {
-		monster = object_at(&level_monsters, row, col);
-		if (monster && (monster->m_flags & IMITATES)) {
-			return(1);
+		object *object_at(), *monster;
+
+		if (monster = object_at(&level_monsters, row, col)) {
+			if (monster->m_flags & IMITATES) {
+				return(1);
+			}
 		}
 	}
 	return(0);
 }
 
-int
+sting(monster)
+object *monster;
+{
+	short sting_chance = 35;
+	char msg[80];
+
+	if ((rogue.str_current <= 3) || sustain_strength) {
+		return;
+	}
+	sting_chance += (6 * (6 - get_armor_class(rogue.armor)));
+
+	if ((rogue.exp + ring_exp) > 8) {
+		sting_chance -= (6 * ((rogue.exp + ring_exp) - 8));
+	}
+	if (rand_percent(sting_chance)) {
+		sprintf(msg, "the %s's bite has weakened you",
+		mon_name(monster));
+		message(msg, 0);
+		rogue.str_current--;
+		print_stats(STAT_STRENGTH);
+	}
+}
+
+drop_level()
+{
+	int hp;
+
+	if (rand_percent(80) || (rogue.exp <= 5)) {
+		return;
+	}
+	rogue.exp_points = level_points[rogue.exp-2] - get_rand(9, 29);
+	rogue.exp -= 2;
+	hp = hp_raise();
+	if ((rogue.hp_current -= hp) <= 0) {
+		rogue.hp_current = 1;
+	}
+	if ((rogue.hp_max -= hp) <= 0) {
+		rogue.hp_max = 1;
+	}
+	add_exp(1, 0);
+}
+
+drain_life()
+{
+	short n;
+
+	if (rand_percent(60) || (rogue.hp_max <= 30) || (rogue.hp_current < 10)) {
+		return;
+	}
+	n = get_rand(1, 3);		/* 1 Hp, 2 Str, 3 both */
+
+	if ((n != 2) || (!sustain_strength)) {
+		message("you feel weaker", 0);
+	}
+	if (n != 2) {
+		rogue.hp_max--;
+		rogue.hp_current--;
+		less_hp++;
+	}
+	if (n != 1) {
+		if ((rogue.str_current > 3) && (!sustain_strength)) {
+			rogue.str_current--;
+			if (coin_toss()) {
+				rogue.str_max--;
+			}
+		}
+	}
+	print_stats((STAT_STRENGTH | STAT_HP));
+}
+
 m_confuse(monster)
-        object *monster;
+object *monster;
 {
 	char msg[80];
 
@@ -444,9 +433,34 @@ m_confuse(monster)
 	return(0);
 }
 
-static int
+flame_broil(monster)
+object *monster;
+{
+	short row, col, dir;
+
+	if ((!mon_sees(monster, rogue.row, rogue.col)) || coin_toss()) {
+		return(0);
+	}
+	row = rogue.row - monster->row;
+	col = rogue.col - monster->col;
+	if (row < 0) {
+		row = -row;
+	}
+	if (col < 0) {
+		col = -col;
+	}
+	if (((row != 0) && (col != 0) && (row != col)) ||
+		((row > 7) || (col > 7))) {
+		return(0);
+	}
+	dir = get_dir(monster->row, monster->col, row, col);
+	bounce(FIRE, dir, monster->row, monster->col, 0);
+
+	return(1);
+}
+
 get_dir(srow, scol, drow, dcol)
-        int srow, scol, drow, dcol;
+short srow, scol, drow, dcol;
 {
 	if (srow == drow) {
 		if (scol < dcol) {
@@ -474,31 +488,4 @@ get_dir(srow, scol, drow, dcol)
 	/*if ((srow > drow) && (scol < dcol)) {*/
 		return(UPRIGHT);
 	/*}*/
-}
-
-int
-flame_broil(monster)
-        object *monster;
-{
-	int row, col, dir;
-
-	if ((!mon_sees(monster, rogue.row, rogue.col)) || coin_toss()) {
-		return(0);
-	}
-	row = rogue.row - monster->row;
-	col = rogue.col - monster->col;
-	if (row < 0) {
-		row = -row;
-	}
-	if (col < 0) {
-		col = -col;
-	}
-	if (((row != 0) && (col != 0) && (row != col)) ||
-		((row > 7) || (col > 7))) {
-		return(0);
-	}
-	dir = get_dir(monster->row, monster->col, row, col);
-	bounce(FIRE, dir, monster->row, monster->col, 0);
-
-	return(1);
 }

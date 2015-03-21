@@ -53,6 +53,7 @@ int	swpf;
 int	totflg;
 int	allflg;
 int	kflg;
+u_short	getw();
 
 main(argc, argv)
 char **argv;
@@ -125,7 +126,6 @@ char **argv;
 		exit(1);
 	}
 	knlist(nl);
-
 	if (nl[0].n_value == 0) {
 		printf("no namelist, n_type: %d n_value: %x n_name: %s\n", nl[0].n_type, nl[0].n_value, nl[0].n_name);
 		exit(1);
@@ -213,15 +213,14 @@ doinode()
 	free(xinode);
 }
 
-u_int
-getuint(loc)
+u_short
+getw(loc)
 	off_t loc;
 {
-	u_int word;
+	u_short word;
 
 	lseek(fc, loc, 0);
 	read(fc, &word, sizeof (word));
-
 	return (word);
 }
 
@@ -242,7 +241,7 @@ doproc()
 	register struct proc *pp;
 	register loc, np;
 
-	nproc = getuint((off_t)nl[SNPROC].n_value);
+	nproc = getw((off_t)nl[SNPROC].n_value);
 	xproc = (struct proc *)calloc(nproc, sizeof (struct proc));
 	aproc = nl[SPROC].n_value;
 	if (nproc < 0 || nproc > 10000) {
@@ -314,7 +313,7 @@ char *name;
 	printf("%s line\n", name);
 	lseek(fc, (long)nl[type].n_value, 0);
 	read(fc, tty, sizeof(struct tty));
-	printf(" # RAW CAN OUT         MODE     ADDR  DEL  COL     STATE       PGRP\n");
+	printf(" # RAW CAN OUT         MODE     ADDR  DEL  COL     STATE       PGRP DISC\n");
 	ttyprt(tty, 0);
 }
 
@@ -343,7 +342,34 @@ struct tty *atp;
 	putf(tp->t_state&TS_RCOLL, 'r');
 	putf(tp->t_state&TS_WCOLL, 'w');
 	putf(tp->t_state&TS_ASYNC, 'a');
-	printf("%6d\n", tp->t_pgrp);
+	printf("%6d", tp->t_pgrp);
+	switch (tp->t_line) {
+#ifdef OTTYDISC
+	case OTTYDISC:
+		printf("\n");
+		break;
+#endif
+	case NTTYDISC:
+		printf(" ntty\n");
+		break;
+#ifdef NETLDISC
+	case NETLDISC:
+		printf(" berknet\n");
+		break;
+#endif
+#ifdef TABLDISC
+	case TABLDISC:
+		printf(" tab\n");
+		break;
+#endif
+#ifdef SLIPDISC
+	case SLIPDISC:
+		printf(" slip\n");
+		break;
+#endif
+	default:
+		printf(" %d\n", tp->t_line);
+	}
 }
 
 dousr()
@@ -541,8 +567,7 @@ doswap()
 	struct	map	smap;
 	struct	mapent	*swp;
 
-	nswap = getuint((off_t)nl[SNSWAP].n_value);
-
+	nswap = getw((off_t)nl[SNSWAP].n_value);
 	lseek(fc, (off_t)nl[SWAPMAP].n_value, 0);
 	read(fc, &smap, sizeof (smap));
 	num = (smap.m_limit - smap.m_map);

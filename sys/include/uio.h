@@ -38,8 +38,6 @@
 #ifndef _SYS_UIO_H_
 #define	_SYS_UIO_H_
 
-#include "types.h"
-
 /*
  * XXX
  * iov_base should be a void *.
@@ -69,12 +67,6 @@ int uiomove (caddr_t cp, u_int n, struct uio *uio);
  * Give next character to user as result of read.
  */
 int ureadc (int c, struct uio *uio);
-
-#else /* !KERNEL */
-
-ssize_t readv (int fd, const struct iovec *iov, int iovcnt);
-
-ssize_t writev (int fd, const struct iovec *iov, int iovcnt);
 
 #endif /* KERNEL */
 #endif /* !_SYS_UIO_H_ */

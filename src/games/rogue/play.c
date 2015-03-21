@@ -8,15 +8,17 @@
  */
 #include "rogue.h"
 
-char interrupted = 0;
+boolean interrupted = 0;
 char *unknown_command = "unknown command";
 
-void
+extern short party_room, bear_trap;
+extern char hit_message[];
+extern boolean wizard, trap_door;
+
 play_level()
 {
-	int ch;
+	short ch;
 	int count;
-	int esc_level = 0;
 
 	for (;;) {
 		interrupted = 0;
@@ -30,40 +32,9 @@ play_level()
 		}
 		move(rogue.row, rogue.col);
 		refresh();
-NEXT:
+
 		ch = rgetchar();
 CMCH:
-                switch (esc_level) {
-                default:
-                case 0:
-                        if (ch == '\33') {
-                                /* Escape sequence detected. */
-                                esc_level = 1;
-                                goto NEXT;
-                        }
-                        /* Single symbol. */
-                        break;
-                case 1:
-                        if (ch == '[' || ch == 'O') {
-                                /* Escape sequence continued. */
-                                esc_level = 2;
-                        } else {
-                                /* Unknown escape sequence, ignore. */
-                                esc_level = 0;
-                        }
-                        goto NEXT;
-                case 2:
-                        /* Decode single-symbol escape sequence. */
-                        esc_level = 0;
-                        switch (ch) {
-                        case 'A': ch = 'k'; break;
-                        case 'B': ch = 'j'; break;
-                        case 'C': ch = 'l'; break;
-                        case 'D': ch = 'h'; break;
-                        default: goto CMCH;
-                        }
-                        break;
-                }
 		check_message();
 		count = 0;
 CH:

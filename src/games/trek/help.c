@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)help.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-# include	<float.h>
 
 /*
 **  call starbase for help
@@ -26,9 +30,9 @@
 **	to drop you.  After that, it's your problem.
 */
 
-char	*Cntvect[3] = {"first", "second", "third"};
+char	*Cntvect[3] =
+{"first", "second", "third"};
 
-void
 help()
 {
 	register int		i;
@@ -37,28 +41,23 @@ help()
 	int			j, l;
 
 	/* check to see if calling for help is reasonable ... */
-	if (Ship.cond == DOCKED) {
-	        printf("Uhura: But Captain, we're already docked\n");
-		return;
-        }
+	if (Ship.cond == DOCKED)
+		return (printf("Uhura: But Captain, we're already docked\n"));
+
 	/* or possible */
-	if (damaged(SSRADIO)) {
-	        out(SSRADIO);
-		return;
-        }
-	if (Now.bases <= 0) {
-	        printf("Uhura: I'm not getting any response from starbase\n");
-		return;
-        }
+	if (damaged(SSRADIO))
+		return (out(SSRADIO));
+	if (Now.bases <= 0)
+		return (printf("Uhura: I'm not getting any response from starbase\n"));
+
 	/* tut tut, there goes the score */
 	Game.helps += 1;
 
 	/* find the closest base */
-	dist = DBL_MAX;
+	dist = 1e50;
 	if (Quad[Ship.quadx][Ship.quady].bases <= 0)
 	{
 		/* there isn't one in this quadrant */
-		l = 0;
 		for (i = 0; i < Now.bases; i++)
 		{
 			/* compute distance */

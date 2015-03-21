@@ -30,19 +30,10 @@
 #include "oc.h"
 #include "debug.h"
 
-const struct devspec ocdevs[] = {
-    { 0, "oc1" },
-    { 1, "oc2" },
-    { 2, "oc3" },
-    { 3, "oc4" },
-    { 4, "oc5" },
-    { 0, 0 }
-};
-
 #define _BC(R,B) (R &= ~(1<<B))
 #define _BS(R,B) (R |= (1<<B))
 
-struct oc_state state[OC_MAX_DEV];
+struct oc_state state[OC_MAX_DEV-1];
 
 /*
  * Devices:

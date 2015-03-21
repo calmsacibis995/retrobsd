@@ -30,11 +30,6 @@
 #include "glcd.h"
 #include "debug.h"
 
-const struct devspec glcddevs[] = {
-    { 0, "glcd0" },
-    { 0, 0 }
-};
-
 #define _BC(R,B) (R &= ~(1<<B))
 #define _BS(R,B) (R |= (1<<B))
 
@@ -639,6 +634,9 @@ int glcd_write (dev_t dev, struct uio *uio, int flag)
 
 int glcd_ioctl (dev_t dev, register u_int cmd, caddr_t addr, int flag)
 {
+        int *val;
+        val = (int *)addr;
+
 	if(cmd == GLCD_RESET) {
             glcd_reset();
         }

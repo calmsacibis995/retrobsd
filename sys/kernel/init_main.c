@@ -21,7 +21,6 @@
 #include "kernel.h"
 #include "namei.h"
 #include "stat.h"
-#include "rdisk.h"
 
 u_int	swapstart, nswap;	/* start and size of swap space */
 size_t	physmem;		/* total amount of physical memory */
@@ -102,10 +101,7 @@ main()
 {
 	register struct proc *p;
 	register int i;
-	register struct fs *fs = NULL;
-	char inbuf[4];
-	char inch;
-        int s __attribute__((unused));
+	register struct fs *fs;
 
 	startup();
 	printf ("\n%s", version);
@@ -136,9 +132,7 @@ main()
 	/*
 	 * Initialize tables, protocols, and set up well-known inodes.
 	 */
-#ifdef LOG_ENABLED
 	loginit();
-#endif
 	coutinit();
 	cinit();
 	pqinit();
@@ -147,88 +141,23 @@ main()
 	binit();
 	nchinit();
 	clkstart();
-        s = spl0();
-	rdisk_init();
-
-	pipedev = rootdev = get_boot_device();
-	swapdev = get_swap_device();
+        spl0();
 
 	/* Mount a root filesystem. */
         for (;;) {
-		if(rootdev!=-1)
-		{
-			fs = mountfs (rootdev, (boothowto & RB_RDONLY) ? MNT_RDONLY : 0,
-				(struct inode*) 0);
-		}
-		if (fs)
-			break;
+                fs = mountfs (rootdev, (boothowto & RB_RDONLY) ? MNT_RDONLY : 0,
+			(struct inode*) 0);
+                if (fs)
+                        break;
 		printf ("No root filesystem available!\n");
-//		rdisk_list_partitions(RDISK_FS);
-retry:
-		printf ("Please enter device to boot from (press ? to list): ");
-		inch=0;
-		inbuf[0] = inbuf[1] = inbuf[2] = inbuf[3] = 0;
-		while((inch=cngetc()) != '\r')
-		{
-			switch(inch)
-			{
-				case '?':
-					printf("?\n");
-					rdisk_list_partitions(RDISK_FS);
-					printf ("Please enter device to boot from (press ? to list): ");
-					break;
-				default:
-					printf("%c",inch);
-					inbuf[0] = inbuf[1];
-					inbuf[1] = inbuf[2];
-					inbuf[2] = inbuf[3];
-					inbuf[3] = inch;
-					break;
-			}
-		}
-
-		inch = 0;
-		if(inbuf[0]=='r' && inbuf[1]=='d')
-		{
-			if(inbuf[2]>='0' && inbuf[2] < '0'+rdisk_num_disks())
-			{
-				if(inbuf[3]>='a' && inbuf[3]<='d')
-				{
-					rootdev=makedev(inbuf[2]-'0',inbuf[3]-'a'+1);
-					inch = 1;
-				}
-			}
-		} else if(inbuf[1]=='r' && inbuf[2]=='d') {
-			if(inbuf[3]>='0' && inbuf[3] < '0'+rdisk_num_disks())
-			{
-				rootdev=makedev(inbuf[3]-'0',0);
-				inch = 1;
-			}
-		} else if(inbuf[3] == 0) {
-			inch = 1;
-		}
-		if(inch==0)
-		{
-			printf("\nUnknown device.\n\n");
-			goto retry;
-		}
+		printf ("Please, insert bootable SD card and press <Enter>: ");
+		while (cngetc () != '\r')
+		        ;
 		printf ("\n\n");
         }
 	printf ("phys mem  = %u kbytes\n", physmem / 1024);
 	printf ("user mem  = %u kbytes\n", MAXMEM / 1024);
-	if(minor(rootdev)==0)
-	{
-		printf ("root dev  = rd%d (%d,%d)\n",
-			major(rootdev),
-			major(rootdev), minor(rootdev)
-		);
-	} else {
-		printf ("root dev  = rd%d%c (%d,%d)\n",
-			major(rootdev), 'a'+minor(rootdev)-1,
-			major(rootdev), minor(rootdev)
-		);
-	}
-
+	printf ("root dev  = (%d,%d)\n", major(rootdev), minor(rootdev));
 	printf ("root size = %u kbytes\n", fs->fs_fsize * DEV_BSIZE / 1024);
 	mount[0].m_inodp = (struct inode*) 1;	/* XXX */
 	mount_updname (fs, "/", "root", 1, 4);
@@ -236,72 +165,18 @@ retry:
 	boottime = time;
 
         /* Find a swap file. */
+#ifdef SWAPDEV
+        swapdev = SWAPDEV;
 	swapstart = 1;
-	while(swapdev == -1)
-	{
-		printf("Please enter swap device (press ? to list): ");
-		inbuf[0] = inbuf[1] = inbuf[2] = inbuf[3] = 0;
-		while((inch = cngetc())!='\r')
-		{
-			switch(inch)
-			{
-				case '?':
-					printf("?\n");
-					rdisk_list_partitions(RDISK_SWAP);
-					printf("Please enter swap device (press ? to list): ");
-					break;
-				default:
-					printf("%c",inch);
-					inbuf[0] = inbuf[1];
-					inbuf[1] = inbuf[2];
-					inbuf[2] = inbuf[3];
-					inbuf[3] = inch;
-					break;
-			}
-		}
-		inch = 0;
-		if(inbuf[0]=='r' && inbuf[1]=='d')
-		{
-			if(inbuf[2]>='0' && inbuf[2] < '0'+rdisk_num_disks())
-			{
-				if(inbuf[3]>='a' && inbuf[3]<='d')
-				{
-					swapdev=makedev(inbuf[2]-'0',inbuf[3]-'a'+1);
-					inch = 1;
-				}
-			}
-		} else if(inbuf[1]=='r' && inbuf[2]=='d') {
-			if(inbuf[3]>='0' && inbuf[3] < '0'+rdisk_num_disks())
-			{
-				swapdev=makedev(inbuf[3]-'0',0);
-				inch = 1;
-			}
-		}
-
-		if(minor(swapdev)!=0)
-		{
-			if(partition_type(swapdev)!=RDISK_SWAP)
-			{
-				printf("\nNot a swap partition!\n\n");
-				swapdev=-1;
-			}
-		}
-	}
-	nswap = rdsize(swapdev);
-
-	if(minor(swapdev)==0)
-	{
-		printf ("swap dev  = rd%d (%d,%d)\n",
-			major(swapdev),
-			major(swapdev), minor(swapdev)
-		);
-	} else {
-		printf ("swap dev  = rd%d%c (%d,%d)\n",
-			major(swapdev), 'a'+minor(swapdev)-1,
-			major(swapdev), minor(swapdev)
-		);
-	}
+	nswap = SWAPSZ;
+	printf ("swap dev  = (%d,%d)\n", major(swapdev), minor(swapdev));
         (*bdevsw[major(swapdev)].d_open)(swapdev, FREAD|FWRITE, S_IFBLK);
+#else
+        swapdev = rootdev;
+	swapstart = fs->fs_isize;
+	nswap = fs->fs_swapsz;
+	printf ("swap dev  = root, offset %u\n", swapstart);
+#endif
 	printf ("swap size = %u kbytes\n", nswap * DEV_BSIZE / 1024);
 	if (nswap <= 0)
 		panic ("zero swap size");	/* don't want to panic, but what ? */
@@ -326,7 +201,7 @@ retry:
                 sched();
         }
         /* Child process with pid 1: init. */
-        s = splhigh();
+        splhigh();
 	p = u.u_procp;
         p->p_dsize = icodeend - icode;
         p->p_daddr = USER_DATA_START;

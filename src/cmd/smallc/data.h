@@ -1,14 +1,9 @@
-/*      File data.h: 2.2 (84/11/27,16:26:11) */
-
 /* storage words */
 
-extern symbol_t symbol_table[];
-extern int global_table_index, rglobal_table_index;
-extern int local_table_index;
-
-extern  loop_t  loopstack[];
-extern  int     loop_table_index;
-
+extern  char    symtab[];
+extern  char    *glbptr, *rglbptr, *locptr;
+extern  int     ws[];
+extern  int     *wsptr;
 extern  int     swstcase[];
 extern  int     swstlab[];
 extern  int     swstp;
@@ -26,19 +21,19 @@ extern  int     nxtlab,
                 ncmp,
                 errcnt,
                 glbflag,
-                verbose,
                 ctext,
                 cmode,
                 lastst;
 
-extern  FILE    *input, *output;
+extern  FILE    *input, *input2, *output;
+extern  FILE    *inclstk[];
 extern  int     inclsp;
+extern  char    fname[];
 
-extern  int     current_symbol_table_idx;
+extern  char    quote[];
+extern  char    *cptr;
 extern  int     *iptr;
 extern  int     fexitlab;
 extern  int     errfile;
 extern  int     errs;
-
-extern char initials_table[];
-extern char *initials_table_ptr;
+extern  int     aflag;

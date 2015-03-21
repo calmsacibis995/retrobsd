@@ -1,15 +1,14 @@
-#include "mille.h"
-#include <strings.h>
+# include	"mille.h"
 
 /*
  * @(#)init.c	1.1 (Berkeley) 4/1/82
  */
-void
+
 init() {
 
-	PLAY	*pp;
-	int	i, j;
-	CARD	card;
+	reg PLAY	*pp;
+	reg int		i, j;
+	reg CARD	card;
 
 	bzero(Numseen, sizeof Numseen);
 	Numgos = 0;
@@ -48,11 +47,10 @@ init() {
 	End = 700;
 }
 
-void
 shuffle() {
 
-	int	i, r;
-	CARD	temp;
+	reg int		i, r;
+	reg CARD	temp;
 
 	for (i = 0; i < DECK_SZ; i++) {
 		r = roll(1, DECK_SZ) - 1;
@@ -67,7 +65,6 @@ shuffle() {
 	Topcard = &Deck[DECK_SZ];
 }
 
-void
 newboard() {
 
 	register int	i;
@@ -126,11 +123,10 @@ newboard() {
 	newscore();
 }
 
-void
 newscore() {
 
-	int		i, new;
-	register PLAY	*pp = 0;
+	reg int		i, new;
+	register PLAY	*pp;
 	static int	was_full = -1;
 	static int	last_win = -1;
 

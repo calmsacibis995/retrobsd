@@ -1,9 +1,7 @@
 /*
  * phant.h	Include file for Phantasia
  */
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+
 #include <setjmp.h>
 #include <curses.h>
 #include <time.h>
@@ -134,16 +132,39 @@ struct	worm_hole	/* worm hole */
 	};
 
 /* files */
-#define monsterfile	PATH"/monsters"
-#define peoplefile	PATH"/characs"
-#define gameprog	PATH"/phantasia"
-#define messfile	PATH"/mess"
-#define lastdead	PATH"/lastdead"
-#define helpfile	PATH"/phant.help"
-#define motd		PATH"/motd"
-#define goldfile	PATH"/gold"
-#define voidfile	PATH"/void"
-#define	enemyfile	PATH"/enemy"
+#define monsterfile	PATH/monsters"
+#define peoplefile	PATH/characs"
+#define gameprog	PATH/phantasia"
+#define messfile	PATH/mess"
+#define lastdead	PATH/lastdead"
+#define helpfile	PATH/phant.help"
+#define motd		PATH/motd"
+#define goldfile	PATH/gold"
+#define voidfile	PATH/void"
+#define	enemyfile	PATH/enemy"
+
+/* library functions and system calls */
+unsigned sleep();
+long	time(), ftell();
+char	*getlogin(), *getpass(), *ctime();
+struct	passwd	*getpwuid();
+char	*strcpy(), *strncpy();
+
+/* function and global variable declarations */
+void	adjuststats(), callmonster(), checkinterm(), checkmov(), checktampered(),
+	cstat(), death(), decree(), exit1(), fight(), genchar(), getstring(), init1(),
+	initchar(), interm(), kingstuff(), leave(), movelvl(), neatstuf(),
+	paws(), printhelp(), printmonster(), printplayers(), printstats(), purge(),
+	showall(), showusers(), statread(), talk(), tampered(), titlestuff(),
+	trade(), treasure(), trunc(), update(), voidupdate();
+int	allocvoid(), findchar(), findspace(), gch(), interrupt(), rgetch(), rngcalc();
+unsigned level();
+double	inflt();
+char	*printloc();
+bool	findname();
+#ifdef	OK_TO_PLAY
+bool	ok_to_play();
+#endif
 
 extern	jmp_buf fightenv, mainenv;
 extern	double	strength, speed;
@@ -151,12 +172,3 @@ extern	bool	beyond, marsh, throne, valhala, changed, fghting, su, wmhl;
 extern	struct worm_hole	w_h[];
 extern	long	secs;
 extern	int	fileloc, users;
-
-void interrupt(int sig);
-void strunc(char *str);
-void update(struct stats *stat, int place);
-void exit1(void);
-void getstring(char *cp, int mx);
-void paws(int where);
-
-double inflt(void);

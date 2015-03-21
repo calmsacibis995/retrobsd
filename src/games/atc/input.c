@@ -6,6 +6,11 @@
  *
  * For more info on this and all of my stuff, mail edjames@berkeley.edu.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)input.c	1.2 (Berkeley) 10/22/87";
+#endif not lint
+
 #include "include.h"
 
 #define MAXRULES	6
@@ -51,8 +56,8 @@ typedef struct {
 
 #define NUMSTATES	NUMELS(st)
 
-char	*setplane(), *circle(), *left(), *right(), *Left(), *Right(),
-	*beacon(), *ex_it(), *climb(), *descend(), *setalt(), *setrelalt(),
+char	*setplane(), *circle(), *left(), *right(), *Left(), *Right(), 
+	*beacon(), *ex_it(), *climb(), *descend(), *setalt(), *setrelalt(), 
 	*benum(), *to_dir(), *rel_dir(), *delayb(), *mark(), *unmark(),
 	*airport(), *turn(), *ignore();
 
@@ -62,17 +67,17 @@ RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 			{ CRTOKEN,	-1,	"",		NULL	},
 #endif
 			{ HELPTOKEN,	12,	" [a-z]<ret>",	NULL	}},
-	state1[] = {	{ 't',		2,	" turn",	turn	},
-			{ 'a',		3,	" altitude:",	NULL	},
+	state1[] = {	{ 't',		2,	" turn",	turn	},	
+			{ 'a',		3,	" altitude:",	NULL	},	
 			{ 'c',		4,	" circle",	circle	},
 			{ 'm',		7,	" mark",	mark	},
 			{ 'u',		7,	" unmark",	unmark	},
 			{ 'i',		7,	" ignore",	ignore	},
 			{ HELPTOKEN,	12,	" tacmui",	NULL	}},
-	state2[] = {	{ 'l',		6,	" left",	left	},
-			{ 'r',		6,	" right",	right	},
+	state2[] = {	{ 'l',		6,	" left",	left	},	
+			{ 'r',		6,	" right",	right	},	
 			{ 'L',		4,	" left 90",	Left	},
-			{ 'R',		4,	" right 90",	Right	},
+			{ 'R',		4,	" right 90",	Right	},	
 			{ 't',		11,	" towards",	NULL	},
 			{ 'w',		4,	" to 0",	to_dir	},
 			{ 'e',		4,	" to 45",	to_dir	},
@@ -83,14 +88,14 @@ RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 			{ 'a',		4,	" to 270",	to_dir	},
 			{ 'q',		4,	" to 315",	to_dir	},
 			{ HELPTOKEN,	12,	" lrLRt<dir>",	NULL	}},
-	state3[] = {	{ '+',		10,	" climb",	climb	},
-			{ 'c',		10,	" climb",	climb	},
-			{ '-',		10,	" descend",	descend	},
-			{ 'd',		10,	" descend",	descend	},
+	state3[] = {	{ '+',		10,	" climb",	climb	},	
+			{ 'c',		10,	" climb",	climb	},	
+			{ '-',		10,	" descend",	descend	},	
+			{ 'd',		10,	" descend",	descend	},	
 			{ NUMTOKEN,	7,	" %c000 feet",	setalt	},
 			{ HELPTOKEN,	12,	" +-cd[0-9]",	NULL	}},
-	state4[] = {	{ '@',		9,	" at",		NULL	},
-			{ 'a',		9,	" at",		NULL	},
+	state4[] = {	{ '@',		9,	" at",		NULL	},	
+			{ 'a',		9,	" at",		NULL	},	
 			{ RETTOKEN,	-1,	"",		NULL	},
 #ifdef SYSV
 			{ CRTOKEN,	-1,	"",		NULL	},
@@ -108,9 +113,9 @@ RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 			{ 'z',		4,	" 225",		rel_dir	},
 			{ 'a',		4,	" 270",		rel_dir	},
 			{ 'q',		4,	" 315",		rel_dir	},
-			{ RETTOKEN,	-1,	"",		NULL	},
+			{ RETTOKEN,	-1,	"",		NULL	},	
 #ifdef SYSV
-			{ CRTOKEN,	-1,	"",		NULL	},
+			{ CRTOKEN,	-1,	"",		NULL	},	
 #endif
 			{ HELPTOKEN,	12,	" @a<dir><ret>",NULL	}},
 	state7[] = {	{ RETTOKEN,	-1,	"",		NULL	},
@@ -125,7 +130,7 @@ RULE	state0[] = {	{ ALPHATOKEN,	1,	"%c:",		setplane},
 			{ HELPTOKEN,	12,	" b*",		NULL	}},
 	state10[] = {	{ NUMTOKEN,	7,	" %c000 ft",	setrelalt},
 			{ HELPTOKEN,	12,	" [0-9]",	NULL	}},
-	state11[] = {	{ 'b',		8,	" beacon #",	beacon	},
+	state11[] = {	{ 'b',		8,	" beacon #",	beacon	},	
 			{ '*',		8,	" beacon #",	beacon	},
 			{ 'e',		8,	" exit #",	ex_it	},
 			{ 'a',		8,	" airport #",	airport	},
@@ -148,7 +153,7 @@ int	level;
 int	tval;
 int	dest_type, dest_no, dir;
 
-int pop()
+pop()
 {
 	if (level == 0)
 		return (-1);
@@ -162,7 +167,7 @@ int pop()
 	return (0);
 }
 
-void rezero()
+rezero()
 {
 	iomove(0);
 
@@ -174,7 +179,7 @@ void rezero()
 	strcpy(T_STR, "");
 }
 
-void push(ruleno, ch)
+push(ruleno, ch)
 {
 	int	newstate, newpos;
 
@@ -195,77 +200,7 @@ void push(ruleno, ch)
 	strcpy(T_STR, "");
 }
 
-int gettoken()
-{
-	while ((tval = getAChar()) == REDRAWTOKEN || tval == SHELLTOKEN)
-	{
-		if (tval == SHELLTOKEN)
-		{
-#ifdef BSD
-			struct itimerval	itv;
-			itv.it_value.tv_sec = 0;
-			itv.it_value.tv_usec = 0;
-			setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-			int aval;
-			aval = alarm(0);
-#endif
-			if (fork() == 0)	/* child */
-			{
-				char *shell, *base, *getenv(), *strrchr();
-
-				setuid(getuid()); /* turn off setuid bit */
-				done_screen();
-
-						 /* run user's favorite shell */
-				if ((shell = getenv("SHELL")) != NULL)
-				{
-					base = strrchr(shell, '/');
-					if (base == NULL)
-						base = shell;
-					else
-						base++;
-					execl(shell, base, (char*)0);
-				}
-				else
-					execl("/bin/sh", "sh", (char*)0);
-
-				exit(0);	/* oops */
-			}
-
-			wait(0);
-#ifdef BSD
-			ioctl(fileno(stdin), TIOCSETP, &tty_new);
-			itv.it_value.tv_sec = 0;
-			itv.it_value.tv_usec = 1;
-			itv.it_interval.tv_sec = sp->update_secs;
-			itv.it_interval.tv_usec = 0;
-			setitimer(ITIMER_REAL, &itv, NULL);
-#endif
-#ifdef SYSV
-			ioctl(fileno(stdin), TCSETAW, &tty_new);
-			alarm(aval);
-#endif
-		}
-		redraw();
-	}
-
-	if (isdigit(tval))
-		return (NUMTOKEN);
-	else if (isalpha(tval))
-		return (ALPHATOKEN);
-	else
-		return (tval);
-}
-
-void noise()
-{
-	putchar('\07');
-	fflush(stdout);
-}
-
-int getcommand()
+getcommand()
 {
 	int	c, i, done;
 	char	*s, *(*func)();
@@ -300,7 +235,7 @@ int getcommand()
 		return (1);	/* forced update */
 
 	dest_type = T_NODEST;
-
+	
 	for (i = 0; i < level; i++) {
 		func = st[stack[i].state].rule[stack[i].rule].func;
 		if (func != NULL)
@@ -321,6 +256,76 @@ int getcommand()
 		pp->delayd_no = p.delayd_no;
 	}
 	return (0);
+}
+
+noise()
+{
+	putchar('\07');
+	fflush(stdout);
+}
+
+gettoken()
+{
+	while ((tval = getAChar()) == REDRAWTOKEN || tval == SHELLTOKEN)
+	{
+		if (tval == SHELLTOKEN)
+		{
+#ifdef BSD
+			struct itimerval	itv;
+			itv.it_value.tv_sec = 0;
+			itv.it_value.tv_usec = 0;
+			setitimer(ITIMER_REAL, &itv, NULL);
+#endif
+#ifdef SYSV
+			int aval;
+			aval = alarm(0);
+#endif
+			if (fork() == 0)	/* child */
+			{
+				char *shell, *base, *getenv(), *strrchr();
+
+				setuid(getuid()); /* turn off setuid bit */
+				done_screen();
+
+						 /* run user's favorite shell */
+				if ((shell = getenv("SHELL")) != NULL)
+				{
+					base = strrchr(shell, '/');
+					if (base == NULL)
+						base = shell;
+					else
+						base++;
+					execl(shell, base, 0);
+				}
+				else
+					execl("/bin/sh", "sh", 0);
+
+				exit(0);	/* oops */
+			}
+
+			wait(0);
+#ifdef BSD
+			ioctl(fileno(stdin), TIOCSETP, &tty_new);
+			itv.it_value.tv_sec = 0;
+			itv.it_value.tv_usec = 1;
+			itv.it_interval.tv_sec = sp->update_secs;
+			itv.it_interval.tv_usec = 0;
+			setitimer(ITIMER_REAL, &itv, NULL);
+#endif
+#ifdef SYSV
+			ioctl(fileno(stdin), TCSETAW, &tty_new);
+			alarm(aval);
+#endif
+		}
+		redraw();
+	}
+
+	if (isdigit(tval))
+		return (NUMTOKEN);
+	else if (isalpha(tval))
+		return (ALPHATOKEN);
+	else
+		return (tval);
 }
 
 char	*
@@ -599,9 +604,10 @@ ignore(c)
 	return (NULL);
 }
 
-int dir_no(ch)
+dir_no(ch)
+	char	ch;
 {
-	int	dir = 0;
+	int	dir;
 
 	switch (ch) {
 	case 'w':	dir = 0;	break;

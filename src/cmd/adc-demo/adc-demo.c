@@ -60,7 +60,6 @@ int main(int argc, char **argv)
     clear();
     while(1)
     {
-	clear();
         for(i=0; i<16; i++)
         {
             if(channels[i].enabled == 1)
@@ -78,7 +77,7 @@ int main(int argc, char **argv)
                 {
                     mvwaddch(win,i,value+11,'=');
                 }
-               // clrtoeol();
+                clrtoeol();
             }
         }
         refresh();

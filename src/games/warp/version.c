@@ -3,13 +3,12 @@
  * $Log:	version.c,v $
  * Revision 7.0  86/10/08  15:14:39  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "patchlevel.h"
 #include "INTERN.h"
 #include "version.h"
-#include <stdio.h>
 
 /* Print out the version number. */
 

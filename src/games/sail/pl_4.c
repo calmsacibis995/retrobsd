@@ -3,16 +3,20 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)pl_4.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "player.h"
 
-void
 changesail()
 {
 	int rig, full;
 
 	rig = mc->rig1;
 	full = mf->FS;
-	if (windspeed == 6 || (windspeed == 5 && mc->class > 4))
+	if (windspeed == 6 || windspeed == 5 && mc->class > 4)
 		rig = 0;
 	if (mc->crew3 && rig) {
 		if (!full) {
@@ -29,10 +33,9 @@ changesail()
 			}
 		}
 	} else if (!rig)
-		Signal("Sails rent to pieces", (struct ship *)0, 0, 0, 0, 0);
+		Signal("Sails rent to pieces", (struct ship *)0);
 }
 
-void
 acceptsignal()
 {
 	char buf[60];
@@ -47,7 +50,6 @@ acceptsignal()
 	Write(W_SIGNAL, ms, 1, (int)buf, 0, 0, 0);
 }
 
-void
 lookout()
 {
 	register struct ship *sp;
@@ -56,7 +58,7 @@ lookout()
 
 	sgetstr("What ship? ", buf, sizeof buf);
 	foreachship(sp) {
-		c = *countryname[(int)sp->nationality];
+		c = *countryname[sp->nationality];
 		if ((c == *buf || tolower(c) == *buf || colours(sp) == *buf)
 		    && (sp->file->stern == buf[1] || sterncolour(sp) == buf[1]
 			|| buf[1] == '?')) {
@@ -67,8 +69,8 @@ lookout()
 
 char *
 saywhat(sp, flag)
-        register struct ship *sp;
-        int flag;
+register struct ship *sp;
+char flag;
 {
 	if (sp->file->captain[0])
 		return sp->file->captain;
@@ -82,20 +84,19 @@ saywhat(sp, flag)
 		return "(computer)";
 }
 
-void
 eyeball(ship)
-        register struct ship *ship;
+register struct ship *ship;
 {
 	int i;
 
 	if (ship->file->dir != 0) {
 		Signal("Sail ho! (range %d, %s)",
-			(struct ship *)0, range(ms, ship), (int)saywhat(ship, 0), 0, 0);
+			(struct ship *)0, range(ms, ship), saywhat(ship, 0));
 		i = portside(ms, ship, 1) - mf->dir;
 		if (i <= 0)
 			i += 8;
 		Signal("%s (%c%c) %s %s %s.",
-			ship, (int)countryname[(int)ship->nationality],
-			(int)classname[(int)ship->specs->class], (int)directionname[i], 0);
+			ship, countryname[ship->nationality],
+			classname[ship->specs->class], directionname[i]);
 	}
 }

@@ -9,21 +9,15 @@
 #include <string.h>
 #include "rogue.h"
 
-static void
-center(row, buf)
-        int row;
-        char *buf;
-{
-	int margin;
+extern char login_name[];
+extern char *m_names[];
+extern short max_level;
+extern boolean score_only, no_skull, msg_cleared;
+extern char *byebye_string, *nick_name;
 
-	margin = ((DCOLS - strlen(buf)) / 2);
-	mvaddstr(row, margin, buf);
-}
-
-void
 killed_by(monster, other)
-        object *monster;
-        int other;
+object *monster;
+short other;
 {
 	char buf[128];
 
@@ -89,110 +83,6 @@ killed_by(monster, other)
 	put_scores(monster, other);
 }
 
-static int
-get_value(obj)
-        object *obj;
-{
-	int wc;
-	int val = 0;
-
-	wc = obj->which_kind;
-
-	switch(obj->what_is) {
-	case WEAPON:
-		val = id_weapons[wc].value;
-		if ((wc == ARROW) || (wc == DAGGER) || (wc == SHURIKEN) ||
-			(wc == DART)) {
-			val *= obj->quantity;
-		}
-		val += (obj->d_enchant * 85);
-		val += (obj->hit_enchant * 85);
-		break;
-	case ARMOR:
-		val = id_armors[wc].value;
-		val += (obj->d_enchant * 75);
-		if (obj->is_protected) {
-			val += 200;
-		}
-		break;
-	case WAND:
-		val = id_wands[wc].value * (obj->class + 1);
-		break;
-	case SCROL:
-		val = id_scrolls[wc].value * obj->quantity;
-		break;
-	case POTION:
-		val = id_potions[wc].value * obj->quantity;
-		break;
-	case AMULET:
-		val = 5000;
-		break;
-	case RING:
-		val = id_rings[wc].value * (obj->class + 1);
-		break;
-	}
-	if (val <= 0) {
-		val = 10;
-	}
-	return(val);
-}
-
-static void
-sell_pack()
-{
-	object *obj;
-	int row = 2, val;
-	char buf[DCOLS];
-
-	obj = rogue.pack.next_object;
-
-	clear();
-	mvaddstr(1, 0, "Value      Item");
-
-	while (obj) {
-		if (obj->what_is != FOOD) {
-			obj->identified = 1;
-			val = get_value(obj);
-			rogue.gold += val;
-
-			if (row < DROWS) {
-				sprintf(buf, "%5d      ", val);
-				get_desc(obj, buf+11);
-				mvaddstr(row++, 0, buf);
-			}
-		}
-		obj = obj->next_object;
-	}
-	refresh();
-	if (rogue.gold > MAX_GOLD) {
-		rogue.gold = MAX_GOLD;
-	}
-	message("", 0);
-}
-
-static void
-id_all()
-{
-	int i;
-
-	for (i = 0; i < SCROLS; i++) {
-		id_scrolls[i].id_status = IDENTIFIED;
-	}
-	for (i = 0; i < WEAPONS; i++) {
-		id_weapons[i].id_status = IDENTIFIED;
-	}
-	for (i = 0; i < ARMORS; i++) {
-		id_armors[i].id_status = IDENTIFIED;
-	}
-	for (i = 0; i < WANDS; i++) {
-		id_wands[i].id_status = IDENTIFIED;
-	}
-	for (i = 0; i < POTIONS; i++) {
-		id_potions[i].id_status = IDENTIFIED;
-	}
-}
-
-void
 win()
 {
 	unwield(rogue.weapon);		/* disarm and relax */
@@ -216,13 +106,12 @@ win()
 	put_scores((object *) 0, WIN);
 }
 
-void
 quit(from_intrpt)
-        boolean from_intrpt;
+boolean from_intrpt;
 {
 	char buf[128];
-	int i, orow = 0, ocol = 0;
-	boolean mc = 0;
+	short i, orow, ocol;
+	boolean mc;
 
 	md_ignore_signals();
 
@@ -258,125 +147,11 @@ quit(from_intrpt)
 	killed_by((object *) 0, QUIT);
 }
 
-static void
-insert_score(scores, n_names, n_name, rank, n, monster, other)
-        char scores[][82];
-        char n_names[][30];
-        char *n_name;
-        int rank, n;
-        object *monster;
-{
-	int i;
-	char buf[128];
-
-	if (n > 0) {
-		for (i = n; i > rank; i--) {
-			if ((i < 10) && (i > 0)) {
-				(void) strcpy(scores[i], scores[i-1]);
-				(void) strcpy(n_names[i], n_names[i-1]);
-			}
-		}
-	}
-	sprintf(buf, "%2d    %6d   %s: ", rank+1, (int)rogue.gold, login_name);
-
-	if (other) {
-		switch(other) {
-		case HYPOTHERMIA:
-			(void) strcat(buf, "died of hypothermia");
-			break;
-		case STARVATION:
-			(void) strcat(buf, "died of starvation");
-			break;
-		case POISON_DART:
-			(void) strcat(buf, "killed by a dart");
-			break;
-		case QUIT:
-			(void) strcat(buf, "quit");
-			break;
-		case WIN:
-			(void) strcat(buf, "a total winner");
-			break;
-		case KFIRE:
-			(void) strcpy(buf, "killed by fire");
-			break;
-		}
-	} else {
-		(void) strcat(buf, "killed by ");
-		if (is_vowel(m_names[monster->m_char - 'A'][0])) {
-			(void) strcat(buf, "an ");
-		} else {
-			(void) strcat(buf, "a ");
-		}
-		(void) strcat(buf, m_names[monster->m_char - 'A']);
-	}
-	sprintf(buf+strlen(buf), " on level %d ",  max_level);
-	if ((other != WIN) && has_amulet()) {
-		(void) strcat(buf, "with amulet");
-	}
-	for (i = strlen(buf); i < 79; i++) {
-		buf[i] = ' ';
-	}
-	buf[79] = 0;
-	(void) strcpy(scores[rank], buf);
-	(void) strcpy(n_names[rank], n_name);
-}
-
-static void
-nickize(buf, score, n_name)
-        char *buf, *score, *n_name;
-{
-	int i = 15, j;
-
-	if (!n_name[0]) {
-		(void) strcpy(buf, score);
-	} else {
-		(void) strncpy(buf, score, 16);
-
-		while (score[i] != ':') {
-			i++;
-		}
-
-		(void) strcpy(buf+15, n_name);
-		j = strlen(buf);
-
-		while (score[i]) {
-			buf[j++] = score[i++];
-		}
-		buf[j] = 0;
-		buf[79] = 0;
-	}
-}
-
-static void
-sf_error()
-{
-	md_lock(0);
-	message("", 1);
-	clean_up("sorry, score file is out of order");
-}
-
-static int
-name_cmp(s1, s2)
-        char *s1, *s2;
-{
-	int i = 0;
-	int r;
-
-	while(s1[i] != ':') {
-		i++;
-	}
-	s1[i] = 0;
-	r = strcmp(s1, s2);
-	s1[i] = ':';
-	return(r);
-}
-
-void
 put_scores(monster, other)
-        object *monster;
-        int other;
+object *monster;
+short other;
 {
-	int i, n, rank = 10, x, ne = 0, found_player = -1;
+	short i, n, rank = 10, x, ne = 0, found_player = -1;
 	char scores[10][82];
 	char n_names[10][30];
 	char buf[128];
@@ -497,9 +272,70 @@ put_scores(monster, other)
 	clean_up("");
 }
 
-int
+insert_score(scores, n_names, n_name, rank, n, monster, other)
+char scores[][82];
+char n_names[][30];
+char *n_name;
+short rank, n;
+object *monster;
+{
+	short i;
+	char buf[128];
+
+	if (n > 0) {
+		for (i = n; i > rank; i--) {
+			if ((i < 10) && (i > 0)) {
+				(void) strcpy(scores[i], scores[i-1]);
+				(void) strcpy(n_names[i], n_names[i-1]);
+			}
+		}
+	}
+	sprintf(buf, "%2d    %6d   %s: ", rank+1, (int)rogue.gold, login_name);
+
+	if (other) {
+		switch(other) {
+		case HYPOTHERMIA:
+			(void) strcat(buf, "died of hypothermia");
+			break;
+		case STARVATION:
+			(void) strcat(buf, "died of starvation");
+			break;
+		case POISON_DART:
+			(void) strcat(buf, "killed by a dart");
+			break;
+		case QUIT:
+			(void) strcat(buf, "quit");
+			break;
+		case WIN:
+			(void) strcat(buf, "a total winner");
+			break;
+		case KFIRE:
+			(void) strcpy(buf, "killed by fire");
+			break;
+		}
+	} else {
+		(void) strcat(buf, "killed by ");
+		if (is_vowel(m_names[monster->m_char - 'A'][0])) {
+			(void) strcat(buf, "an ");
+		} else {
+			(void) strcat(buf, "a ");
+		}
+		(void) strcat(buf, m_names[monster->m_char - 'A']);
+	}
+	sprintf(buf+strlen(buf), " on level %d ",  max_level);
+	if ((other != WIN) && has_amulet()) {
+		(void) strcat(buf, "with amulet");
+	}
+	for (i = strlen(buf); i < 79; i++) {
+		buf[i] = ' ';
+	}
+	buf[79] = 0;
+	(void) strcpy(scores[rank], buf);
+	(void) strcpy(n_names[rank], n_name);
+}
+
 is_vowel(ch)
-        int ch;
+short ch;
 {
 	return( (ch == 'a') ||
 		(ch == 'e') ||
@@ -508,12 +344,126 @@ is_vowel(ch)
 		(ch == 'u') );
 }
 
-void
-xxxx(buf, n)
-        char *buf;
-        int n;
+sell_pack()
 {
-	int i;
+	object *obj;
+	short row = 2, val;
+	char buf[DCOLS];
+
+	obj = rogue.pack.next_object;
+
+	clear();
+	mvaddstr(1, 0, "Value      Item");
+
+	while (obj) {
+		if (obj->what_is != FOOD) {
+			obj->identified = 1;
+			val = get_value(obj);
+			rogue.gold += val;
+
+			if (row < DROWS) {
+				sprintf(buf, "%5d      ", val);
+				get_desc(obj, buf+11);
+				mvaddstr(row++, 0, buf);
+			}
+		}
+		obj = obj->next_object;
+	}
+	refresh();
+	if (rogue.gold > MAX_GOLD) {
+		rogue.gold = MAX_GOLD;
+	}
+	message("", 0);
+}
+
+get_value(obj)
+object *obj;
+{
+	short wc;
+	int val;
+
+	wc = obj->which_kind;
+
+	switch(obj->what_is) {
+	case WEAPON:
+		val = id_weapons[wc].value;
+		if ((wc == ARROW) || (wc == DAGGER) || (wc == SHURIKEN) ||
+			(wc == DART)) {
+			val *= obj->quantity;
+		}
+		val += (obj->d_enchant * 85);
+		val += (obj->hit_enchant * 85);
+		break;
+	case ARMOR:
+		val = id_armors[wc].value;
+		val += (obj->d_enchant * 75);
+		if (obj->is_protected) {
+			val += 200;
+		}
+		break;
+	case WAND:
+		val = id_wands[wc].value * (obj->class + 1);
+		break;
+	case SCROL:
+		val = id_scrolls[wc].value * obj->quantity;
+		break;
+	case POTION:
+		val = id_potions[wc].value * obj->quantity;
+		break;
+	case AMULET:
+		val = 5000;
+		break;
+	case RING:
+		val = id_rings[wc].value * (obj->class + 1);
+		break;
+	}
+	if (val <= 0) {
+		val = 10;
+	}
+	return(val);
+}
+
+id_all()
+{
+	short i;
+
+	for (i = 0; i < SCROLS; i++) {
+		id_scrolls[i].id_status = IDENTIFIED;
+	}
+	for (i = 0; i < WEAPONS; i++) {
+		id_weapons[i].id_status = IDENTIFIED;
+	}
+	for (i = 0; i < ARMORS; i++) {
+		id_armors[i].id_status = IDENTIFIED;
+	}
+	for (i = 0; i < WANDS; i++) {
+		id_wands[i].id_status = IDENTIFIED;
+	}
+	for (i = 0; i < POTIONS; i++) {
+		id_potions[i].id_status = IDENTIFIED;
+	}
+}
+
+name_cmp(s1, s2)
+char *s1, *s2;
+{
+	short i = 0;
+	int r;
+
+	while(s1[i] != ':') {
+		i++;
+	}
+	s1[i] = 0;
+	r = strcmp(s1, s2);
+	s1[i] = ':';
+	return(r);
+}
+
+xxxx(buf, n)
+char *buf;
+short n;
+{
+	short i;
 	unsigned char c;
 
 	for (i = 0; i < n; i++) {
@@ -527,7 +477,7 @@ xxxx(buf, n)
 
 long
 xxx(st)
-        boolean st;
+boolean st;
 {
 	static long f, s;
 	long r;
@@ -541,4 +491,46 @@ xxx(st)
 	f = s;
 	s = r;
 	return(r);
+}
+
+nickize(buf, score, n_name)
+char *buf, *score, *n_name;
+{
+	short i = 15, j;
+
+	if (!n_name[0]) {
+		(void) strcpy(buf, score);
+	} else {
+		(void) strncpy(buf, score, 16);
+
+		while (score[i] != ':') {
+			i++;
+		}
+
+		(void) strcpy(buf+15, n_name);
+		j = strlen(buf);
+
+		while (score[i]) {
+			buf[j++] = score[i++];
+		}
+		buf[j] = 0;
+		buf[79] = 0;
+	}
+}
+
+center(row, buf)
+short row;
+char *buf;
+{
+	short margin;
+
+	margin = ((DCOLS - strlen(buf)) / 2);
+	mvaddstr(row, margin, buf);
+}
+
+sf_error()
+{
+	md_lock(0);
+	message("", 1);
+	clean_up("sorry, score file is out of order");
 }

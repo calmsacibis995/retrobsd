@@ -47,12 +47,10 @@ putchar (c, flags, tp)
 		}
 		splx(s);
 	}
-#ifdef LOG_ENABLED
 	if ((flags & TOLOG) && c != '\0' && c != '\r' && c != 0177) {
 		char sym = c;
 		logwrt (&sym, 1, logMSG);
 	}
-#endif
 	if ((flags & TOCONS) && c != '\0')
 		cnputc(c);
 }
@@ -92,12 +90,6 @@ ksprintn (char *nbuf, unsigned long ul, int base, int width, int *lenp)
 	return (p);
 }
 
-void puts(char *s, int flags, struct tty *ttyp)
-{
-    while(*s)
-        putchar(*(s++), flags, ttyp);
-}
-
 /*
  * Scaled down version of printf(3).
  * Two additional formats: %b anf %D.
@@ -127,11 +119,6 @@ void puts(char *s, int flags, struct tty *ttyp)
  *	("%6D", ptr)       -> XX XX XX XX XX XX
  *	("%#*D", len, ptr) -> XX:XX:XX:XX ...
  */
-
-#define PUTC(C) putchar(C,flags,ttyp)
-
-#define HION "\e[1m"
-#define HIOFF "\e[0m"
 static void
 prf (fmt, ap, flags, ttyp)
 	register char *fmt;
@@ -139,6 +126,7 @@ prf (fmt, ap, flags, ttyp)
 	int flags;
 	struct tty *ttyp;
 {
+#define PUTC(c)		putchar (c, flags, ttyp)
 #define va_arg(ap,type)	*(type*) (void*) (ap++)
 
 	char *q, nbuf [sizeof(long) * 8 + 1];
@@ -147,21 +135,13 @@ prf (fmt, ap, flags, ttyp)
 	int n, width, dwidth, uppercase, extrazeros, sign;
 	unsigned long ul;
 
-#ifdef KERNEL_HIGHLIGHT
-    puts(HION,flags,ttyp);
-#endif
-
 	if (! fmt)
 		fmt = "(null)\n";
 
 	for (;;) {
 		while ((c = *fmt++) != '%') {
-			if (! c) {
-#ifdef KERNEL_HIGHLIGHT
-                puts(HIOFF,flags,ttyp);
-#endif
+			if (! c)
 				return;
-            }
 			PUTC (c);
 		}
 		padding = ' ';
@@ -424,9 +404,6 @@ number:			if (sign && ((long) ul != 0L)) {
 			break;
 		}
 	}
-#ifdef KERNEL_HIGHLIGHT
-    puts(HIOFF,flags,ttyp);
-#endif
 }
 
 static void
@@ -515,9 +492,7 @@ tprintf (register struct tty *tp, char *fmt, ...)
 	if (ttycheckoutq (tp, 0) == 0)
 		flags = TOLOG;
 	prf (fmt, &fmt + 1, flags, tp);
-#ifdef LOG_ENABLED
 	logwakeup (logMSG);
-#endif
 }
 
 /*
@@ -534,13 +509,9 @@ log (int level, char *fmt, ...)
 	logpri(level);
 	prf(fmt, &fmt + 1, TOLOG, (struct tty *)0);
 	splx(s);
-#ifdef LOG_ENABLED
 	if (! logisopen(logMSG))
-#endif
 		prf(fmt, &fmt + 1, TOCONS, (struct tty *)0);
-#ifdef LOG_ENABLED
 	logwakeup(logMSG);
-#endif
 }
 
 /*

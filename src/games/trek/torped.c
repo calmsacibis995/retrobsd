@@ -3,49 +3,13 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)torped.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	<stdio.h>
-# include	<stdlib.h>
 # include	"trek.h"
-# include	"getpar.h"
-
-/*
-**  RANDOMIZE COURSE
-**
-**	This routine randomizes the course for torpedo number 'n'.
-**	Other things handled by this routine are misfires, damages
-**	to the tubes, etc.
-*/
-static int
-randcourse(n)
-        int	n;
-{
-	double			r;
-	register int		d;
-
-	d = ((franf() + franf()) - 1.0) * 20;
-	if (abs(d) > 12)
-	{
-		printf("Photon tubes misfire");
-		if (n < 0)
-			printf("\n");
-		else
-			printf(" on torpedo %d\n", n);
-		if (ranf(2))
-		{
-			damage(TORPED, 0.2 * abs(d) * (franf() + 1.0));
-		}
-		d *= 1.0 + 2.0 * franf();
-	}
-	if (Ship.shldup || Ship.cond == DOCKED)
-	{
-		r = Ship.shield;
-		r = 1.0 + r / Param.shield;
-		if (Ship.cond == DOCKED)
-			r = 2.0;
-		d *= r;
-	}
-	return (d);
-}
 
 /*
 **  PHOTON TORPEDO CONTROL
@@ -65,7 +29,8 @@ randcourse(n)
 **	course is randomized even more.  You also have the chance that
 **	the misfire damages your torpedo tubes.
 */
-void
+
+
 torped()
 {
 	register int		ix, iy;
@@ -78,15 +43,15 @@ torped()
 	int			burst;
 	int			n;
 
-	if (Ship.cloaked) {
-	        printf("Federation regulations do not permit attack while cloaked.\n");
-		return;
+	if (Ship.cloaked)
+	{
+		return (printf("Federation regulations do not permit attack while cloaked.\n"));
 	}
 	if (check_out(TORPED))
 		return;
-	if (Ship.torped <= 0) {
-	        printf("All photon torpedos expended\n");
-		return;
+	if (Ship.torped <= 0)
+	{
+		return (printf("All photon torpedos expended\n"));
 	}
 
 	/* get the course */
@@ -106,7 +71,7 @@ torped()
 		/* see if the user wants one */
 		if (!testnl())
 		{
-			k = ungetc(fgetc(stdin), stdin);
+			k = ungetc(cgetc(0), stdin);
 			if (k >= '0' && k <= '9')
 				burst = 1;
 		}
@@ -120,10 +85,8 @@ torped()
 		burst = getintpar("burst angle");
 		if (burst <= 0)
 			return;
-		if (burst > 15) {
-		        printf("Maximum burst angle is 15 degrees\n");
-			return;
-                }
+		if (burst > 15)
+			return (printf("Maximum burst angle is 15 degrees\n"));
 	}
 	sectsize = NSECTS;
 	n = -1;
@@ -167,7 +130,7 @@ torped()
 			{
 			  case EMPTY:
 				continue;
-
+	
 			  case HOLE:
 				printf("Torpedo disappears into a black hole\n");
 				break;
@@ -188,15 +151,15 @@ torped()
 					break;
 				}
 				break;
-
+	
 			  case STAR:
 				nova(ix, iy);
 				break;
-
+	
 			  case INHABIT:
 				kills(ix, iy, -1);
 				break;
-
+	
 			  case BASE:
 				killb(Ship.quadx, Ship.quady);
 				Game.killb += 1;
@@ -214,4 +177,44 @@ torped()
 		course += burst;
 	}
 	Move.free = 0;
+}
+
+
+/*
+**  RANDOMIZE COURSE
+**
+**	This routine randomizes the course for torpedo number 'n'.
+**	Other things handled by this routine are misfires, damages
+**	to the tubes, etc.
+*/
+
+randcourse(n)
+int	n;
+{
+	double			r;
+	register int		d;
+
+	d = ((franf() + franf()) - 1.0) * 20;
+	if (abs(d) > 12)
+	{
+		printf("Photon tubes misfire");
+		if (n < 0)
+			printf("\n");
+		else
+			printf(" on torpedo %d\n", n);
+		if (ranf(2))
+		{
+			damage(TORPED, 0.2 * abs(d) * (franf() + 1.0));
+		}
+		d *= 1.0 + 2.0 * franf();
+	}
+	if (Ship.shldup || Ship.cond == DOCKED)
+	{
+		r = Ship.shield;
+		r = 1.0 + r / Param.shield;
+		if (Ship.cond == DOCKED)
+			r = 2.0;
+		d *= r;
+	}
+	return (d);
 }

@@ -16,7 +16,6 @@
  */
 #include <stdio.h>
 #include <stdarg.h>
-#include <alloca.h>
 
 int
 vfprintf (iop, fmt, ap)
@@ -25,10 +24,11 @@ vfprintf (iop, fmt, ap)
 	va_list ap;
 {
 	int len;
+	char localbuf[BUFSIZ];
 
 	if (iop->_flag & _IONBF) {
 		iop->_flag &= ~_IONBF;
-		iop->_ptr = iop->_base = alloca(BUFSIZ);
+		iop->_ptr = iop->_base = localbuf;
 		len = _doprnt(fmt, ap, iop);
 		(void) fflush(iop);
 		iop->_flag |= _IONBF;

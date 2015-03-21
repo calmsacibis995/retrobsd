@@ -5,17 +5,17 @@
  */
 #include <stdio.h>
 #include <stdarg.h>
-#include <alloca.h>
 
 int
 fprintf (register FILE *iop, const char *fmt, ...)
 {
+	char localbuf[BUFSIZ];
 	va_list ap;
 
 	va_start (ap, fmt);
 	if (iop->_flag & _IONBF) {
 		iop->_flag &= ~_IONBF;
-		iop->_ptr = iop->_base = alloca(BUFSIZ);
+		iop->_ptr = iop->_base = localbuf;
 		iop->_bufsiz = BUFSIZ;
 		_doprnt(fmt, ap, iop);
 		fflush(iop);

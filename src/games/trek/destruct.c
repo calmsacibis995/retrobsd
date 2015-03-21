@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)destruct.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-# include	"getpar.h"
 
 /*
 **  Self Destruct Sequence
@@ -25,17 +29,15 @@
 **
 **	Uses trace flag 41
 */
-void
+
 destruct()
 {
 	char		checkpass[15];
 	register int	i, j;
 	double		zap;
 
-	if (damaged(COMPUTER)) {
-	        out(COMPUTER);
-		return;
-        }
+	if (damaged(COMPUTER))
+		return (out(COMPUTER));
 	printf("\n --- WORKING ---\n");
 	sleep(3);
 	/* output the count 10 9 8 7 6 */
@@ -50,10 +52,8 @@ destruct()
 	skiptonl(0);
 	getstrpar("Enter password verification", checkpass, 14, 0);
 	sleep(2);
-	if (!sequal(checkpass, Game.passwd)) {
-	        printf("Self destruct sequence aborted\n");
-		return;
-        }
+	if (!sequal(checkpass, Game.passwd))
+		return (printf("Self destruct sequence aborted\n"));
 	printf("Password verified; self destruct sequence continues:\n");
 	sleep(2);
 	/* output count 5 4 3 2 1 0 */

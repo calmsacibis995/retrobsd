@@ -23,14 +23,8 @@ bpwait()
     while ((w = wait(&stat)) != pid && w != -1)
         ;
     signal(SIGINT, sigint);
-
-#ifdef TIOCGETP
     ioctl(0, TIOCGETP, &usrtty);
     ioctl(0, TIOCSETP, &adbtty);
-#else
-    tcgetattr(0, &usrtty);
-    tcsetattr(0, TCSANOW, &adbtty);
-#endif
     if (w == -1) {
         pid = 0;
         errflg = BADWAIT;
@@ -69,7 +63,7 @@ readregs()
 
     for (i=0; i<NREG; i++) {
         uframe[reglist[i].roffs] = ptrace(PT_READ_U, pid,
-            (char*)((long)&uframe[reglist[i].roffs] - (long)&corhdr),
+            (int *)((int)&uframe[reglist[i].roffs] - (int)&corhdr),
             0);
     }
 }
@@ -79,18 +73,12 @@ execbkpt(bkptr)
     BKPTR bkptr;
 {
     int bkptloc;
-
 #ifdef DEBUG
     print("exbkpt: %d\n", bkptr->count);
 #endif
     bkptloc = bkptr->loc;
     ptrace(PT_WRITE_I, pid, (void*) bkptloc, bkptr->ins);
-
-#ifdef TIOCGETP
     ioctl(0, TIOCSETP, &usrtty);
-#else
-    tcsetattr(0, TCSANOW, &usrtty);
-#endif
     ptrace(PT_STEP, pid, (void*) bkptloc, 0);
     bpwait();
     chkerr();
@@ -112,11 +100,7 @@ runpcs(runmode, execsig)
 #ifdef DEBUG
         print("\ncontinue %d %d\n", userpc, execsig);
 #endif
-#ifdef TIOCGETP
         ioctl(0, TIOCSETP, &usrtty);
-#else
-        tcsetattr(0, TCSANOW, &usrtty);
-#endif
         ptrace (runmode, pid, (void*) userpc, execsig);
         bpwait();
         chkerr();

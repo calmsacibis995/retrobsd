@@ -10,6 +10,7 @@
  * define structure of a deck of cards and other related things
  */
 
+
 #define		CARDS		52		/* number cards in deck */
 #define		RANKS		13		/* number ranks in deck */
 #define		SUITS		4		/* number suits in deck */
@@ -42,14 +43,16 @@
 
 #define		VAL(c)		( (c) < 9 ? (c)+1 : 10 )    /* val of rank */
 
+
 #ifndef TRUE
-#   define	TRUE		(1)
-#   define	FALSE		(0)
+#	define		TRUE		1
+#	define		FALSE		0
 #endif
 
-typedef struct {
-	int rank;
-	int suit;
-} CARD;
+typedef		struct  {
+			int		rank;
+			int		suit;
+		}		CARD;
 
-typedef int BOOLEAN;
+typedef		char		BOOLEAN;
+

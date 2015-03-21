@@ -72,21 +72,19 @@ struct	worm_hole	w_h[] =
 	58,33,14,3
 	};
 
-int
 main(argc,argv)				/* Phantasia main routine */
-        int	argc;
-        char	*argv[];
+int	argc;
+char	*argv[];
 {
-        struct	stats	charac;
-        char	aline[200], *login = NULL;
-        double	x = 0.0, y = 0.0;
-        int	ch, ch2;
-        register int	loop, temp;
-        FILE	*fp;
-        bool	shrt = FALSE, examine = FALSE, header = FALSE;
+struct	stats	charac;
+char	aline[200], *login = NULL;
+double	x = 0.0, y = 0.0;
+int	ch, ch2;
+reg	int	loop, temp;
+FILE	*fp;
+bool	shrt = FALSE, examine = FALSE, header = FALSE;
 
-        login = getlogin();
-	if (! login)
+	if ((login = getlogin()) == NULL)
 		login = getpwuid(getuid())->pw_name;
 #ifdef ENEMY
 	/* check hit list of restricted accounts */
@@ -195,7 +193,7 @@ main(argc,argv)				/* Phantasia main routine */
 			{
 			mvaddstr(19,0,"Enter the X Y coordinates of your experimento ? ");
 			getstring(aline,80);
-			sscanf(aline,"%lf %lf",&x,&y);
+			sscanf(aline,"%F %F",&x,&y);
 			charac.x = (abs(x) > 1.2e+6) ? sgn(x)*1.2e+6 : floor(x);
 			charac.y = (abs(y) > 1.2e+6) ? sgn(y)*1.2e+6 : floor(y);
 			}
@@ -242,18 +240,51 @@ main(argc,argv)				/* Phantasia main routine */
 	charac.lastused = localtime(&secs)->tm_yday;
 	update(&charac,fileloc);
 	clear();
+#ifdef	BSD41
+	sigset(SIGINT,interrupt);
+#endif
+#ifdef	BSD42
+	signal(SIGINT,interrupt,-1);
+#endif
+#ifdef	USG3
 	signal(SIGINT,interrupt);
+#endif
+#ifdef	USG5
+	signal(SIGINT,interrupt);
+#endif
 
 /* all set for now */
 
 TOP:	switch (setjmp(mainenv))
 		{
 		case QUIT:
+#ifdef	BSD41
+			sigrelse(SIGINT);
+#endif
+#ifdef	BSD42
+			signal(SIGINT,interrupt,-1);
+#endif
+#ifdef	USG3
 			signal(SIGINT,interrupt);
+#endif
+#ifdef	USG5
+			signal(SIGINT,interrupt);
+#endif
 			leave(&charac);
 			/*NOTREACHED*/
 		case DIE:
+#ifdef	BSD41
+			sigrelse(SIGINT);
+#endif
+#ifdef	BSD42
+			signal(SIGINT,interrupt,-1);
+#endif
+#ifdef	USG3
 			signal(SIGINT,interrupt);
+#endif
+#ifdef	USG5
+			signal(SIGINT,interrupt);
+#endif
 			death(&charac);
 			break;
 		}
@@ -351,7 +382,7 @@ TOP:	switch (setjmp(mainenv))
 					{
 					mvaddstr(5,0,"X Y Coordinates ? ");
 					getstring(aline,80);
-					if (sscanf(aline,"%lf %lf",&x,&y) < 2)
+					if (sscanf(aline,"%F %F",&x,&y) < 2)
 						;
 					else
 						if (hypot((double) charac.x - x, (double) charac.y - y) > maxmove)
@@ -396,12 +427,12 @@ TOP:	switch (setjmp(mainenv))
 			case '7':	/* teleport */
 				if (charac.lvl < 10 || charac.mag < 25)
 					illcmd();
-				else
+				else 
 					for (loop = 3; loop; --loop)
 						{
 						mvaddstr(5,0,"X Y Coordinates ? ");
 						getstring(aline,80);
-						if (sscanf(aline,"%lf %lf",&x,&y) == 2)
+						if (sscanf(aline,"%F %F",&x,&y) == 2)
 							if ((temp = hypot(charac.x-x,charac.y-y))
 									> (charac.lvl+charac.mag)*5+((charac.typ > 20) ? 1e+6 : 0)
 									&& !throne)
@@ -525,11 +556,11 @@ CHKMOVE:	if (!temp)
 bool	ok_to_play()		/* return FALSE if playing is not allowed at this time */
 {
 #define	MAXUSERS	8	/* max. number of people on system */
-        register struct	tm	*tp;
-        register int	numusers = 0;
-        FILE	*fp;
-        long	now;
-        struct	utmp	ubuf;
+reg	struct	tm	*tp;
+reg	int	numusers = 0;
+FILE	*fp;
+long	now;
+struct	utmp	ubuf;
 
 	if (su)
 		return (TRUE);

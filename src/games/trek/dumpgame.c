@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dumpgame.c	4.3 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
-# include	<fcntl.h>
 
 /***  THIS CONSTANT MUST CHANGE AS THE DATA SPACES CHANGE ***/
 # define	VERSION		2
@@ -15,18 +19,19 @@ struct dump
 	int	count;
 };
 
+
 struct dump	Dump_template[] =
 {
-	{ (char *)&Ship,	sizeof (Ship) },
-	{ (char *)&Now,		sizeof (Now) },
-	{ (char *)&Param,	sizeof (Param) },
-	{ (char *)&Etc,		sizeof (Etc) },
-	{ (char *)&Game,	sizeof (Game) },
-	{ (char *)Sect,		sizeof (Sect) },
-	{ (char *)Quad,		sizeof (Quad) },
-	{ (char *)&Move,	sizeof (Move) },
-	{ (char *)Event,	sizeof (Event) },
-	{ 0 },
+	(char *)&Ship,		sizeof (Ship),
+	(char *)&Now,		sizeof (Now),
+	(char *)&Param,		sizeof (Param),
+	(char *)&Etc,		sizeof (Etc),
+	(char *)&Game,		sizeof (Game),
+	(char *)Sect,		sizeof (Sect),
+	(char *)Quad,		sizeof (Quad),
+	(char *)&Move,		sizeof (Move),
+	(char *)Event,		sizeof (Event),
+	0
 };
 
 /*
@@ -38,7 +43,7 @@ struct dump	Dump_template[] =
 **	change as the size, content, or order of the data structures
 **	output change.
 */
-void
+
 dumpgame()
 {
 	int			version;
@@ -46,11 +51,8 @@ dumpgame()
 	register struct dump	*d;
 	register int		i;
 
-	fd = creat("trek.dump", 0644);
-	if (fd < 0) {
-	        printf("cannot dump\n");
-		return;
-        }
+	if ((fd = creat("trek.dump", 0644)) < 0)
+		return (printf("cannot dump\n"));
 	version = VERSION;
 	write(fd, &version, sizeof version);
 
@@ -65,6 +67,38 @@ dumpgame()
 	close(fd);
 }
 
+
+/*
+**  RESTORE GAME
+**
+**	The game is restored from the file "trek.dump".  In order for
+**	this to succeed, the file must exist and be readable, must
+**	have the correct version number, and must have all the appro-
+**	priate data areas.
+**
+**	Return value is zero for success, one for failure.
+*/
+
+restartgame()
+{
+	register int	fd;
+	int		version;
+
+	if ((fd = open("trek.dump", 0)) < 0 ||
+	    read(fd, &version, sizeof version) != sizeof version ||
+	    version != VERSION ||
+	    readdump(fd))
+	{
+		printf("cannot restart\n");
+		close(fd);
+		return (1);
+	}
+
+	close(fd);
+	return (0);
+}
+
+
 /*
 **  READ DUMP
 **
@@ -73,9 +107,9 @@ dumpgame()
 **
 **	Returns zero for success, one for failure.
 */
-int
+
 readdump(fd1)
-        int	fd1;
+int	fd1;
 {
 	register int		fd;
 	register struct dump	*d;
@@ -97,34 +131,4 @@ readdump(fd1)
 
 	/* make quite certain we are at EOF */
 	return (read(fd, &junk, 1));
-}
-
-/*
-**  RESTORE GAME
-**
-**	The game is restored from the file "trek.dump".  In order for
-**	this to succeed, the file must exist and be readable, must
-**	have the correct version number, and must have all the appro-
-**	priate data areas.
-**
-**	Return value is zero for success, one for failure.
-*/
-int
-restartgame()
-{
-	register int	fd;
-	int		version;
-
-	if ((fd = open("trek.dump", 0)) < 0 ||
-	    read(fd, &version, sizeof version) != sizeof version ||
-	    version != VERSION ||
-	    readdump(fd))
-	{
-		printf("cannot restart\n");
-		close(fd);
-		return (1);
-	}
-
-	close(fd);
-	return (0);
 }

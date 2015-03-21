@@ -3,16 +3,20 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)misc.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "externs.h"
 
 #define distance(x,y) (abs(x) >= abs(y) ? abs(x) + abs(y)/2 : abs(y) + abs(x)/2)
 
 /* XXX */
-int
 range(from, to)
-        struct ship *from, *to;
+struct ship *from, *to;
 {
-	register int bow1r, bow1c, bow2r, bow2c;
+	register bow1r, bow1c, bow2r, bow2c;
 	int stern1r, stern1c, stern2c, stern2r;
 	register int bb, bs, sb, ss, result;
 
@@ -24,10 +28,10 @@ range(from, to)
 	stern2c = bow2c = to->file->col;
 	result = bb = distance(bow2r - bow1r, bow2c - bow1c);
 	if (bb < 5) {
-		stern2r += dr[(int)to->file->dir];
-		stern2c += dc[(int)to->file->dir];
-		stern1r += dr[(int)from->file->dir];
-		stern1c += dc[(int)from->file->dir];
+		stern2r += dr[to->file->dir];
+		stern2c += dc[to->file->dir];
+		stern1r += dr[from->file->dir];
+		stern1c += dc[from->file->dir];
 		bs = distance((bow2r - stern1r), (bow2c - stern1c));
 		sb = distance((bow1r - stern2r), (bow1c - stern2c));
 		ss = distance((stern2r - stern1r) ,(stern2c - stern1c));
@@ -38,8 +42,8 @@ range(from, to)
 
 struct ship *
 closestenemy(from, side, anyship)
-        register struct ship *from;
-        int side, anyship;
+register struct ship *from;
+char side, anyship;
 {
 	register struct ship *sp;
 	register char a;
@@ -65,11 +69,10 @@ closestenemy(from, side, anyship)
 	return closest;
 }
 
-int
 angle(dr, dc)
-        register int dr, dc;
+register dr, dc;
 {
-	register int i;
+	register i;
 
 	if (dc >= 0 && dr > 0)
 		i = 0;
@@ -93,12 +96,11 @@ angle(dr, dc)
 	return i % 8 + 1;
 }
 
-int
 gunsbear(from, to)		/* checks for target bow or stern */
-        register struct ship *from, *to;
+register struct ship *from, *to;
 {
 	int Dr, Dc, i;
-	register int ang;
+	register ang;
 
 	Dr = from->file->row - to->file->row;
 	Dc = to->file->col - from->file->col;
@@ -109,25 +111,24 @@ gunsbear(from, to)		/* checks for target bow or stern */
 			return 'r';
 		if (ang >= 6 && ang <= 7)
 			return 'l';
-		Dr += dr[(int)to->file->dir];
-		Dc += dc[(int)to->file->dir];
+		Dr += dr[to->file->dir];
+		Dc += dc[to->file->dir];
 	}
 	return 0;
 }
 
-int
 portside(from, on, quick)
-        register struct ship *from, *on;
-        int quick;			/* returns true if fromship is */
-{					/* shooting at onship's starboard side */
-	register int ang;
-	register int Dr, Dc;
+register struct ship *from, *on;
+int quick;			/* returns true if fromship is */
+{				/* shooting at onship's starboard side */
+	register ang;
+	register Dr, Dc;
 
 	Dr = from->file->row - on->file->row;
 	Dc = on->file->col - from->file->col;
 	if (quick == -1) {
-		Dr += dr[(int)on->file->dir];
-		Dc += dc[(int)on->file->dir];
+		Dr += dr[on->file->dir];
+		Dc += dc[on->file->dir];
 	}
 	ang = angle(Dr, Dc);
 	if (quick != 0)
@@ -136,9 +137,8 @@ portside(from, on, quick)
 	return ang < 5;
 }
 
-int
 colours(sp)
-        register struct ship *sp;
+register struct ship *sp;
 {
 	register char flag;
 
@@ -150,15 +150,13 @@ colours(sp)
 		flag = '~';
 	if (sp->file->struck)
 		return flag;
-	flag = *countryname[(int)capship(sp)->nationality];
+	flag = *countryname[capship(sp)->nationality];
 	return sp->file->FS ? flag : tolower(flag);
 }
 
 #include <sys/file.h>
-
-void
-logmsg(s)
-        register struct ship *s;
+log(s)
+register struct ship *s;
 {
 	FILE *fp;
 	int persons;

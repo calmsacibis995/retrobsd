@@ -5,7 +5,6 @@
  * Alex P. Roudnev, Moscow, KIAE, 1984
  */
 #include <stdlib.h>
-#include <stddef.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -14,28 +13,29 @@
 #include <stdio.h>
 #endif
 
-/*
- * DEBUGCHECK: check consistency of segment chains.
- */
 #ifdef DEBUG
-#   define DEBUGCHECK checksegm()
+#   define DEBUGCHECK checkfsd()   /* check fsd consistency for debugging */
 #else
 #   define DEBUGCHECK /* */
 #endif
 
-#define MOVECMD(x)  ((x) >= CCMOVEUP && (x) <= CCEND)
-#define CTRLCHAR(x) (((x) >= 0 && (x) < ' ') || ((x) >= 0177 && (x) < 0240))
-#define MAXCOLS     256     /* max. width of screen */
-#define MAXLINES    64      /* max. height of screen */
-#define LBUFFER     256     /* lower limit for the current line buffer */
-#define PARAMWIDTH  (NCOLS-18) /* input field of paramwin */
-#define FILEMODE    0664    /* access mode for newly created files */
-#define MAXFILES    14      /* max. files under edit */
-#define MAXWINLIST  10      /* max.windows */
+#define EDITED      2       /* Значение openwrite, если файл редактировался */
 
-#ifndef MULTIWIN
-#define MULTIWIN    1       /* enable splitting a screen into multiple windows */
-#endif
+#define esc0        COCURS
+#define esc1        '\\'
+
+#define MOVECMD(x)  ((x) >= CCMOVEUP && (x) <= CCBACKTAB)
+#define CTRLCHAR(x) ((((x) >= 0) && ((x) < ' ')) || ((lread1 >= 0177) && (lread1 <= 0240)))
+#define LINELM      128     /* макс. длина строки на экране */
+#define NLINESM     48      /* макс. число строк на экране  */
+#define LBUFFER     256     /* *** НЕ МЕНЬШЕ  fsdmaxl  **** */
+#define NEWLINE     012     /* newline  */
+#define PARAMREDIT  40      /* редактируемая часть paramport */
+#define PARAMRINFO  78      /* последняя колонка в paramport */
+#define NPARAMLINES 1       /* число строк в PARAMPORT */
+#define FILEMODE    0664    /* режим доступа к создаваемым файлам */
+#define NTABS       30
+#define BIGTAB      32767
 
 #define BADF        -1
 #define CONTF       -2
@@ -53,8 +53,7 @@
 #define COBELL      8
 #define COFIN       9
 #define COERASE     10
-#define COERLN      11
-#define COMCOD      12      /* Number of output codes */
+#define COMCOD      11      /* Число выходных кодов */
 
 /* margin characters */
 #define LMCH        '|'
@@ -67,227 +66,245 @@
 #define DOTCH       '+'
 
 /*
- * Descriptor of file segment.  Contains from 1 to 127 lines of file,
- * written sequentially.  An elementary component of descriptor chain.
+ * Описатель сегмента файла. Описывает от 1 до 127 строк файла,
+ * записанных подряд. Это минимальная компонента цепочки описателей
  */
-#define FSDMAXL     127     /* Max. number of lines in descriptor */
+#define FSDMAXL     127     /* Макс. число строк в fsd */
 
-typedef struct segment {
-    struct segment *prev;   /* Previous descriptor in chain */
-    struct segment *next;   /* Next descriptor in chain */
-    int nlines;             /* Count of lines in descriptor,
-                             * or 0 when end of chain */
-    int fdesc;              /* File descriptor, or 0 for end of chain */
-    off_t seek;             /* Byte offset in the file */
-    char data;              /* Varying amount of data, needed
-                             * to store the next nlines-1 lines. */
-    /*
-     * Interpretation of next byte:
-     * 1-127   offset of this line from a previous line
-     * 0       empty line
-     * -n      line starts at offset n*128+next bytes
-     *         from beginning of previous line.
-     * There are at least nlines-1 bytes allocated or more,
-     * in case of very long lines.
-     */
-} segment_t;
+struct fsd {
+        struct fsd *backptr;    /* Ссылка на пред. fsd   */
+        struct fsd *fwdptr;     /* Ссылка на след. fsd   */
+        int fsdnlines;          /* Число строк, которые описывает fsd */
+                                /* 0 , если это конец цепи. */
+        int fsdfile;            /* Дескриптор файла, 0, если это конец цепи */
+        off_t seek;             /* Сдвиг в файле */
+        char fsdbytes;  /* Переменное число байт - столько, сколько нужно
+                        для того, чтобы описать очередные fsdnlines-1 строк:
+                        Интерпретация очередного байта:
+                        1-127   смещение следующей строки от предыдущей
+                        0       здесь помещается пустая строка
+                        -n      след. строка начинается с n*128+next байта
+                                после начала предыдущей строки.
+                        Имеется по меньшей мере fsdnlines-1 байтов, но может
+                        быть и больше, если есть длинные строки
+                        Отметим, что в принципе в одном fsd можно описать и
+                        несмежные строки, но такая возможность не учтена
+                        в функциях записи файла.               */
+};
 
-#define sizeof_segment_t    offsetof (segment_t, data)
+/* Only header, without fsdbyte */
+struct fsd_header {
+    struct fsd *backptr, *fwdptr;
+    int fsdnlines;
+    int fsdfile;
+    off_t seek;
+};
 
-typedef struct {
-    segment_t *chain;       /* Chain of segments */
-    char *name;             /* File name */
-    char writable;          /* Do we have a write permission */
-#define EDITED  2           /* Value when file was modified */
+#define SFSD        sizeof (struct fsd_header)
+#define MAXFILES    14
 
-    char backup_done;       /* Already copied to .bak */
-    int nlines;             /* Number of non-empty lines in file */
-} file_t;
+struct fsd *openfsds[MAXFILES];
+char *openfnames[MAXFILES],
+     openwrite[MAXFILES],       /* 1 - файл можно записывать */
+     movebak[MAXFILES];         /* 1 - файл уже двигали в .bak */
+int  nlines[MAXFILES];          /* Число непустых строк в файле */
 
-file_t file[MAXFILES];     /* Table of files */
+/* workspace - структура, которая описывает файл */
+struct workspace {
+        struct fsd *curfsd;     /* ptr на текущий fsd */
+        int ulhclno;            /* номер строки, верхней на экране */
+        int ulhccno;            /* номер колонки, которая 0 на экране */
+        int curlno;             /* текущий номер строки */
+        int curflno;            /* номер строки, первой в curfsd */
+        int wfile;              /* номер файла, 0 - если нет вообще */
+        int ccol;               /* curorcol, когда не активен */
+        int crow;               /* cursorline, когда неактивен */
+};
+#define SWKSP (sizeof (struct workspace))
+
+struct workspace *curwksp, *pickwksp;
 int curfile;
 
 /*
- * Workspace describes a generic file under edit.
+ * viewport - описатель окна на экране терминала
+ * все координаты на экране, а также ltext и ttext, измеряются по отношению
+ *      к (0,0) = начало экрана. Остальные 6 границ приводятся по отношению
+ *      к ltext и ttext.
  */
-typedef struct {
-    segment_t *cursegm;     /* Current segment */
-    int topline;            /* Top left row on a display */
-    int offset;             /* Column offset of a displayed text */
-    int line;               /* Current line number */
-    int segmline;           /* Number of first line in the current segment */
-    int wfile;              /* File number, or 0 when not attached */
-    int cursorcol;          /* Saved cursorcol, when not active */
-    int cursorrow;          /* Saved cursorline, when not active */
-} workspace_t;
+#define SVIEWPORT (sizeof (struct viewport))
 
-workspace_t *curwksp, *pickwksp;
+struct viewport {
+        struct workspace *wksp; /* Ссылка на workspace         */
+        struct workspace *altwksp;      /* Альтернативное workspace */
+        int prevport;           /* Номер пред. окна   */
+        int ltext;              /* Границы  текста (по отн. к 0,0) */
+        int rtext;              /* Длина в ширину                  */
+        int ttext;              /* Верхняя граница                 */
+        int btext;              /* Высота окна                     */
+        int lmarg;              /* границы окна == ..text или +1 */
+        int rmarg;
+        int tmarg;
+        int bmarg;
+        int ledit;              /* область редактирования в окне */
+        int redit;
+        int tedit;
+        int bedit;
+        char *firstcol;         /* Номера первых колонок, !=' '  */
+        char *lastcol;          /*  -//-  последних -//-         */
+        char *lmchars;          /* символы - левые ограничители  */
+        char *rmchars;          /* символы - правые ограничители */
+};
+
+#define MAXPORTLIST 10
+struct viewport *portlist[MAXPORTLIST],
+                *curport,       /* текущее окно */
+                wholescreen,    /* весь экран   */
+                paramport;      /* окно для параметров */
+int nportlist;
+
+/* savebuf - структура, которая описывает буфер вставок */
+
+#define SSAVEBUF (sizeof (struct savebuf))
+
+struct savebuf {
+        int linenum;    /* Номер первой строки в "#" */
+        int nrows;      /* Число строк               */
+        int ncolumns;   /* Число колонок             */
+};
+struct savebuf *pickbuf, *deletebuf;
 
 /*
- * Window - a region on the display.
- * All display coordinates, and also text_col and text_row, are measured relative
- * to (0,0) = top left of screen.
+ * Управляющие символы
  */
-typedef struct {
-    workspace_t *wksp;      /* Pointer to workspace */
-    workspace_t *altwksp;   /* Alternative workspace */
-    int prevwinnum;         /* Number of previous window */
-    int base_row;           /* Top row of the window */
-    int base_col;           /* Left column of the window */
-    int max_row;            /* Bottom row of the window */
-    int max_col;            /* Right column of the window */
-    int text_row;           /* Top row of text area */
-    int text_col;           /* Left column of text area */
-    int text_maxrow;        /* Height-1 of text area */
-    int text_maxcol;         /* Width-1 of text area */
-    unsigned char *firstcol; /* Numbers of first non-space symbols */
-    unsigned char *lastcol; /* Numbers of last non-space symbols */
-    char *leftbar;          /* Symbols on left edge */
-    char *rightbar;         /* Symbols on right edge */
-} window_t;
+#define CCCTRLQUOTE     0       /* knockdown next char  ^P          */
+#define CCMOVEUP        1       /* move up 1 line               up  */
+#define CCMOVEDOWN      2       /* move down 1 line             down */
+#define CCRETURN        3       /* return               ^M          */
+#define CCHOME          4       /* home cursor          ^X h    home */
+#define CCMOVERIGHT     5       /* move right                   right */
+#define CCMOVELEFT      6       /* move left                    left */
+#define CCTAB           7       /* tab                  ^I          */
+#define CCBACKTAB       010     /* tab left             ^X t        */
+#define CCPICK          011     /* pick                         f6 */
+#define CCMAKEPORT      012     /* make a viewport              f4 */
+#define CCOPEN          013     /* insert                       f7 */
+#define CCSETFILE       014     /* set file                     f5 */
+#define CCCHPORT        015     /* change port                  f3 */
+#define CCPLPAGE        016     /* minus a page                 page down */
+#define CCGOTO          017     /* goto linenumber              f10 */
+#define CCDOCMD         020     /* execute a filter     ^X x        */
+#define CCMIPAGE        021     /* plus a page                  page up */
+#define CCPLSRCH        022     /* plus search          ^F          */
+#define CCRPORT         023     /* port right           ^X f        */
+#define CCPLLINE        024     /* minus a line         ^X p        */
+#define CCDELCH         025     /* character delete     ^D      delete */
+#define CCSAVEFILE      026     /* make new file                f2  */
+#define CCMILINE        027     /* plus a line          ^X n        */
+#define CCMISRCH        030     /* minus search         ^B          */
+#define CCLPORT         031     /* port left            ^X b        */
+#define CCPUT           032     /* put                          f11 */
+#define CCTABS          033     /* set tabs             ^X t        */
+#define CCINSMODE       034     /* insert mode          ^X i    insert */
+#define CCBACKSPACE     035     /* backspace and erase  ^H          */
+#define CCCLOSE         036     /* delete               ^Y      f8  */
+#define CCENTER         037     /* enter parameter      ^A      f1  */
+#define CCQUIT          0177    /* terminate session    ^X ^C       */
+#define CCREDRAW        0236    /* redraw screen        ^L          */
+#define CCEND           0237    /* cursor to end        ^X e    end */
+#define CCINTRUP        0240    /* interrupt (ttyfile) */
+#define CCMAC           0200    /* macro marker */
 
-window_t *winlist[MAXWINLIST];
-int nwinlist;
+int cursorline;         /* physical screen position of */
+int cursorcol;          /*  cursor from (0,0)=ulhc of text in port */
 
-window_t *curwin;           /* Current window */
-window_t wholescreen;       /* The whole screen */
-window_t paramwin;          /* Window to enter arguments */
-
-/*
- * Copy-and-paste clipboard.
- */
-typedef struct {
-    int linenum;            /* Index of first line in "#" */
-    int nrows;              /* Number of lines */
-    int ncolumns;           /* Number of columns */
-} clipboard_t;
-
-clipboard_t *pickbuf, *deletebuf;
-
-/*
- * Control codes.
- */
-#define CCCTRLQUOTE 0       /* knockdown next char  ^P              */
-#define CCMOVEUP    1       /* move up 1 line               up      */
-#define CCMOVEDOWN  2       /* move down 1 line             down    */
-#define CCRETURN    3       /* return               ^M              */
-#define CCHOME      4       /* home cursor          ^X h    home    */
-#define CCMOVERIGHT 5       /* move right                   right   */
-#define CCMOVELEFT  6       /* move left                    left    */
-#define CCTAB       7       /* tab                  ^I              */
-#define CCPGDOWN    010     /* next page            ^X n    pg down */
-#define CCPGUP      011     /* previous page        ^X p    page up */
-#define CCEND       012     /* cursor to end        ^X e    end     */
-#define CCCOPY      013     /* copy to clipboard    ^C      f5      */
-#define CCMAKEWIN   014     /* make a window        --disabled--    */
-#define CCINSLIN    015     /* insert line/block    ^O              */
-#define CCSETFILE   016     /* set file             ^N      f3      */
-#define CCCHWINDOW  017     /* change window        --disabled--    */
-#define CCGOTO      020     /* goto linenumber      ^G      f8      */
-#define CCDOCMD     021     /* execute a filter     ^X x    f4      */
-#define CCPLSRCH    022     /* plus search          ^F      f7      */
-#define CCROFFSET   023     /* shift view right     ^X f            */
-#define CCDELCH     024     /* character delete     ^D      delete  */
-#define CCSAVEFILE  025     /* make new file                f2      */
-#define CCMISRCH    030     /* minus search         ^B              */
-#define CCLOFFSET   031     /* shift view left      ^X b            */
-#define CCPASTE     032     /* paste from clipboard ^V      f6      */
-#define CCREDRAW    033     /* redraw all           ^L              */
-#define CCINSMODE   034     /* insert mode          ^X i    insert  */
-#define CCBACKSPACE 035     /* backspace and erase  ^H              */
-#define CCDELLIN    036     /* delete line/block    ^Y              */
-#define CCPARAM     037     /* enter parameter      ^A      f1      */
-#define CCQUIT      0177    /* terminate session    ^X ^C           */
-#define CCINTRUP    0237    /* interrupt (journal) */
-
-int cursorline;             /* physical position of */
-int cursorcol;              /* cursor from (0,0)=ulhc of text in window */
-
-int NCOLS, NLINES;          /* size of the screen */
-
-extern char *curspos, *cvtout[];
 extern char cntlmotions[];
+
+extern int tabstops[];
+char blanks[LINELM];
 extern const char in0tab[]; /* input control codes */
 
-extern int keysym;          /* Current input symbol, -1 - need more */
-char intrflag;              /* INTR signal occured */
-int highlight_position;     /* Highlight the current cursor position */
-int message_displayed;      /* Arg area contains an error message */
+extern int lread1;      /* Текущий входной символ, -1 - дай еще! */
+char intrflag;          /* 1 - был сигнал INTERUP */
 
-/* Defaults. */
-extern int defloffset, defroffset;
+/* Умолчания */
+extern int defplline,defplpage,defmiline,defmipage,deflport,defrport,
+        definsert, defdelete, defpick;
 extern char deffile[];
 
-/*
- * Global variables for param().
- * param_len    - length of the parameter;
- * param_str    - string value of the parameter,
- * param_type - type of the parameter,
- * param_c0, param_r0, param_c1,
- * param_r1   - coordinates of cursor-defined area
- */
-int param_len;
-char *param_str, param_type;
-int param_c0, param_r0, param_c1, param_r1;
+int errsw;              /* 1 - в окне параметров сообщение об ошибке */
 
 /*
- * Current line.
+ * Глобальные параметры для param():
+ * paraml - длина параметра;
+ * char *paramv - сам параметр,
+ * paramtype - тип параметра,
+ * paramc0, paramr0, paramc1< paramr1 -
+ * размеры области при "cursor defined"
  */
-char *cline;                /* allocated array */
-int cline_max;              /* allocated length */
-int cline_len;              /* used length */
-int cline_incr;             /* increment for reallocation */
-char cline_modified;        /* line was modified */
-int clineno;                /* line number in file */
+int paraml;
+char *paramv, paramtype;
+int paramc0, paramr0, paramc1, paramr1;
 
 /*
- * File descriptors:
+ * cline  - массив для строки, lcline - макс. длина,
+ * ncline - текущая длина, icline - следующее приращение длины
+ * fcline - флаг (было изменение), clineno - номер строки в файле
  */
-int tempfile;               /* Temporary file */
-off_t tempseek;             /* Offset in temporary file */
-int journal;                /* Journaling file */
-int inputfile;              /* Input file (stdin or journal) */
+char *cline;
+int lcline;
+int ncline;
+int icline;
+char fcline;
+int clineno;
 
-char *searchkey;
+/*
+ * Описатели файлов:
+ * tempfile, tempfl - дескриптор и смещение во временном файле
+ * ttyfile - дескриптор файда протокола
+ * inputfile - дескриптор файла ввода команд из протокола
+ */
+int tempfile;
+off_t tempfl;
+int ttyfile;
+int inputfile;
+
+char *searchkey, *symac;
 
 int userid, groupid;
 
-char *tmpname;              /* name of file, for do command */
+char *tmpname;                  /* name of file, for do command */
 
-/*
- * Translation of control codes to escape sequences.
- */
-typedef struct {
-    int keysym;
-    char *value;
-} keycode_t;
+int LINEL, NLINES;              /* size of the screen */
+extern char *curspos, *cvtout[];
 
-extern keycode_t keytab[];
-
-int getkeysym (void);           /* read command from terminal */
+int read1 (void);               /* read command from terminal */
+int read2 (void);               /* read raw input character */
 void getlin (int);              /* get a line from current file */
-void putline (void);            /* put a line to current file */
+void putline (int);             /* put a line to current file */
 void movecursor (int);          /* cursor movement operation */
 void poscursor (int, int);      /* position a cursor in current window */
 void pcursor (int, int);        /* move screen cursor */
-void drawlines (int, int);      /* show lines of file */
-void cline_expand (int);        /* extend cline array */
-int putch (int);                /* output symbol or op */
-void wputc (int, int);          /* put a symbol to a current window */
-void wputs (char *, int);       /* put a string to a current window */
+void putup (int, int);          /* show lines of file */
+void movep (int);               /* move a window to right */
+void movew (int);               /* move a window down */
+void excline (int);             /* extend cline array */
+int putcha (int);               /* output symbol or op */
+void putch (int, int);          /* put a symbol at current position */
+void putstr (char *, int);      /* put a string, limited by column */
 void putblanks (int);           /* output a line of spaces */
 int endit (void);               /* end a session and write all */
 void switchfile (void);         /* switch to alternative file */
+void chgport (int);             /* switch to another window */
 void search (int);              /* search a text in file */
-void paste (clipboard_t *, int, int); /* put a buffer into file */
-int mfetch (clipboard_t *, char *); /* get a buffer by name */
-void mstore (clipboard_t *, char *); /* store a buffer by name */
+void put (struct savebuf *, int, int); /* put a buffer into file */
+int msrbuf (struct savebuf *, char *, int); /* store or get a buffer by name */
 void gtfcn (int);               /* go to line by number */
 int savefile (char *, int);     /* save a file */
+void makeport (char *);         /* make new window */
 void error (char *);            /* display error message */
-char *param (void);             /* get a parameter */
-int cline_read (int);           /* read next line from file */
-int int_to_ext (char *, int);   /* conversion of line from internal to external form */
+char *param (int);              /* get a parameter */
+int chars (int);                /* read next line from file */
+int dechars (char *, int);      /* conversion of line from internal to external form */
 void cleanup (void);            /* cleanup before exit */
 void fatal (char *);            /* print error message and exit */
 int editfile (char *, int, int, int, int); /* open a file for editing */
@@ -295,43 +312,43 @@ void splitline (int, int);      /* split a line at given position */
 void combineline (int, int);    /* merge a line with next one */
 int msvtag (char *name);        /* save a file position by name */
 int mdeftag (char *);           /* define a file area by name */
-void redisplay (void);          /* redraw all */
+int defkey (void);              /* redefine a keyboard key */
+int addkey(int, char *);        /* add new command key to the code table */
+void rescreen (void);           /* redraw a screen */
+int defmac (char *);            /* define a macro sequence */
+char *rmacl (int);              /* get macro sequence by name */
 int mgotag (char *);            /* return a cursor back to named position */
 void execr (char **);           /* run command with given parameters */
 void telluser (char *, int);    /* display a message in arg area */
 void doreplace(int, int, int, int*); /* replace lines via pipe */
-void win_open (char *);         /* make new window */
-void win_remove (void);         /* remove last window */
-void win_goto (int);            /* switch to window by number */
-void win_switch (window_t *);   /* switch to given window */
-void win_borders (window_t *, int); /* draw borders for a window */
-void win_create (window_t *, int, int, int, int, int);
+void removeport (void);         /* remove last window */
+void switchport (struct viewport *); /* switch to given window */
+void drawport(struct viewport *, int); /* draw borders for a window */
+void setupviewport (struct viewport *, int, int, int, int, int);
                                 /* create new window */
 void dumpcbuf (void);           /* flush output buffer */
 char *s2i (char *, int *);      /* convert a string to number */
 char *salloc (int);             /* allocate zeroed memory */
-void insertlines (int, int);    /* insert lines */
-void deletelines (int, int);    /* delete lines from file */
+void openlines (int, int);      /* insert lines */
+void closelines (int, int);     /* delete lines from file */
 void picklines (int, int);      /* get lines from file to pick workspace */
 void openspaces (int, int, int, int); /* insert spaces */
 void closespaces (int, int, int, int); /* delete rectangular area */
 void pickspaces (int, int, int, int); /* get rectangular area to pick buffer */
 int interrupt (void);           /* we have been interrupted? */
-void wksp_switch (void);        /* switch to alternative workspace */
-int wksp_seek (workspace_t *, int); /* set file position by line number */
-int wksp_position (workspace_t *, int); /* set workspace position */
-void wksp_forward (int);        /* move page down or up */
-void wksp_offset (int);         /* shift a text view to right or left */
-void wksp_redraw (workspace_t *, int, int, int, int);
+int wseek (struct workspace *, int); /* set file position by line number */
+int wposit (struct workspace *, int); /* set workspace position */
+void redisplay (struct workspace *, int, int, int, int);
                                 /* redisplay windows of the file */
 void cgoto (int, int, int, int); /* scroll window to show a given area */
 char *append (char *, char *);  /* append strings */
 char *tgoto (char *, int, int); /* cursor addressing */
-segment_t *file2segm (int);     /* create a file descriptor list for a file */
+struct fsd *file2fsd (int);     /* create a file descriptor list for a file */
 void puts1 (char *);            /* write a string to stdout */
-void checksegm (void);          /* check segm correctness */
-int segmwrite (segment_t *, int, int); /* write descriptor chain to file */
-void printsegm (segment_t *);   /* debug output of segm chains */
+void switchwksp (void);         /* switch to alternative workspace */
+void checkfsd (void);           /* check fsd correctness */
+int fsdwrite (struct fsd *, int, int); /* write descriptor chain to file */
+void printfsd (struct fsd *);   /* debug output of fsd chains */
 int checkpriv (int);            /* check access rights */
 int getpriv (int);              /* get file access modes */
 void tcread (void);             /* load termcap descriptions */
@@ -344,5 +361,14 @@ void ttcleanup (void);          /* restore terminal modes */
 int get1w (int);                /* read word */
 int get1c (int);                /* read byte */
 void put1w (int, int);          /* write word */
-void put1c (int, int);          /* write byte */
+void put1c (char, int);         /* write byte */
 void mainloop (void);           /* main editor loop */
+
+/*
+ * Таблица клавиатуры (команда / строка символов)
+ */
+struct ex_int {
+    int incc;
+    char *excc;
+};
+extern struct ex_int inctab[];

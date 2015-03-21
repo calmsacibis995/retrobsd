@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)damaged.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*  DAMAGED -- check for device damaged
@@ -11,9 +16,9 @@
 **	specified device is broken.  It does this by checking the
 **	event list for a "device fix" action on that device.
 */
-int
+
 damaged(dev)
-        int	dev;
+int	dev;
 {
 	register int		d;
 	register struct event	*e;

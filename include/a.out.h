@@ -33,36 +33,48 @@
 #ifndef	_AOUT_H_
 #define	_AOUT_H_
 
-#include <sys/exec_aout.h>
+#include <sys/exec.h>
+
+/* Valid magic number check. */
+#define	N_BADMAG(x) 		(((x).a_magic) != RMAGIC && \
+				 ((x).a_magic) != OMAGIC && \
+				 ((x).a_magic) != NMAGIC)
+
+/* Text segment offset. */
+#define	N_TXTOFF(x) 		sizeof(struct exec)
+
+/* Data segment offset. */
+#define	N_DATOFF(x) 		(N_TXTOFF(x) + (x).a_text)
+
+/* Text relocation table offset. */
+#define	N_TRELOFF(x) 		(N_DATOFF(x) + (x).a_data)
+
+/* Data relocation table offset. */
+#define	N_DRELOFF(x) 		(N_TRELOFF(x) + (x).a_reltext)
+
+/* Symbol table offset. */
+#define	N_SYMOFF(x) 		((x).a_magic == RMAGIC ? \
+                                    N_DRELOFF(x) + (x).a_reldata : \
+                                    N_DATOFF(x) + (x).a_data)
 
 #define	_AOUT_INCLUDE_
 #include <nlist.h>
 
 /* Relocations */
-struct reloc {
-    unsigned flags;
 #define RSMASK  0x70            /* bitmask for segments */
-#define RABS        0
-#define RTEXT       0x20
-#define RDATA       0x30
-#define RBSS        0x40
-#define RSTRNG      0x60        /* for assembler */
-#define REXT        0x70        /* externals and bitmask */
-
-#define RGPREL  0x08            /* gp relative */
+#define RABS    0
+#define RTEXT   0x20
+#define RDATA   0x30
+#define RBSS    0x40
+#define RSTRNG  0x60            /* for assembler */
+#define REXT    0x70            /* externals and bitmask */
 
 #define RFMASK  0x07            /* bitmask for format */
-#define RBYTE16     0x00        /* low part of byte address: bits 15:0 */
-#define RBYTE32     0x01        /* 32-bit byte address */
-#define RHIGH16     0x02        /* upper part of byte address: bits 31:16 */
-#define RHIGH16S    0x03        /* upper part of address with signed offset */
-#define RWORD16     0x04        /* word address: bits 17:2 */
-#define RWORD26     0x05        /* word address: bits 27:2 */
+#define RHIGH16 0x02            /* upper part of byte address: bits 31:16 */
+#define RWORD16 0x03            /* word address: bits 17:2 */
+#define RWORD26 0x04            /* word address: bits 27:2 */
 
-    unsigned index;             /* 24-bit index in symbol table,
-                                 * for REXT */
-    unsigned offset;            /* 16-bit offset,
-                                 * for RIGH16 and RIGH16S */
-};
+#define RINDEX(h)       ((h) >> 8)
+#define RSETINDEX(h)    ((h) << 8)
 
 #endif	/* !_AOUT_H_ */

@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)shield.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
 # include	"getpar.h"
 
@@ -25,16 +30,16 @@
 
 struct cvntab Udtab[] =
 {
-	{ "u",		"p",			(void (*)())1,		0 },
-	{ "d",		"own",			0,                      0 },
-	{ 0 },
+	"u",		"p",			(int (*)())1,		0,
+	"d",		"own",			0,		0,
+	0
 };
 
-void
 shield(f)
-        int	f;
+int	f;
 {
 	register int		i;
+	char			c;
 	struct cvntab		*r;
 	char			s[100];
 	char			*device, *dev2, *dev3;
@@ -46,10 +51,8 @@ shield(f)
 	if (f < 0)
 	{
 		/* cloaking device */
-		if (Ship.ship == QUEENE) {
-		        printf("Ye Faire Queene does not have the cloaking device.\n");
-			return;
-                }
+		if (Ship.ship == QUEENE)
+			return (printf("Ye Faire Queene does not have the cloaking device.\n"));
 		device = "Cloaking device";
 		dev2 = "is";
 		ind = CLOAK;
@@ -100,14 +103,14 @@ shield(f)
 			printf("down\n");
 		return;
 	}
-	if (i) {
+	if (i)
 		if (f >= 0)
 			Ship.energy -= Param.shupengy;
 		else
 			Ship.cloakgood = 0;
-        }
 	Move.free = 0;
 	if (f >= 0)
 		Move.shldchg = 1;
 	*stat = i;
+	return;
 }

@@ -3,20 +3,26 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include "curses.ext"
-#include <strings.h>
+
+#if !defined(lint) && !defined(NOSCCS)
+static char sccsid[] = "@(#)insertln.c	5.1 (Berkeley) 6/7/85";
+#endif
+
+# include	"curses.ext"
+# include       <strings.h>
 
 /*
  *	This routine performs an insert-line on the window, leaving
  * (_cury,_curx) unchanged.
+ *
  */
-void
 winsertln(win)
-        reg WINDOW	*win;
-{
-	reg char	*temp = 0;
+reg WINDOW	*win; {
+
+	reg char	*temp;
 	reg int		y;
 	reg char	*end;
+	reg int		x;
 
 #ifdef	DEBUG
 	fprintf(outf, "INSERTLN(%0.2o)\n", win);

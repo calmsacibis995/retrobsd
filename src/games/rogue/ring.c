@@ -18,15 +18,17 @@ short e_rings;
 short regeneration;
 short ring_exp;
 short auto_search;
-char r_teleport;
-char r_see_invisible;
-char sustain_strength;
-char maintain_armor;
+boolean r_teleport;
+boolean r_see_invisible;
+boolean sustain_strength;
+boolean maintain_armor;
 
-void
+extern char *curse_message;
+extern boolean wizard;
+
 put_on_ring()
 {
-	int ch;
+	short ch;
 	char desc[DCOLS];
 	object *ring;
 
@@ -83,10 +85,10 @@ put_on_ring()
  * Do not call ring_stats() from within do_put_on().  It will cause
  * serious problems when do_put_on() is called from read_pack() in restore().
  */
-void
+
 do_put_on(ring, on_left)
-        object *ring;
-        boolean on_left;
+object *ring;
+boolean on_left;
 {
 	if (on_left) {
 		ring->in_use_flags |= ON_LEFT_HAND;
@@ -97,13 +99,12 @@ do_put_on(ring, on_left)
 	}
 }
 
-void
 remove_ring()
 {
 	boolean left = 0, right = 0;
-	int ch;
+	short ch;
 	char buf[DCOLS];
-	object *ring = 0;
+	object *ring;
 
 	if (r_rings == 0) {
 		inv_rings();
@@ -147,9 +148,8 @@ remove_ring()
 	}
 }
 
-void
 un_put_on(ring)
-        object *ring;
+object *ring;
 {
 	if (ring && (ring->in_use_flags & ON_LEFT_HAND)) {
 		ring->in_use_flags &= (~ON_LEFT_HAND);
@@ -161,10 +161,9 @@ un_put_on(ring)
 	ring_stats(1);
 }
 
-void
 gr_ring(ring, assign_wk)
-        object *ring;
-        boolean assign_wk;
+object *ring;
+boolean assign_wk;
 {
 	ring->what_is = RING;
 	if (assign_wk) {
@@ -203,7 +202,6 @@ gr_ring(ring, assign_wk)
 	}
 }
 
-void
 inv_rings()
 {
 	char buf[DCOLS];
@@ -229,11 +227,10 @@ inv_rings()
 	}
 }
 
-void
 ring_stats(pr)
-        boolean pr;
+boolean pr;
 {
-	int i;
+	short i;
 	object *ring;
 
 	stealthy = 0;

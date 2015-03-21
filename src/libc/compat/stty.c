@@ -9,7 +9,6 @@
  */
 #include <sgtty.h>
 
-int
 stty(fd, ap)
 	struct sgtty *ap;
 {

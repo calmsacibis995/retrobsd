@@ -3,9 +3,13 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)cypher.c	1.3.1 1996/10/26";
+#endif
+
 #include "externs.h"
 
-int
 cypher()
 {
 	register int n;
@@ -48,19 +52,19 @@ cypher()
 					return(-1);
 				lflag = 0;
 				break;
-
+			 
 			 case AHEAD:
 				if (!move(ahead, AHEAD))
 					return(-1);
 				lflag = 0;
 				break;
-
+			 
 			 case BACK:
 				if (!move(back, BACK))
 					return(-1);
 				lflag = 0;
 				break;
-
+			 
 			 case SHOOT:
 				if (wordnumber < wordcount && wordvalue[wordnumber+1] == EVERYTHING){
 					for (n=0; n < NUMOFOBJECTS; n++)
@@ -71,7 +75,7 @@ cypher()
 				wordnumber++;
 				wordnumber++;
 				}
-				else
+				else 
 					shoot();
 				break;
 
@@ -85,7 +89,7 @@ cypher()
 				wordnumber++;
 				wordnumber++;
 				}
-				else
+				else 
 					take(location[position].objects);
 				break;
 
@@ -100,7 +104,7 @@ cypher()
 				wordnumber++;
 				wordnumber++;
 				}
-				else
+				else 
 					drop("Dropped");
 				break;
 
@@ -110,13 +114,12 @@ cypher()
 				if (wordnumber < wordcount && wordvalue[wordnumber+1] == EVERYTHING){
 					for (n=0; n < NUMOFOBJECTS; n++)
 						if (testbit(inven,n) ||
-                                                    (testbit(location[position].objects, n) &&
-                                                    *objsht[n])) {
+						  testbit(location[position].objects, n) && *objsht[n]){
 							wordvalue[wordnumber+1] = n;
 							wordnumber = throw(wordvalue[wordnumber] == KICK ? "Kicked" : "Thrown");
 						}
 					wordnumber += 2;
-				} else
+				} else 
 					throw(wordvalue[wordnumber] == KICK ? "Kicked" : "Thrown");
 				break;
 
@@ -129,7 +132,7 @@ cypher()
 						}
 					wordnumber += 2;
 				}
-				else
+				else 
 					takeoff();
 				break;
 
@@ -144,7 +147,7 @@ cypher()
 						}
 					wordnumber += 2;
 				}
-				else
+				else 
 					draw();
 				break;
 
@@ -159,7 +162,7 @@ cypher()
 						}
 					wordnumber += 2;
 				}
-				else
+				else 
 					puton();
 				break;
 
@@ -173,7 +176,7 @@ cypher()
 						}
 					wordnumber += 2;
 				}
-				else
+				else 
 					wearit();
 				break;
 
@@ -188,7 +191,7 @@ cypher()
 						}
 					wordnumber += 2;
 				}
-				else
+				else 
 					eat();
 				break;
 
@@ -209,7 +212,7 @@ cypher()
 				}
 				else
 					puts("You aren't carrying anything.");
-
+					
 				if (ucard(wear)){
 					puts("\nYou are wearing:\n");
 					for (n=0; n < NUMOFOBJECTS; n++)
@@ -242,7 +245,7 @@ cypher()
 						puts("\nYour match splutters out.");
 						matchlight = 0;
 					}
-				} else
+				} else 
 					puts("I can't see anything.");
 				return(-1);
 				break;
@@ -250,35 +253,35 @@ cypher()
 			 case SU:
 			 if (wiz || tempwiz){
 				printf("\nRoom (was %d) = ", position);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n')
 					sscanf(buffer,"%d", &position);
 				printf("Time (was %d) = ",Time);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n')
 					sscanf(buffer,"%d", &Time);
 				printf("Fuel (was %d) = ",fuel);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n')
 					sscanf(buffer,"%d", &fuel);
 				printf("Torps (was %d) = ",torps);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n')
 					sscanf(buffer,"%d", &torps);
 				printf("CUMBER (was %d) = ",CUMBER);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n')
 					sscanf(buffer,"%d", &CUMBER);
 				printf("WEIGHT (was %d) = ",WEIGHT);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n')
 					sscanf(buffer,"%d",&WEIGHT);
-				printf("Clock (was %d) = ",clk);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				printf("Clock (was %d) = ",clock);
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n')
-					sscanf(buffer,"%d",&clk);
+					sscanf(buffer,"%d",&clock);
 				printf("Wizard (was %d, %d) = ",wiz, tempwiz);
-				if (fgets(buffer,10,stdin)) /*ignore*/;
+				fgets(buffer,10,stdin);
 				if (*buffer != '\n'){
 					sscanf(buffer,"%d",&junk);
 					if (!junk)
@@ -290,7 +293,7 @@ cypher()
 			 else
 				 puts("You aren't a wizard.");
 			 break;
-
+				
 			 case SCORE:
 				printf("\tPLEASURE\tPOWER\t\tEGO\n");
 				printf("\t%3d\t\t%3d\t\t%3d\n\n",pleasure,power,ego);
@@ -343,7 +346,7 @@ cypher()
 			 case LAUNCH:
 				if (!launch())
 					return(-1);
-				else
+				else 
 					lflag = 0;
 				break;
 
@@ -383,14 +386,14 @@ cypher()
 				break;
 
 			 case QUIT:
-				die(0);
+				die();
 
 			 default:
 				puts("How's that?");
 				return(-1);
 				break;
 
-
+			 
 		}
 		if (wordnumber < wordcount && *words[wordnumber++] == ',')
 			continue;

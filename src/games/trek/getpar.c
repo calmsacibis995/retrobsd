@@ -3,32 +3,20 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)getpar.c	4.4 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	<stdio.h>
-# include	<stdlib.h>
 # include	"getpar.h"
-
-/**
- **	test for valid terminator
- **/
-static int
-testterm()
-{
-	register char		c;
-
-	c = fgetc(stdin);
-	if (c == '.')
-		return (0);
-	if (c == '\n' || c == ';')
-		ungetc(c, stdin);
-	return (1);
-}
 
 /**
  **	get integer parameter
  **/
-int
+
 getintpar(s)
-        char	*s;
+char	*s;
 {
 	register int	i;
 	int		n;
@@ -50,9 +38,9 @@ getintpar(s)
 /**
  **	get floating parameter
  **/
-double
-getfltpar(s)
-        char	*s;
+
+double getfltpar(s)
+char	*s;
 {
 	register int		i;
 	double			d;
@@ -74,15 +62,16 @@ getfltpar(s)
 /**
  **	get yes/no parameter
  **/
-struct cvntab	Yntab[] = {
-	{ "y",	"es",	(void (*)())1,	0 },
-	{ "n",	"o",	(void (*)())0,	0 },
-	{ 0 },
+
+struct cvntab	Yntab[] =
+{
+	"y",	"es",	(int (*)())1,	0,
+	"n",	"o",	(int (*)())0,	0,
+	0
 };
 
-int
 getynpar(s)
-        char	*s;
+char	*s;
 {
 	struct cvntab		*r;
 
@@ -91,40 +80,13 @@ getynpar(s)
 }
 
 
-/*
-**  STRING CONCATENATE
-**
-**	The strings `s1' and `s2' are concatenated and stored into
-**	`s3'.  It is ok for `s1' to equal `s3', but terrible things
-**	will happen if `s2' equals `s3'.  The return value is is a
-**	pointer to the end of `s3' field.
-*/
-char *
-concat(s1, s2, s3)
-        char	*s1, *s2, *s3;
-{
-	register char		*p;
-	register char		*q;
-
-	p = s3;
-	q = s1;
-	while (*q)
-		*p++ = *q++;
-	q = s2;
-	while (*q)
-		*p++ = *q++;
-	*p = 0;
-	return (p);
-}
-
-
 /**
  **	get coded parameter
  **/
-struct cvntab *
-getcodpar(s, tab)
-        char		*s;
-        struct cvntab	tab[];
+
+struct cvntab *getcodpar(s, tab)
+char		*s;
+struct cvntab	tab[];
 {
 	char				input[100];
 	register struct cvntab		*r;
@@ -140,7 +102,7 @@ getcodpar(s, tab)
 		if (flag)
 			printf("%s: ", s);
 		if (f)
-			fgetc(stdin);		/* throw out the newline */
+			cgetc(0);		/* throw out the newline */
 		scanf("%*[ \t;]");
 		if ((c = scanf("%[^ \t;\n]", input)) < 0)
 			exit(1);
@@ -198,12 +160,12 @@ getcodpar(s, tab)
 /**
  **	get string parameter
  **/
-void
+
 getstrpar(s, r, l, t)
-        char	*s;
-        char	*r;
-        int	l;
-        char	*t;
+char	*s;
+char	*r;
+int	l;
+char	*t;
 {
 	register int	i;
 	char		format[20];
@@ -217,7 +179,7 @@ getstrpar(s, r, l, t)
 		if ((f = testnl()) && s)
 			printf("%s: ", s);
 		if (f)
-			fgetc(stdin);
+			cgetc(0);
 		scanf("%*[\t ;]");
 		i = scanf(format, r);
 		if (i < 0)
@@ -231,12 +193,12 @@ getstrpar(s, r, l, t)
 /**
  **	test if newline is next valid character
  **/
-int
+
 testnl()
 {
 	register char		c;
 
-	while ((c = fgetc(stdin)) != '\n')
+	while ((c = cgetc(0)) != '\n')
 		if ((c >= '0' && c <= '9') || c == '.' || c == '!' ||
 				(c >= 'A' && c <= 'Z') ||
 				(c >= 'a' && c <= 'z') || c == '-')
@@ -252,14 +214,33 @@ testnl()
 /**
  **	scan for newline
  **/
-void
+
 skiptonl(c)
-        int	c;
+char	c;
 {
 	while (c != '\n')
-		if (!(c = fgetc(stdin)))
+		if (!(c = cgetc(0)))
 			return;
 	ungetc('\n', stdin);
+	return;
+}
+
+
+/**
+ **	test for valid terminator
+ **/
+
+testterm()
+{
+	register char		c;
+
+	if (!(c = cgetc(0)))
+		return (1);
+	if (c == '.')
+		return (0);
+	if (c == '\n' || c == ';')
+		ungetc(c, stdin);
+	return (1);
 }
 
 
@@ -270,13 +251,14 @@ skiptonl(c)
 **	it is thrown away and non-zero is returned.  If not found,
 **	zero is returned.
 */
-int
+
 readdelim(d)
-        int	d;
+char	d;
 {
 	register char	c;
 
-	while ((c = fgetc(stdin))) {
+	while (c = cgetc(0))
+	{
 		if (c == d)
 			return (1);
 		if (c == ' ')

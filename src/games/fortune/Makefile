@@ -1,45 +1,72 @@
-TOPSRC		= $(shell cd ../../..; pwd)
-include $(TOPSRC)/target.mk
-#include $(TOPSRC)/cross.mk
+FORTUNES=	scene obscene
+SOURCE=		fortune.c strfile.h strfile.c rnd.c unstr.c $(FORTUNES)
+TFILES=		Troff.mac Troff.sed Do_troff
+LIBDIR=		/usr/games/lib
+BINDIR=		/usr/games
+OWN=		arnold
+GRP=		arpa
+DEFS=
+SEPFLAG= -i
+CFLAGS=		-O $(DEFS)
+SFLAGS=		-r
+TDEV=		-Pver
+TROFF=		ditroff $(TDEV)
+DESTDIR=
 
-CFLAGS		+= -O -Werror -Wall
-LIBS            = -lc
+all: fortune strfile unstr fortunes.dat
 
-OBJS            = fortune.o
-MAN		= fortune.0
-MANSRC		= fortune.6
+fortune: fortune.o rnd.o
+	$(CC) ${SEPFLAG} $(CFLAGS) -o fortune fortune.o rnd.o
 
-all:            fortune $(MAN) fortunes.dat
+strfile: strfile.o rnd.o
+	$(CC) ${SEPFLAG} $(CFLAGS) -o strfile strfile.o rnd.o
 
-fortune:        $(OBJS)
-		$(CC) $(LDFLAGS) -o fortune.elf $(OBJS) $(LIBS)
-		$(OBJDUMP) -S fortune.elf > fortune.dis
-		$(SIZE) fortune.elf
-		$(ELF2AOUT) fortune.elf $@ && rm fortune.elf
+unstr: unstr.o
+	$(CC) ${SEPFLAG} $(CFLAGS) -o unstr unstr.o
 
-strfile:        strfile.o
-		$(CC) $(LDFLAGS) -o strfile strfile.o
+fortune.o strfile.o unstr.o: strfile.h
 
-unstr:          unstr.o
-		$(CC) $(LDFLAGS) -o unstr unstr.o
+fortunes.dat: fortunes strfile
+	./strfile $(SFLAGS) fortunes
 
-fortunes.dat:   #fortunes strfile
-		./strfile -r fortunes
+fortunes: $(FORTUNES)
+	cp scene fortunes
+	echo "%-" >> fortunes
+	cat obscene >> fortunes
 
-fortunes:       scene obscene
-		cp scene fortunes
-		echo "%-" >> fortunes
-		cat obscene >> fortunes
+lint:
+	lint -hxb $(DEFS) fortune.c rnd.c 2>&1 > fortune.lint
+	lint -hxb $(DEFS) strfile.c rnd.c 2>&1 > strfile.lint
+	lint -hxb $(DEFS) unstr.c 2>&1 > unstr.lint
 
-$(MAN):         $(MANSRC)
-		$(MANROFF) $< > $@
+install: all install.data
+	install -s -m 4711 -o daemon fortune $(DESTDIR)$(BINDIR)
 
-clean:
-		rm -f *.o *.0 *.elf $(MAN) fortune strfile unstr fortunes *.elf *.dis tags *~
+install.data: fortunes.dat
+	install -m 600 -o daemon fortunes.dat $(DESTDIR)$(LIBDIR)
 
-install:        all
-		install fortune $(DESTDIR)/games/
-		cp $(MAN) $(DESTDIR)/share/man/cat6/
-		cp fortunes.dat $(DESTDIR)/games/lib/
+troff: troff.scene troff.obscene
 
-#$(OBJS):        fortune.h
+troff.scene:
+	./Do_troff scene $(TROFF)
+
+troff.obscene:
+	./Do_troff obscene $(TROFF)
+
+clean: sort.clean
+	rm -f fortune fortunes fortunes.dat strfile unstr ? core *.o
+
+sort: sort.scene sort.obscene
+
+sort.scene: strfile unstr
+	strfile -oi scene
+	mv scene Oscene
+	unstr -o scene
+
+sort.obscene: strfile unstr
+	strfile -oi obscene
+	mv obscene Oobscene
+	unstr -o obscene
+
+sort.clean:
+	rm -f Oscene Oobscene

@@ -3,9 +3,13 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)pl_3.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "player.h"
 
-void
 acceptcombat()
 {
 	int men = 0;
@@ -47,7 +51,7 @@ acceptcombat()
 			guns = mc->gunL;
 			car = mc->carL;
 		}
-		if ((!guns && !car) || load == L_EMPTY || (ready & R_LOADED) == 0)
+		if (!guns && !car || load == L_EMPTY || (ready & R_LOADED) == 0)
 			goto cant;
 		if (mf->struck || !crew[2])
 			goto cant;
@@ -57,10 +61,10 @@ acceptcombat()
 		if (closest->file->struck)
 			goto cant;
 		target = range(ms, closest);
-		if (target > rangeofshot[load] || (!guns && target >= 3))
+		if (target > rangeofshot[load] || !guns && target >= 3)
 			goto cant;
 		Signal("%s (%c%c) within range of %s broadside.",
-			closest, (int) (r ? "right" : "left"), 0, 0, 0);
+			closest, r ? "right" : "left");
 		if (load > L_CHAIN && target < 6) {
 			switch (sgetch("Aim for hull or rigging? ",
 				(struct ship *)0, 1)) {
@@ -73,13 +77,13 @@ acceptcombat()
 			default:
 				shootat = -1;
 				Signal("'Avast there! Hold your fire.'",
-					(struct ship *)0, 0, 0, 0, 0);
+					(struct ship *)0);
 			}
 		} else {
 			if (sgetch("Fire? ", (struct ship *)0, 1) == 'n') {
 				shootat = -1;
 				Signal("Belay that! Hold your fire.",
-					(struct ship *)0, 0, 0, 0, 0);
+					(struct ship *)0);
 			} else
 				shootat = RIGGING;
 		}
@@ -93,12 +97,11 @@ acceptcombat()
 		else if (temp > 8)
 			temp -= 8;
 		sternrake = temp > 4 && temp < 6;
-		if (rakehim) {
+		if (rakehim)
 			if (!sternrake)
-				Signal("Raking the %s!", closest, 0, 0, 0, 0);
+				Signal("Raking the %s!", closest);
 			else
-				Signal("Stern Rake! %s splintering!", closest, 0, 0, 0, 0);
-                }
+				Signal("Stern Rake! %s splintering!", closest);
 		index = guns;
 		if (target < 3)
 			index += car;
@@ -112,24 +115,21 @@ acceptcombat()
 			hit++;
 		hit += QUAL[index][mc->qual-1];
 		for (n = 0; n < 3 && mf->captured == 0; n++)
-			if (!crew[n]) {
+			if (!crew[n])
 				if (index <= 5)
 					hit--;
 				else
 					hit -= 2;
-                        }
-		if (ready & R_INITIAL) {
+		if (ready & R_INITIAL)
 			if (index <= 3)
 				hit++;
 			else
 				hit += 2;
-                }
-		if (mf->captured != 0) {
+		if (mf->captured != 0)
 			if (index <= 1)
 				hit--;
 			else
 				hit -= 2;
-                }
 		hit += AMMO[index][load - 1];
 		if (((temp = mc->class) >= 5 || temp == 1) && windspeed == 5)
 			hit--;
@@ -161,7 +161,7 @@ acceptcombat()
 			table(shootat, load, hit, closest, ms, roll);
 		}
 		Signal("Damage inflicted on the %s:",
-			(struct ship *)0, (int)closest->shipname, 0, 0, 0);
+			(struct ship *)0, closest->shipname);
 		Signal("\t%d HULL, %d GUNS, %d CREW, %d RIGGING",
 			(struct ship *)0, hhits, ghits, chits, rhits);
 		if (!r) {
@@ -174,14 +174,13 @@ acceptcombat()
 		continue;
 	cant:
 		Signal("Unable to fire %s broadside",
-			(struct ship *)0, (int) (r ? "right" : "left"), 0, 0, 0);
+			(struct ship *)0, r ? "right" : "left");
 	}
 	blockalarm();
 	draw_stat();
 	unblockalarm();
 }
 
-void
 grapungrap()
 {
 	register struct ship *sp;
@@ -199,10 +198,10 @@ grapungrap()
 			    || ms->nationality == capship(sp)->nationality) {
 				Write(W_GRAP, ms, 0, sp->file->index, 0, 0, 0);
 				Write(W_GRAP, sp, 0, player, 0, 0, 0);
-				Signal("Attempt succeeds!", (struct ship *)0, 0, 0, 0, 0);
-				makesignal(ms, "grappled with %s (%c%c)", sp, 0, 0, 0);
+				Signal("Attempt succeeds!", (struct ship *)0);
+				makesignal(ms, "grappled with %s (%c%c)", sp);
 			} else
-				Signal("Attempt fails.", (struct ship *)0, 0, 0, 0, 0);
+				Signal("Attempt fails.", (struct ship *)0);
 			break;
 		case 'u':
 			for (i = grappled2(ms, sp); --i >= 0;) {
@@ -211,24 +210,23 @@ grapungrap()
 				    || die() < 3) {
 					cleangrapple(ms, sp, 0);
 					Signal("Attempt succeeds!",
-						(struct ship *)0, 0, 0, 0, 0);
+						(struct ship *)0);
 					makesignal(ms,
 						"ungrappling with %s (%c%c)",
-						sp, 0, 0, 0);
+						sp);
 				} else
 					Signal("Attempt fails.",
-						(struct ship *)0, 0, 0, 0, 0);
+						(struct ship *)0);
 			}
 			break;
 		}
 	}
 }
 
-void
 unfoulplayer()
 {
 	register struct ship *to;
-	register int i;
+	register i;
 
 	foreachship(to) {
 		if (fouled2(ms, to) == 0)
@@ -238,10 +236,10 @@ unfoulplayer()
 		for (i = fouled2(ms, to); --i >= 0;) {
 			if (die() <= 2) {
 				cleanfoul(ms, to, 0);
-				Signal("Attempt succeeds!", (struct ship *)0, 0, 0, 0, 0);
-				makesignal(ms, "Unfouling %s (%c%c)", to, 0, 0, 0);
+				Signal("Attempt succeeds!", (struct ship *)0);
+				makesignal(ms, "Unfouling %s (%c%c)", to);
 			} else
-				Signal("Attempt fails.", (struct ship *)0, 0, 0, 0, 0);
+				Signal("Attempt fails.", (struct ship *)0);
 		}
 	}
 }

@@ -7,7 +7,7 @@
 #include "r.defs.h"
 
 /*
- * Output codes
+ * Выходные коды
  */
 char *cvtout[] = {
     /* COSTART */ "cl?is?ti?ho",    /* COUP   */ "up",
@@ -15,7 +15,7 @@ char *cvtout[] = {
     /* COHO    */ "ho",             /* CORT   */ "nd",
     /* COLT    */ "le",             /* COCURS */ "cu",
     /* COBELL  */ "\007",           /* COFIN  */ "cl?fs?te",
-    /* COERASE */ "cl",             /* COERLN */ "ce",
+    /* COERASE */ "cl",
 };
 
 char *curspos;
@@ -25,13 +25,13 @@ char *curspos;
  */
 const char in0tab[32] = {
     -1,             /* ^@ */
-    CCPARAM,        /* ^A */
+    CCENTER,        /* ^A */
     CCMISRCH,       /* ^B */
-    CCCOPY,         /* ^C */
+    -1,             /* ^C */
     CCDELCH,        /* ^D */
     -1,             /* ^E */
     CCPLSRCH,       /* ^F */
-    CCGOTO,         /* ^G */
+    -1,             /* ^G */
     CCBACKSPACE,    /* ^H */
     CCTAB,          /* ^I */
     CCRETURN,       /* ^J */
@@ -39,17 +39,17 @@ const char in0tab[32] = {
     CCREDRAW,       /* ^L */
     CCRETURN,       /* ^M */
     CCSETFILE,      /* ^N */
-    CCINSLIN,       /* ^O */
+    -1,             /* ^O */
     CCCTRLQUOTE,    /* ^P */
     -1 /*special*/, /* ^Q */
     -1,             /* ^R */
     -1 /*special*/, /* ^S */
     -1,             /* ^T */
     -1,             /* ^U */
-    CCPASTE,        /* ^V */
+    -1,             /* ^V */
     -1,             /* ^W */
     -1 /*special*/, /* ^X */
-    CCDELLIN,       /* ^Y */
+    CCCLOSE,        /* ^Y */
     -1,             /* ^Z */
     -1 /*special*/, /* ^[ */
     -1,             /* ^\ */
@@ -59,30 +59,31 @@ const char in0tab[32] = {
 };
 
 /*
- * Table of input key codes.
+ * Таблица кодов клавиш терминала и их комбинаций
+ * Сюда же записываются коды при переопределении
  */
-keycode_t keytab[] = {
+struct ex_int inctab[] = {
     { CCMOVEUP,     "ku",   },  { CCMOVEUP,     "\33OA",   },
     { CCMOVEDOWN,   "kd",   },  { CCMOVEDOWN,   "\33OB",   },
     { CCMOVERIGHT,  "kr",   },  { CCMOVERIGHT,  "\33OC",   },
     { CCMOVELEFT,   "kl",   },  { CCMOVELEFT,   "\33OD",   },
     { CCHOME,       "kh",   },  { CCHOME,       "\33OH",   },
     { CCEND,        "kH",   },  { CCEND,        "\33OF",   },
-    { CCPGDOWN,     "kN",   },
-    { CCPGUP,       "kP",   },
+    { CCPLPAGE,     "kN",   },
+    { CCMIPAGE,     "kP",   },
     { CCINSMODE,    "kI",   },
     { CCDELCH,      "kD",   },
-    { CCPARAM,      "k1",   },  { CCPARAM,      "\33OP",   },
+    { CCENTER,      "k1",   },  { CCENTER,      "\33OP",   },
     { CCSAVEFILE,   "k2",   },  { CCSAVEFILE,   "\33OQ",   },
-    { CCSETFILE,    "k3",   },  { CCSETFILE,    "\33OR",   },
-    { CCDOCMD,      "k4",   },  { CCDOCMD,      "\33OS",   },
-    { CCCOPY,       "k5",   },  { CCCOPY,       "\33OT",   },
-    { CCPASTE,      "k6",   },
-    { CCPLSRCH,     "k7",   },
-    { CCGOTO,       "k8",   },
+    { CCCHPORT,     "k3",   },  { CCCHPORT,     "\33OR",   },
+    { CCMAKEPORT,   "k4",   },  { CCMAKEPORT,   "\33OS",   },
+    { CCSETFILE,    "k5",   },  { CCSETFILE,    "\33OT",   },
+    { CCPICK,       "k6",   },
+    { CCOPEN,       "k7",   },
+    { CCCLOSE,      "k8",   },
     { CCREDRAW,     "k9",   }, // free
-    { CCREDRAW,     "k0",   }, // free
-    { CCREDRAW,     "F1",   }, // free
+    { CCGOTO,       "k0",   },
+    { CCPUT,        "F1",   },
     { CCREDRAW,     "F2",   }, // free
     { 0,            0,      },
     { 0,            0,      },
@@ -95,14 +96,13 @@ keycode_t keytab[] = {
     { 0,            0,      },
 };
 
-/*
- * Parsing the termcap
- */
+/* Декодирование termcap */
+int nfinc = 8;
 
 /*
- * Get a descriptor "tc".
- * tc="XXYY..ZZ"
- * Auestion mark bebore the code denodes an optional feature.
+ * дай описание возможности "tc"
+ * tc="XXYY..ZZ", знак вопроса перед кодом
+ * возможности означает - не обязательна
  */
 static char *gettcs(termcap, tc)
     char *termcap, *tc;
@@ -144,22 +144,22 @@ static char *gettcs(termcap, tc)
 }
 
 /*
- * Sort the keytab for the function findt().
+ * сортировка inctab для работы функции findt
  */
 static void itsort(fb, fe, ns)
-    keycode_t *fb,*fe;
+    struct ex_int *fb,*fe;
     int ns;
 {
-    register keycode_t *fr, *fw;
+    register struct ex_int *fr, *fw;
     char c;
-    keycode_t temp;
+    struct ex_int temp;
 
     fw = fb - 1;
     while (fw != fe) {
         fr = fb = ++fw;
-        c = fw->value[ns];
+        c = fw->excc[ns];
         while (fr++ != fe) {
-            if (fr->value[ns] == c) {
+            if (fr->excc[ns] == c) {
                 if (fr != ++fw) {
                     temp = *fr;
                     *fr = *fw;
@@ -178,7 +178,7 @@ static void itsort(fb, fe, ns)
 void tcread()
 {
     register int i;
-    register keycode_t *ir, *iw;
+    register struct ex_int *ir, *iw;
     char *termcap;
 
     /* Terminal description is placed in TERMCAP variable. */
@@ -186,7 +186,7 @@ void tcread()
     if (! termcap) {
         /* Default: linux console. */
         termcap = ":co#80:li#25:cm=\33[%i%d;%dH:cl=\33[H\33[2J:ho=\33[H:"
-                  "up=\33[A:do=\33[B:nd=\33[C:le=\10:cu=\33[7m@\33[m:"
+                  "up=\33[A:do=\33[B:nd=\33[C:le=\10:cu=\33[7m \33[m:"
                   "ku=\33[A:kd=\33[B:kr=\33[C:kl=\33[D:kP=\33[5~:kN=\33[6~:"
                   "kI=\33[2~:kD=\33[3~:kh=\33[1~:kH=\33[4~:"
                   "k1=\33[A:k2=\33[B:k3=\33[C:k4=\33[D:k5=\33[15~:"
@@ -198,16 +198,16 @@ void tcread()
         puts1 ("re: terminal does not support direct positioning\n");
         exit(1);
     }
-    NCOLS = tgetnum(termcap, "co");
+    LINEL = tgetnum(termcap, "co");
     NLINES = tgetnum(termcap, "li");
-    if (NCOLS <= 60 || NLINES < 8) {
+    if (LINEL <= 60 || NLINES < 8) {
         puts1 ("re: too small screen size\n");
         exit(1);
     }
-    if (NCOLS > MAXCOLS)
-        NCOLS = MAXCOLS;
-    if (NLINES > MAXLINES)
-        NLINES = MAXLINES;
+    if (LINEL > LINELM)
+        LINEL = LINELM;
+    if (NLINES > NLINESM)
+        NLINES = NLINESM;
     for (i=0; i<COMCOD; i++) {
         cvtout[i] = gettcs(termcap, cvtout[i]);
     }
@@ -215,23 +215,22 @@ void tcread()
         cvtout[COBELL] = "\0";
     if (! cvtout[COCURS])
         cvtout[COCURS] = "@";
-    if (! cvtout[COERLN])
-        cvtout[COERLN] = "\33[K";
 
     /* Input codes. */
-    iw = keytab;
-    for (ir=iw; ir->value; ir++) {
-        if (ir->value[0] > ' ') {
-            iw->value = gettcs(termcap, ir->value);
-            if (iw->value == 0) {
+    iw = inctab;
+    for (ir=iw; ir->excc; ir++) {
+        if (ir->excc[0] > ' ') {
+            iw->excc = gettcs(termcap, ir->excc);
+            if (iw->excc == 0) {
+                nfinc++;
                 continue;
             }
         } else
-            iw->value = ir->value;
-        iw->keysym = ir->keysym;
+            iw->excc = ir->excc;
+        iw->incc = ir->incc;
         iw++;
     }
-    iw->value = NULL;
-    iw->keysym = 0;
-    itsort(keytab, iw-1, 0);
+    iw->excc = NULL;
+    iw->incc = 0;
+    itsort(inctab, iw-1, 0);
 }

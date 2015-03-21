@@ -28,7 +28,7 @@ void mips_cp0_exec_mtc0 (cpu_mips_t * cpu, u_int gp_reg, u_int cp0_reg,
     u_int sel);
 void fastcall mips_cp0_exec_mtc0_fastcall (cpu_mips_t * cpu,
     mips_insn_t insn);
-void mips_cp0_set_reg (cpu_mips_t * cpu, u_int cp0_reg, u_int sel,
+inline void mips_cp0_set_reg (cpu_mips_t * cpu, u_int cp0_reg, u_int sel,
     m_uint32_t val);
 m_cp0_reg_t mips_cp0_get_vpn2_mask (cpu_mips_t * cpu);
 void fastcall mips_cp0_exec_tlbp (cpu_mips_t * cpu);

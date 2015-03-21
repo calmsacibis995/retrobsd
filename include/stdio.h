@@ -14,7 +14,7 @@ extern	struct	_iobuf {
 	char	*_base;		/* ditto */
 	int	_bufsiz;
 	short	_flag;
-	short	_file;
+	char	_file;		/* should be short */
 } _iob[];
 
 #define	_IOREAD	01
@@ -73,7 +73,6 @@ FILE	*fopen (const char *, const char *);
 FILE	*fdopen (int, const char *);
 FILE	*freopen (const char *, const char *, FILE *);
 FILE	*popen (const char *, const char *);
-FILE    *tmpfile (void);
 int     fclose (FILE *);
 long	ftell (FILE *);
 int     fflush (FILE *);
@@ -94,8 +93,6 @@ int     setvbuf (FILE *, char *, int, size_t);
 int     fseek (FILE *, long, int);
 void    rewind (FILE *);
 int     remove (const char *);
-int     getw(FILE *stream);
-int     putw(int w, FILE *stream);
 
 size_t	fread (void *, size_t, size_t, FILE *);
 size_t	fwrite (const void *, size_t, size_t, FILE *);
@@ -110,12 +107,7 @@ int	 scanf (const char *, ...);
 int	 sscanf (const char *, const char *, ...);
 
 #ifndef _VA_LIST_
-# ifdef __GNUC__
-#  define va_list   __builtin_va_list   /* For Gnu C */
-# endif
-# ifdef __SMALLER_C__
-#  define va_list   char *              /* For Smaller C */
-# endif
+#define va_list		__builtin_va_list	/* For GCC */
 #endif
 
 int	 vfprintf (FILE *, const char *, va_list);
@@ -131,7 +123,7 @@ int	_doprnt (const char *, va_list, FILE *);
 int	_doscan (FILE *, const char *, va_list);
 
 #ifndef _VA_LIST_
-# undef va_list
+#undef va_list
 #endif
 
 void    perror (const char *);

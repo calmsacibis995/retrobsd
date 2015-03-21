@@ -8,20 +8,11 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
-#include <time.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-#include <sys/utsname.h>
 #ifdef SYSV
-#include <sys/ioctl.h>
+#include <sys/types.h>
 #endif
 #include <pwd.h>
-#include <fcntl.h>
 
 #ifdef BSD
 #include <sgtty.h>
@@ -30,17 +21,25 @@
 #endif
 
 #ifdef SYSV
-#include <termios.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/utsname.h>
 #endif
 
 #include <signal.h>
 #include <math.h>
+
 #include <curses.h>
 
+#ifdef SYSV
+#define	index	strchr
+#define	rindex	strrchr
 #define bcopy(a,b,c)	memcpy((b), (a), (c))
 #define	bzero(a,b)	memset((a), '\0', (b))
-#ifdef SYSV
-#define	sgttyb	termios
+#define	srandom	srand
+#define	random	rand
+#define	sgttyb	termio
 #define	sg_erase c_cc[2]
 #define	sg_kill c_cc[3]
 #endif

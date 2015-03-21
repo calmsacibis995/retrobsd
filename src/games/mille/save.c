@@ -1,20 +1,15 @@
-#include "mille.h"
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <errno.h>
-#include <time.h>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
+#include	"mille.h"
+#include	<string.h>
+#include	<sys/types.h>
+#include	<sys/stat.h>
 #ifndef	unctrl
-#   include "unctrl.h"
+#include	"unctrl.h"
 #endif
 
-#ifdef	attron
-#   include <term.h>
-#   define _tty	cur_term->Nttyb
-#endif
+# ifdef	attron
+#	include	<term.h>
+#	define	_tty	cur_term->Nttyb
+# endif	attron
 
 /*
  * @(#)save.c	1.3 (2.11BSD) 1996/3/21
@@ -22,24 +17,27 @@
 
 typedef	struct stat	STAT;
 
+extern	char	*ctime();
+extern	int	read(), write();
+
 /*
  *	This routine saves the current game for use at a later date
  */
-int
+extern int	errno;
+
 save() {
 
-	char	*sp;
-	int	outf;
-	time_t	*tp;
-	char	buf[80];
-	time_t	tme;
-	STAT	junk;
+	reg char	*sp;
+	reg int		outf;
+	reg time_t	*tp;
+	char		buf[80];
+	time_t		tme;
+	STAT		junk;
 
 	tp = &tme;
-	if (Fromfile && getyn(SAMEFILEPROMPT)) {
+	if (Fromfile && getyn(SAMEFILEPROMPT))
 		strcpy(buf, Fromfile);
-		sp = buf;
-	} else {
+	else {
 over:
 		prompt(FILEPROMPT);
 		leaveok(Board, FALSE);
@@ -79,7 +77,7 @@ over:
 		return FALSE;
 
 	if ((outf = creat(buf, 0644)) < 0) {
-		error(strerror(errno), 0);
+		error(strerror(errno));
 		return FALSE;
 	}
 	mvwaddstr(Score, ERR_Y, ERR_X, buf);
@@ -102,14 +100,13 @@ over:
  * backup was made on exiting, in which case certain things must
  * be cleaned up before the game starts.
  */
-int
 rest_f(file)
-char	*file; {
+reg char	*file; {
 
-	char	*sp;
-	int	inf;
-	char	buf[80];
-	STAT	sbuf;
+	reg char	*sp;
+	reg int		inf;
+	char		buf[80];
+	STAT		sbuf;
 
 	if ((inf = open(file, 0)) < 0) {
 		perror(file);
@@ -132,3 +129,4 @@ char	*file; {
 	Fromfile = file;
 	return !On_exit;
 }
+

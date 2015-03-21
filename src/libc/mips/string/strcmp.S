@@ -33,19 +33,18 @@
 #
 # NOTE: this version assumes unsigned chars in order to be "8 bit clean".
 #
-        .set    reorder
 	.type	strcmp, @function
 strcmp:	.globl  strcmp
 1:
 	lbu	$t0, 0($a0)		# get two bytes and compare them
 	lbu	$t1, 0($a1)
-	beqz	$t0, LessOrEq		# end of first string?
+	beq	$t0, $zero, LessOrEq	# end of first string?
 	bne	$t0, $t1, NotEq
 	lbu	$t0, 1($a0)		# unroll loop
 	lbu	$t1, 1($a1)
-	addi	$a0, $a0, 2
-	beqz	$t0, LessOrEq		# end of first string?
-	addi	$a1, $a1, 2
+	add	$a0, $a0, 2
+	beq	$t0, $zero, LessOrEq	# end of first string?
+	add	$a1, $a1, 2
 	beq	$t0, $t1, 1b
 NotEq:
 	subu	$v0, $t0, $t1

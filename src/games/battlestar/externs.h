@@ -8,11 +8,8 @@
 
 #include <sys/signal.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
-#define PATH(x)		"/games/lib/"#x
+#define PATH(x)		"/usr/games/lib/x"
 #define logfile		PATH(battlestar.log)
 #define BATTLESTRINGS	PATH(battle_strings)
 
@@ -40,7 +37,7 @@
 #define CONJ	5
 
 	/* words numbers */
-#define KNIFE		0
+#define KNIFE		0 
 #define SWORD		1
 #define LAND		2
 #define WOODSMAN 	3
@@ -155,7 +152,7 @@
 #define RIDE	1047
 #define DRIVE	1048
 #define SCORE	1049
-#define BURY	1050
+#define BURY	1050 
 #define JUMP	1051
 #define KICK	1052
 
@@ -172,7 +169,7 @@
 #define	CANTLAUNCH	0
 #define LAUNCHED	1
 #define CANTSEE		2
-#define CANTMOVE	3
+#define CANTMOVE	3 
 #define JINXED		4
 #define DUG		5
 #define NUMOFNOTES	6
@@ -193,12 +190,12 @@
 #define MAXCUMBER	10
 
 struct room {
-#ifdef EXT_MESSAGE_FILE
-	unsigned short name;
+#ifdef pdp11
+	unsigned name;
 #else
 	char *name;
 #endif
-	unsigned short link[8];
+	int link[8];
 #define north	link[0]
 #define south	link[1]
 #define east	link[2]
@@ -207,19 +204,19 @@ struct room {
 #define access	link[5]
 #define down	link[6]
 #define flyhere	link[7]
-#ifdef EXT_MESSAGE_FILE
-	unsigned short desc;
+#ifdef pdp11
+	unsigned desc;
 #else
 	char *desc;
 #endif
 	unsigned int objects[NUMOFWORDS];
 };
-extern struct room dayfile[];
-extern struct room nightfile[];
+struct room dayfile[];
+struct room nightfile[];
 struct room *location;
 
 	/* object characteristics */
-#ifdef EXT_MESSAGE_FILE
+#ifdef pdp11
 unsigned objdes[NUMOFOBJECTS];
 #else
 char *objdes[NUMOFOBJECTS];
@@ -244,7 +241,7 @@ int Time;
 int position;
 int direction;
 int left, right, ahead, back;
-int clk, fuel, torps;
+int clock, fuel, torps;
 int carrying, encumber;
 int rythmn;
 int followfight;
@@ -279,61 +276,11 @@ struct wlist {
 #define HASHMUL		81
 #define HASHMASK	(HASHSIZE - 1)
 struct wlist *hashtab[HASHSIZE];
-extern struct wlist wlist[];
+struct wlist wlist[];
 
 struct objs {
 	short room;
 	short obj;
 };
-extern struct objs dayobjs[];
-extern struct objs nightobjs[];
-
-int cypher(void);
-int zzz(void);
-int fight(int enemy, int strength);
-int visual(void);
-int take(unsigned int from[]);
-int drop(char *name);
-int wearit(void);
-int card(char *array, int size);
-int ucard(unsigned *array);
-int move(int thataway, int token);
-int shoot(void);
-int throw(char *name);
-int takeoff(void);
-int draw(void);
-int puton(void);
-int eat(void);
-int put(void);
-int use(void);
-int follow(void);
-int give(void);
-int ride(void);
-int drive(void);
-int launch(void);
-int land(void);
-int jump(void);
-
-void initialize(int startup);
-void news(void);
-void crash(void);
-void writedes(void);
-void printobjs(void);
-void whichway(struct room here);
-void parse(void);
-void newway(int thisway);
-void die(int);
-void live(void);
-void wordinit(void);
-void save(void);
-void restore(void);
-void murder(void);
-void ravage(void);
-void kiss(void);
-void love(void);
-void light(void);
-void chime(void);
-void dig(void);
-void bury(void);
-void drink(void);
-void strprt(int n);
+struct objs dayobjs[];
+struct objs nightobjs[];

@@ -3,13 +3,13 @@
 /* $Log:	term.h,v $
  * Revision 7.0.1.2  86/12/12  17:05:15  lwall
  * Baseline for net release.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:53:33  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:14:07  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 /* warp will still work without the following, but may get ahead at low speed */
@@ -30,7 +30,7 @@
 #define addc(ch) (write(1,&(ch),1), real_x++)
 #define addspace() (write(1," ",1), real_x++)
 #define mvaddstr(y,x,s) (move((y),(x),0), tmpstr = (s), \
-     tmplen = strlen(tmpstr), write(1, tmpstr, tmplen) >= 0, real_x += tmplen)
+     tmplen = strlen(tmpstr), write(1, tmpstr, tmplen), real_x += tmplen)
 
 EXT int tmplen;
 EXT char *tmpstr;
@@ -45,11 +45,15 @@ EXT char *tmpstr;
  */
 
 #define beg_qwrite() (maxcmstring = cmbuffer)
+#ifdef vax
+#define qwrite() asm("movc3 _gfillen,_filler,*_maxcmstring"); maxcmstring += gfillen
+#else
 #define qwrite() (movc3(gfillen,filler,maxcmstring), maxcmstring += gfillen)
+#endif
 #define qaddc(ch) (*maxcmstring++ = (ch), real_x++)
 #define qaddch(ch) (*maxcmstring++ = (ch), real_x++)
 #define qaddspace() (*maxcmstring++ = ' ', real_x++)
-#define end_qwrite() (write(1,cmbuffer,maxcmstring-cmbuffer) > 0)
+#define end_qwrite() (write(1,cmbuffer,maxcmstring-cmbuffer))
 
 /* setting a ??size to infinity forces cursor addressing in that direction */
 
@@ -90,41 +94,76 @@ EXT char INTRCH INIT('\03');
 #   ifdef PENDING
 #	ifdef FIONREAD
 	    EXT long iocount INIT(0);
-#           define input_pending() (nextin!=nextout || (ioctl(0, FIONREAD, &iocount),(int)iocount))
+#	    ifndef lint
+#		define input_pending() (nextin!=nextout || \
+(ioctl(0, FIONREAD, &iocount),(int)iocount))
+#	    else
+#		define input_pending() bizarre
+#	    endif /* lint */
 #	else /* FIONREAD */
 	    int circfill();
-#           ifndef O_NDELAY	/* assert O_NDELAY */
-#               error PENDING is not defined correctly in warp.h
-#           endif
-            EXT int devtty INIT(0);
-#           define input_pending() (nextin!=nextout || circfill())
+#	    ifdef RDCHK
+#		ifndef lint
+#		    define input_pending() rdchk(0)
+#		else /* lint */
+#		    define input_pending() bizarre
+#		endif /* lint */
+#	    else /* RDCHK */
+#		ifndef O_NDELAY	/* assert O_NDELAY */
+		    ??? PENDING isn't defined correctly in warp.h
+#		endif
+		EXT int devtty INIT(0);
+#		ifndef lint
+#		    define input_pending() (nextin!=nextout || circfill())
+#		else
+#		    define input_pending() bizarre
+#		endif /* lint */
+#	    endif /* RDCHK */
 #	endif /* FIONREAD */
 #   else /* PENDING */
-#	error warp wont work without PENDING
-#	define input_pending() (nextin!=nextout)
+	??? warp won't work without PENDING
+#	ifndef lint
+#	    define input_pending() (nextin!=nextout)
+#	else
+#	    define input_pending() bizarre
+#	endif /* lint */
 #   endif /* PENDING */
 #else /* PUSHBACK */
 #   ifdef PENDING
 #	ifdef FIONREAD /* must have FIONREAD or O_NDELAY for input_pending() */
 #	    define read_tty(addr,size) read(0,addr,size)
-#           define input_pending() (ioctl(0, FIONREAD, &iocount), (int)iocount)
+#	    ifndef lint
+#		define input_pending() (ioctl(0, FIONREAD, &iocount), \
+(int)iocount)
+#	    else
+#		define input_pending() bizarre
+#	    endif /* lint */
 	    EXT long iocount INIT(0);
 #	else /* FIONREAD */
 #	    ifdef RDCHK		/* actually, they can have rdchk() too */
 #	    define read_tty(addr,size) read(0,addr,size)
-#		define input_pending() rdchk(0)
+#		ifndef lint
+#		    define input_pending() rdchk(0)
+#		else /* lint */
+#		    define input_pending() bizarre
+#		endif /* lint */
 #	    else /* RDCHK */
 #		ifndef O_NDELAY	/* assert O_NDELAY */
-#		    error PENDING is not defined correctly in warp.h
+		    ??? PENDING isn't defined correctly in warp.h
 #		endif
 		EXT int devtty INIT(0);
 		EXT bool is_input INIT(FALSE);
 		EXT char pending_ch INIT(0);
-#		define input_pending() (is_input || (is_input=read(devtty,&pending_ch,1)))
+#		ifndef lint
+#		    define input_pending() (is_input || \
+(is_input=read(devtty,&pending_ch,1)))
+#		else
+#		    define input_pending() bizarre
+#		endif /* lint */
 #	    endif /* RDCHK */
 #	endif /* FIONREAD */
 #   else /* PENDING */
-#	error warp wont work without PENDING
+	??? warp won't work without PENDING
 #	define read_tty(addr,size) read(0,addr,size)
 #	define input_pending() (FALSE)
 #   endif /* PENDING */
@@ -145,7 +184,7 @@ EXT bool bizarre INIT(FALSE);			/* do we need to restore terminal? */
 /* terminal mode diddling routines */
 
 #ifdef TERMIO
-
+  
 #define raw() ((bizarre=1),_tty.c_lflag &=~ISIG,_tty.c_cc[VMIN] = 1,ioctl(_tty_ch,TCSETAF,&_tty))
 #define noraw() ((bizarre=1),_tty.c_lflag |= ISIG,_tty.c_cc[VEOF] = CEOF,ioctl(_tty_ch,TCSETAF,&_tty))
 #define crmode() ((bizarre=1),_tty.c_lflag &=~ICANON,_tty.c_cc[VMIN] = 1,ioctl(_tty_ch,TCSETAF,&_tty))
@@ -173,7 +212,11 @@ EXT bool bizarre INIT(FALSE);			/* do we need to restore terminal? */
 #endif /* TERMIO */
 
 #ifdef TIOCSTI
+#ifdef lint
+#define forceme(c) ioctl(_tty_ch,TIOCSTI,Null(long*))	/* ghad! */
+#else
 #define forceme(c) ioctl(_tty_ch,TIOCSTI,c) /* pass character in " " */
+#endif /* lint */
 #else
 #define forceme(c)
 #endif
@@ -190,6 +233,8 @@ EXT bool bizarre INIT(FALSE);			/* do we need to restore terminal? */
  * scaled by the number of lines (2nd argument), puts out the string (1st arg)
  * and the padding using the routine specified as the 3rd argument.
  */
+
+#ifdef HAVETERMLIB
 EXT char *BC INIT(Nullch);		/* backspace character */
 EXT char *UP INIT(Nullch);		/* move cursor up one line */
 EXT char *myUP;
@@ -216,6 +261,7 @@ EXT bool XN INIT(FALSE);		/* does it eat 1st newline after automatic wrap? */
 EXT char PC INIT(0);		/* pad character for use by tputs() */
 EXT short ospeed INIT(0);	/* terminal output speed, for use by tputs() */
 EXT int LINES INIT(0), COLS INIT(0);	/* size of screen */
+EXT int just_a_sec INIT(960);			/* 1 sec at current baud rate */
 					/* (number of nulls) */
 EXT char ERASECH;		/* rubout character */
 EXT char KILLCH;		/* line delete character */
@@ -234,6 +280,9 @@ EXT char KILLCH;		/* line delete character */
 #define up_line() do_tc(UP,1)
 #define carriage_return() do_tc(CR,1)
 #define dingaling() do_tc(VB,1)
+#else
+  ????????		/* up to you */
+#endif
 
 void	term_init();
 void	term_set();
@@ -257,3 +306,4 @@ int comp_tc();
 void helper();
 void rewrite();
 char cmstore();
+

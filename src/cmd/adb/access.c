@@ -2,7 +2,6 @@
  * File handling and access routines
  */
 #include "defs.h"
-#include <fcntl.h>
 
 static int
 within(adr, lbd, ubd)
@@ -60,7 +59,7 @@ acces(mode, adr, space, value)
     long    adr;
 {
     int     w, w1, pmode, rd, file;
-    BKPTR   bkptr;
+    BKPTR   bkptr, scanbkpt();
 
     if (space == NSP)
         return 0;
@@ -90,7 +89,7 @@ acces(mode, adr, space, value)
         return w;
     }
     w = 0;
-    if (mode==WT && wtflag==O_RDONLY) {
+    if (mode==WT && wtflag==0) {
         error("not in write mode");
     }
     if (! chkmap(&adr, space))

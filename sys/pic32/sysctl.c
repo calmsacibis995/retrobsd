@@ -20,7 +20,6 @@
 #include "namei.h"
 #include "vmmeter.h"
 #include "map.h"
-#include "conf.h"
 
 /*
  * Errno messages.
@@ -145,9 +144,7 @@ static const struct {
         { "_dk_xfer",       (int) &dk_xfer      },  /* iostat  vmstat */
         { "_file",          (int) &file         },  /* pstat */
         { "_forkstat",      (int) &forkstat     },  /* vmstat */
-#ifdef UCB_METER
         { "_freemem",       (int) &freemem      },  /* vmstat */
-#endif
         { "_hz",            (int) &hz           },  /* ps */
         { "_inode",         (int) &inode        },  /* pstat */
         { "_ipc",           (int) &ipc          },  /* ps */
@@ -173,8 +170,6 @@ static const struct {
         { "_rate",          (int) &rate         },  /* vmstat */
         { "_sum",           (int) &sum          },  /* vmstat */
 #endif
-        { "_bdevsw",        (int) &bdevsw       },
-        { "_cdevsw",        (int) &cdevsw       },
         { 0, 0 },
 };
 

@@ -22,7 +22,7 @@
 
 WINDOW	*radar, *cleanradar, *credit, *input, *planes;
 
-int getAChar()
+getAChar()
 {
 #ifdef BSD
 	return (getchar());
@@ -35,7 +35,7 @@ int getAChar()
 #endif
 }
 
-void erase_all()
+erase_all()
 {
 	PLANE	*pp;
 
@@ -49,7 +49,7 @@ void erase_all()
 	}
 }
 
-void draw_all()
+draw_all()
 {
 	PLANE	*pp;
 
@@ -68,37 +68,19 @@ void draw_all()
 	fflush(stdout);
 }
 
-void init_gr()
+init_gr()
 {
 	static char	buffer[BUFSIZ];
 
 	initscr();
 	setbuf(stdout, buffer);
 	input = newwin(INPUT_LINES, COLS - PLANE_COLS, LINES - INPUT_LINES, 0);
-	credit = newwin(INPUT_LINES, PLANE_COLS, LINES - INPUT_LINES,
+	credit = newwin(INPUT_LINES, PLANE_COLS, LINES - INPUT_LINES, 
 		COLS - PLANE_COLS);
 	planes = newwin(LINES - INPUT_LINES, PLANE_COLS, 0, COLS - PLANE_COLS);
 }
 
-void draw_line(w, x, y, lx, ly, s)
-	WINDOW	*w;
-	char	*s;
-{
-	int	dx, dy;
-
-	dx = SGN(lx - x);
-	dy = SGN(ly - y);
-	for (;;) {
-		wmove(w, y, x * 2);
-		waddstr(w, s);
-		if (x == lx && y == ly)
-			break;
-		x += dx;
-		y += dy;
-	}
-}
-
-void setup_screen(scp)
+setup_screen(scp)
 	C_SCREEN	*scp;
 {
 	register int	i, j;
@@ -182,14 +164,32 @@ void setup_screen(scp)
 		wmove(radar, scp->airport[i].y, scp->airport[i].x * 2);
 		waddstr(radar, str);
 	}
-
+	
 	overwrite(radar, cleanradar);
 	wrefresh(radar);
 	wrefresh(credit);
 	fflush(stdout);
 }
 
-void ioclrtoeol(pos)
+draw_line(w, x, y, lx, ly, s)
+	WINDOW	*w;
+	char	*s;
+{
+	int	dx, dy;
+
+	dx = SGN(lx - x);
+	dy = SGN(ly - y);
+	for (;;) {
+		wmove(w, y, x * 2);
+		waddstr(w, s);
+		if (x == lx && y == ly)
+			break;
+		x += dx;
+		y += dy;
+	}
+}
+
+ioclrtoeol(pos)
 {
 	wmove(input, 0, pos);
 	wclrtoeol(input);
@@ -197,14 +197,14 @@ void ioclrtoeol(pos)
 	fflush(stdout);
 }
 
-void iomove(pos)
+iomove(pos)
 {
 	wmove(input, 0, pos);
 	wrefresh(input);
 	fflush(stdout);
 }
 
-void ioaddstr(pos, str)
+ioaddstr(pos, str)
 	char	*str;
 {
 	wmove(input, 0, pos);
@@ -213,14 +213,14 @@ void ioaddstr(pos, str)
 	fflush(stdout);
 }
 
-void ioclrtobot()
+ioclrtobot()
 {
 	wclrtobot(input);
 	wrefresh(input);
 	fflush(stdout);
 }
 
-void ioerror(pos, len, str)
+ioerror(pos, len, str)
 	char	*str;
 {
 	int	i;
@@ -234,7 +234,7 @@ void ioerror(pos, len, str)
 	fflush(stdout);
 }
 
-void quit(int sig)
+quit()
 {
 	int			c, y, x;
 #ifdef BSD
@@ -271,9 +271,10 @@ void quit(int sig)
 	wmove(input, y, x);
 	wrefresh(input);
 	fflush(stdout);
+	return;
 }
 
-void planewin()
+planewin()
 {
 	PLANE	*pp;
 	char	*command();
@@ -288,7 +289,7 @@ void planewin()
 #ifdef SYSV
 	wclrtobot(planes);
 #endif
-	wprintw(planes, "Time: %-4d Safe: %d", clocktick, safe_planes);
+	wprintw(planes, "Time: %-4d Safe: %d", clock, safe_planes);
 	wmove(planes, 2, 0);
 
 	waddstr(planes, "pl dt  comm");
@@ -316,7 +317,7 @@ void planewin()
 	fflush(stdout);
 }
 
-void loser(p, s)
+loser(p, s)
 	PLANE	*p;
 	char	*s;
 {
@@ -350,7 +351,7 @@ void loser(p, s)
 	exit(0);
 }
 
-void redraw()
+redraw()
 {
 	clear();
 	refresh();
@@ -369,7 +370,7 @@ void redraw()
 }
 
 
-void done_screen()
+done_screen()
 {
 	clear();
 	refresh();

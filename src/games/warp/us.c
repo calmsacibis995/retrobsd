@@ -3,16 +3,16 @@
 /* $Log:	us.c,v $
  * Revision 7.0.1.3  87/01/13  17:13:21  lwall
  * Partially fixed ^S behavior.  It now just ignores ^S.
- *
+ * 
  * Revision 7.0.1.2  86/12/12  17:06:09  lwall
  * Baseline for net release.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:53:50  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:14:21  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -37,13 +37,13 @@ void
 do_direction(dy,dx)
 int dy, dx;
 {
-    register int decr;
-    register OBJECT *obj;
+    Reg1 int decr;
+    Reg2 OBJECT *obj;
 
     if (status < 2) {
 	if (cloaking) {
 	    char ch;
-
+	    
 	    cloaked = FALSE;
 	    ch = (ent->energy >= 500?'E':'e');
 	    if (ch != ent->image) {
@@ -113,7 +113,7 @@ int dy, dx;
     if (status < 2) {
 	if (cloaking) {
 	    char ch;
-
+	    
 	    cloaked = FALSE;
 	    ch = (ent->energy >= 500?'E':'e');
 	    if (ch != ent->image) {
@@ -139,7 +139,7 @@ int dy, dx;
     if (status < 2) {
 	if (cloaking) {
 	    char ch;
-
+	    
 	    cloaked = FALSE;
 	    ch = (ent->energy >= 500?'E':'e');
 	    if (ch != ent->image) {
@@ -163,9 +163,9 @@ get_commands(done)
 bool *done;
 {
     static char ch[80];
-    register int i;
-    register int count;
-    register bool ctrla = FALSE;
+    Reg1 int i;
+    Reg2 int count;
+    Reg3 bool ctrla = FALSE;
     char numdestructs = 0, numzaps = 0;
 
 top:
@@ -347,7 +347,7 @@ top:
 		    break;
 		case 'd':
 		    if ((!damage || !damflag[NODESTRUCT]) && (base||ent)) {
-			register OBJECT *obj;
+			Reg4 OBJECT *obj;
 			int x, y;
 
 			if (ent && !rand_mod(200)) {
@@ -371,7 +371,7 @@ top:
 		    break;
 		case 's':
 		    if ((!damage || !damflag[NODESTRUCT]) && (base||ent)) {
-			register OBJECT *obj;
+			Reg4 OBJECT *obj;
 			if (ent && !rand_mod(200)) {
 			    damage++;
 			    damflag[NODESTRUCT] = rand_mod(smarts+10)+2;

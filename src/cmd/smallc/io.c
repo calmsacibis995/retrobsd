@@ -1,12 +1,76 @@
-/*      File io.c: 2.1 (83/03/20,16:02:07) */
-/*% cc -O -c %
- *
- */
-
 #include <stdio.h>
 #include <string.h>
 #include "defs.h"
 #include "data.h"
+
+/*
+ *      open input file
+ */
+openin (p)
+        char *p;
+{
+        strcpy(fname, p);
+        fixname (fname);
+        if (!checkname (fname))
+                return (NO);
+        if ((input = fopen (fname, "r")) == NULL) {
+                pl ("Open failure\n");
+                return (NO);
+        }
+        kill ();
+        return (YES);
+}
+
+/*
+ *      open output file
+ */
+openout ()
+{
+        outfname (fname);
+        if ((output = fopen (fname, "w")) == NULL) {
+                pl ("Open failure");
+                return (NO);
+        }
+        kill ();
+        return (YES);
+}
+
+/*
+ *      change input filename to output filename
+ */
+outfname (s)
+        char    *s;
+{
+        while (*s)
+                s++;
+        *--s = 's';
+}
+
+/*
+ *      remove NL from filenames
+ */
+fixname (s)
+        char    *s;
+{
+        while (*s && *s++ != EOL);
+        if (!*s) return;
+        *(--s) = 0;
+}
+
+/*
+ *      check that filename is "*.c"
+ */
+checkname (s)
+        char    *s;
+{
+        while (*s)
+                s++;
+        if (*--s != 'c')
+                return (NO);
+        if (*--s != '.')
+                return (NO);
+        return (YES);
+}
 
 kill ()
 {
@@ -17,22 +81,30 @@ kill ()
 readline ()
 {
         int     k;
+        FILE    *unit;
 
         for (;;) {
                 if (feof (input))
                         return;
+                if ((unit = input2) == NULL)
+                        unit = input;
                 kill ();
-                while ((k = fgetc (input)) != EOF) {
-                        if ((k == CR) || (k == LF) || (lptr >= LINEMAX))
+                while ((k = fgetc (unit)) != EOF) {
+                        if ((k == EOL) | (lptr >= LINEMAX))
                                 break;
                         line[lptr++] = k;
                 }
                 line[lptr] = 0;
+                if (k <= 0)
+                        if (input2 != NULL) {
+                                input2 = inclstk[--inclsp];
+                                fclose (unit);
+                        }
                 if (lptr) {
                         if ((ctext) & (cmode)) {
-                                gen_comment ();
-                                output_string (line);
-                                newline ();
+                                comment ();
+                                outstr (line);
+                                nl ();
                         }
                         lptr = 0;
                         return;
@@ -59,36 +131,37 @@ inchar ()
         return (gch ());
 }
 
-/**
- * gets current char from input line and moves to the next one
- * @return current char
- */
 gch ()
 {
-        int c = line[lptr];
-        if (c == 0)
-                return 0;
-        lptr++;
-        return c;
+        if (ch () == 0)
+                return (0);
+        else
+                return (line[lptr++] & 127);
 }
 
-/**
- * returns next char
- * @return next char
- */
 nch ()
 {
-        int c = line[lptr];
-        if (c == 0)
-                return 0;
-        return line[lptr+1];
+        if (ch () == 0)
+                return (0);
+        else
+                return (line[lptr + 1] & 127);
 }
 
-/**
- * returns current char
- * @return current char
- */
 ch ()
 {
-        return line[lptr];
+        return (line[lptr] & 127);
+}
+
+/*
+ *      print a carriage return and a string only to console
+ */
+pl (str)
+        char    *str;
+{
+        int     k;
+
+        k = 0;
+        putchar (EOL);
+        while (str[k])
+                putchar (str[k++]);
 }

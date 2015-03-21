@@ -12,6 +12,7 @@
  * This compiler assumes that an integer is the SAME length as
  * a pointer - in fact, the compiler uses INTSIZE for both.
  */
+#define INTSIZE 4
 #define BYTEOFF 0
 
 /*
@@ -19,31 +20,30 @@
  */
 header()
 {
-    output_string ("#\tSmall C for MIPS32\n");
-    output_string ("#\tRetroBSD Project\n");
-    output_string ("#\n");
-    output_string ("\t.set\tnoreorder\n");
-    //output_line ("global\tTlneg");
-    //output_line ("global\tTcase");
-    //output_line ("global\tTeq");
-    //output_line ("global\tTne");
-    //output_line ("global\tTlt");
-    //output_line ("global\tTle");
-    //output_line ("global\tTgt");
-    //output_line ("global\tTge");
-    //output_line ("global\tTult");
-    //output_line ("global\tTule");
-    //output_line ("global\tTugt");
-    //output_line ("global\tTuge");
-    //output_line ("global\tTbool");
-    //output_line ("global\tTmult");
-    //output_line ("global\tTdiv");
-    //output_line ("global\tTmod");
+    outstr ("#\tSmall C MIPS32\n#\tCoder 1.0, 2012/06/18\n#");
+    FEvers();
+    nl();
+    //ol ("global\tTlneg");
+    //ol ("global\tTcase");
+    //ol ("global\tTeq");
+    //ol ("global\tTne");
+    //ol ("global\tTlt");
+    //ol ("global\tTle");
+    //ol ("global\tTgt");
+    //ol ("global\tTge");
+    //ol ("global\tTult");
+    //ol ("global\tTule");
+    //ol ("global\tTugt");
+    //ol ("global\tTuge");
+    //ol ("global\tTbool");
+    //ol ("global\tTmult");
+    //ol ("global\tTdiv");
+    //ol ("global\tTmod");
 }
 
-newline()
+nl()
 {
-    output_byte ('\n');
+    outbyte (EOL);
 }
 
 galign(t)
@@ -80,24 +80,33 @@ byteoff()
 /*
  * Output internal generated label prefix.
  */
-void output_label_prefix()
+olprfix()
 {
-    output_string (".L");
+    outstr ("$_");
 }
 
 /*
  * Output a label definition terminator.
  */
-void output_label_terminator()
+col()
 {
-    output_string (":");
+    outstr (":");
 }
 
 /*
  * Begin a comment line for the assembler.
  */
-void gen_comment() {
-    output_byte ('#');
+comment()
+{
+    outbyte ('#');
+}
+
+/*
+ * Output a prefix in front of user labels.
+ */
+prefix()
+{
+    //outbyte ('_');
 }
 
 /*
@@ -110,64 +119,46 @@ trailer()
 /*
  * Function prologue.
  */
-fentry(int argtop)
+prologue()
 {
-    int i;
-
-    /* Save register arguments to stack. */
-    for (i=0; i<argtop; i+=4)
-        fprintf(output, "\tsw\t$a%d, %d($sp)\n", i>>2, i);
-
-    /* Allocate an empty call frame for 4 args.
-     * Plus additional 4 bytes to save RA. */
-    output_line("addiu\t$sp, -20");
-    output_line("sw\t$ra, 16($sp)");
+    /* todo */
 }
 
 /*
  * Text (code) segment.
  */
-code_segment_gtext()
+gtext()
 {
-    output_line (".text");
+    ol (".text");
 }
 
 /*
  * Data segment.
  */
-data_segment_gdata()
+gdata()
 {
-    output_line (".data");
+    ol (".data");
 }
 
-char *inclib() {
-#ifdef  cpm
-        return("B:");
-#endif
-#ifdef  unix
-#ifdef  INCDIR
-        return(INCDIR);
-#else
-        return "";
-#endif
-#endif
-}
 /*
  * Output the variable symbol at scptr as an extrn or a public.
  */
-void ppubext (symbol_t *scptr)
+ppubext (scptr)
+    char *scptr;
 {
-    if( scptr->storage == STATIC )
+    if (scptr[STORAGE] == STATIC)
         return;
-    output_string ("\t.globl\t");
-    output_string (scptr);
-    newline();
+    ot (".globl\t");
+    //prefix();
+    outstr (scptr);
+    nl();
 }
 
 /*
  * Output the function symbol at scptr as an extrn or a public
  */
-void fpubext (symbol_t *scptr)
+fpubext (scptr)
+    char *scptr;
 {
     ppubext (scptr);
 }
@@ -175,74 +166,75 @@ void fpubext (symbol_t *scptr)
 /*
  *  Output a decimal number to the assembler file.
  */
-void output_number(int num)
+onum (num)
+    int num;
 {
-    fprintf(output, "%d", num);
+    outdec (num);
 }
 
 /*
  * Fetch a static memory cell into the primary register.
  */
-void gen_get_memory(symbol_t *sym)
+getmem (sym)
+    char    *sym;
 {
-    output_string ("\tla\t$t0, ");
-    output_string (sym->name);
-    newline();
-    if ((sym->identity != POINTER) & (sym->type & CCHAR)) {
-		if(sym->type & UNSIGNED ) {
-			output_line ("lbu\t$v0, 0($t0)");
-		} else {
-			output_line ("lb\t$v0, 0($t0)");
-		}
+    if ((sym[IDENT] != POINTER) & (sym[TYPE] == CCHAR)) {
+        ot ("lb\t$v0, ");
+        //prefix();
+        outstr (sym + NAME);
     } else {
-        output_line ("lw\t$v0, 0($t0)");
+        ot ("lw\t$v0, ");
+        //prefix();
+        outstr (sym + NAME);
     }
 }
-
 
 /*
  * Fetch the address of the specified symbol into the primary register.
  */
-int gen_get_location(symbol_t *sym)
+getloc (sym)
+    char    *sym;
 {
-    if( sym->storage == LSTATIC) {
-        output_string ("\tla $v0, ");
-        print_label(sym->offset);
-        newline();
+    if (sym[STORAGE] == LSTATIC) {
+        ot ("la $v0, ");
+        printlabel(glint(sym));
+        nl();
     } else {
-	output_string("\taddiu\t$v0, $sp, ");
-        output_number (sym->offset - stkp);
-	newline();
+        ot ("la $v0, ");
+        onum (glint(sym) - stkp);
+        outstr ("($sp)\n");
     }
 }
 
 /*
  * Store the primary register into the specified static memory cell.
  */
-void gen_put_memory(symbol_t *sym)
+putmem (sym)
+    char *sym;
 {
-    output_string ("\tla\t$t0, ");
-    output_string (sym->name);
-    newline();
-    if ((sym->identity != POINTER) & (sym->type & CCHAR)) {
-        output_line ("sb\t$v0, 0($t0)");
-    } else {
-        output_line ("sw\t$v0, 0($t0)");
-    }
+    if ((sym[IDENT] != POINTER) & (sym[TYPE] == CCHAR)) {
+        ot ("sb\t$v0, ");
+    } else
+        ot ("sw\t$v0, ");
+
+    //prefix();
+    outstr (sym + NAME);
+    nl();
 }
 
 /*
  * Store the specified object type in the primary register
  * at the address on the top of the stack.
  */
-void gen_put_indirect(char typeobj)
+putstk (typeobj)
+    char typeobj;
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    if (typeobj & CCHAR)
-        output_line ("sb\t$v0, 0($t1)");
+    ol ("lw\t$at, ($sp)");
+    ol ("addiu\t$sp, 4");
+    if (typeobj == CCHAR)
+        ol ("sb\t$v0, ($at)");
     else
-        output_line ("sw\t$v0, 0($t1)");
+        ol ("sw\t$v0, ($at)");
     stkp = stkp + INTSIZE;
 }
 
@@ -250,94 +242,88 @@ void gen_put_indirect(char typeobj)
  * Fetch the specified object type indirect through the primary
  * register into the primary register.
  */
-void gen_get_indirect(char typeobj, int reg)
+indirect (typeobj)
+    char typeobj;
 {
-    if (typeobj & CCHAR) {
-		if( typeobj & UNSIGNED ) {
-			output_line ("lbu\t$v0, 0($v0)");
-		} else {
-			output_line ("lb\t$v0, 0($v0)");
-		}
-	} else {
-        output_line ("lw\t$v0, 0($v0)");
-    }
+    if (typeobj == CCHAR)
+        ol ("lb\t$v0, ($v0)");
+    else
+        ol ("lw\t$v0, ($v0)");
 }
 
 /*
  * Swap the primary and secondary registers.
  */
-gen_swap()
+swap()
 {
-    output_line ("move\t$at, $v0\n\tmove\t$v0, $v1\n\tmove\t$v1, $at");
+    ol ("move\t$at, %v0\n\tmove\t$v0, $v1\n\tmove\t$v1, $at");
 }
 
 /*
  * Print partial instruction to get an immediate value into
  * the primary register.
  */
-gen_immediate_a()
+immed()
 {
-    output_string ("\tla\t$v0, ");
+    ot ("la\t$v0, ");
 }
 
-gen_immediate_c()
+immedi()
 {
-    output_string ("\tli\t$v0, ");
+    ot ("li\t$v0, ");
 }
 
 /*
  * Push the primary register onto the stack.
  */
-gen_push()
+gpush()
 {
-    output_line ("addiu\t$sp, -4");
-    output_line ("sw\t$v0, 16($sp)");
+    ol ("addiu\t$sp, -4");
+    ol ("sw\t$v0, ($sp)");
     stkp = stkp - INTSIZE;
 }
 
 /*
  * Pop the top of the stack into the secondary register.
  */
-gen_pop()
+gpop()
 {
-    output_line ("lw\t$v1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
+    ol ("lw\t$v1, ($sp)");
+    ol ("addiu\t$sp, 4");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * Swap the primary register and the top of the stack.
  */
-gen_swap_stack()
+swapstk()
 {
-    output_line ("move\t$t1, $v0");
-    output_line ("lw\t$v0, 16($sp)");
-    output_line ("sw\t$t1, 16($sp)");
+    ol ("mov.l\t(%sp)+,%d2\nmov.l\t%d0,-(%sp)\nmov.l\t%d2,%d0");
 }
 
 /*
  * Call the specified subroutine name.
  */
-gen_call (char * sname)
+gcall (sname)
+    char *sname;
 {
-    output_string ("\tjal\t");
     if (*sname == '^') {
-        output_string ("__sc_");
-        sname++;
+        ot ("jsr\tT");
+        outstr (++sname);
+    } else {
+        ot ("jsr\t");
+        //prefix();
+        outstr (sname);
     }
-    output_string (sname);
-    newline();
-    output_line ("nop");        /* fill delay slot */
+    nl();
 }
 
 /*
  * Return from subroutine.
  */
-gen_ret()
+gret()
 {
-    output_line("lw\t$ra, 16($sp)");
-    output_line("jr\t$ra");
-    output_line("addiu\t$sp, 20");
+    ol ("jr\t$ra\nnop");
 }
 
 /*
@@ -345,73 +331,66 @@ gen_ret()
  */
 callstk()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line("jr\t$t1");
-    output_line ("addiu\t$sp, 4");
+    ol ("jsr\t(%sp)+");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * Jump to specified internal label number.
  */
-gen_jump (int label)
+jump (label)
+    int label;
 {
-    output_string ("\tj\t");
-    print_label (label);
-    newline();
-    output_line ("nop");
+    ot ("j\t");
+    printlabel (label);
+    ol ("\nnop");
 }
 
 /*
  * Test the primary register and jump if false to label.
  */
-gen_test_jump (int label, int ft)
+testjump (label, ft)
+    int label;
+    int ft;
 {
+    ol ("cmp.l\t%d0,&0");
     if (ft)
-        output_string("\tbne\t$v0, $zero, ");
+        ot ("beq\t");
     else
-        output_string("\tbeq\t$v0, $zero, ");
-    print_label (label);
-    newline();
-    output_line("nop"); // fill delay slot
+        ot ("bne\t");
+    printlabel (label);
+    nl();
 }
 
 /*
  * Print pseudo-op to define a byte.
  */
-gen_def_byte()
+defbyte()
 {
-    output_string ("\t.byte\t");
+    ot (".byte\t");
 }
 
 /*
  * Print pseudo-op to define storage.
  */
-gen_def_storage()
+defstorage()
 {
-    output_string ("\t.space\t");
+    ot (".space\t");
 }
 
 /*
  * Print pseudo-op to define a word.
  */
-gen_def_word()
+defword()
 {
-    output_string ("\t.word\t");
-}
-
-/*
- * Generate alignment to a word boundary.
- */
-gen_align_word()
-{
-    output_string ("\t.align\t2\n");
+    ot (".word\t");
 }
 
 /*
  * Modify the stack pointer to the new value indicated.
  */
-gen_modify_stack (int newstkp)
+modstk (newstkp)
+    int newstkp;
 {
     int k;
 
@@ -420,59 +399,59 @@ gen_modify_stack (int newstkp)
         error("Bad stack alignment (compiler error)");
     if (k == 0)
         return (newstkp);
-    output_string ("\taddiu\t$sp, ");
-    output_number (k);
-    newline();
+    ot ("add.l\t&");
+    onum (k);
+    outstr (",sp");
+    nl();
     return (newstkp);
 }
 
 /*
  * Multiply the primary register by INTSIZE.
  */
-gen_multiply_by_two()
+gaslint()
 {
-    output_line ("sll\t$v0, 2");
+    ol ("asl.l\t&2,%d0");
 }
 
 /*
  * Divide the primary register by INTSIZE.
  */
-gen_divide_by_two()
+gasrint()
 {
-    output_line ("sra\t$v0, 2");
+    ol ("asr.l\t&2,%d0");
 }
 
 /*
  * Case jump instruction.
  */
-gen_jump_case()
+gjcase()
 {
-    gen_call("^case");
+    gcall ("^case");
 }
 
 /*
  * Add the primary and secondary registers.
  * If lval2 is int pointer and lval is int, scale lval.
  */
-gen_add (int *lval, int *lval2)
+gadd (lval, lval2)
+    int *lval, *lval2;
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
     if (dbltest (lval2, lval)) {
-        output_line("sll\t$t1, 2");
+        ol ("asl.l\t&2,(%sp)");
     }
-    output_line ("add\t$v0, $t1");
+    ol ("add.l\t(%sp)+,%d0");
     stkp = stkp + INTSIZE;
 }
 
 /*
- * Subtract the primary register from the secondary. // *** from TOS
+ * Subtract the primary register from the secondary.
  */
-gen_sub()
+gsub()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("sub\t$v0, $t1, $v0");
+    ol ("mov.l\t(%sp)+,%d2");
+    ol ("sub.l\t%d0,%d2");
+    ol ("mov.l\t%d2,%d0");
     stkp = stkp + INTSIZE;
 }
 
@@ -480,13 +459,9 @@ gen_sub()
  * Multiply the primary and secondary registers.
  * (result in primary)
  */
-gen_mult()
+gmult()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("mult\t$v0, $t1");
-    output_line ("mflo\t$v0");
-    //gcall ("^mult");
+    gcall ("^mult");
     stkp = stkp + INTSIZE;
 }
 
@@ -494,26 +469,9 @@ gen_mult()
  * Divide the secondary register by the primary.
  * (quotient in primary, remainder in secondary)
  */
-gen_div()
+gdiv()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("div\t$t1, $v0");
-    output_line ("mflo\t$v0");
-    output_line ("mfhi\t$t1");
-    //gcall ("^div");
-    stkp = stkp + INTSIZE;
-}
-
-gen_udiv()
-{
-    output_line ("#FIXME genudiv");
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("divu\t$t1, $v0");
-    output_line ("mflo\t$v0");
-    output_line ("mfhi\t$t1");
-    //gcall ("^div");
+    gcall ("^div");
     stkp = stkp + INTSIZE;
 }
 
@@ -522,63 +480,37 @@ gen_udiv()
  * divided by the primary register.
  * (remainder in primary, quotient in secondary)
  */
-gen_mod()
+gmod()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("div\t$t1, $v0");
-    output_line ("mflo\t$t1");
-    output_line ("mfhi\t$v0");
-    //gcall ("^mod");
-    stkp = stkp + INTSIZE;
-}
-
-gen_umod()
-{
-    output_line ("#FIXME genumod");
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("divu\t$t1, $v0");
-    output_line ("mflo\t$t1");
-    output_line ("mfhi\t$v0");
-    //gcall ("^mod");
+    gcall ("^mod");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * Inclusive 'or' the primary and secondary registers.
  */
-gen_or()
+gor()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("or\t$v0, $t1");
-    //output_line ("or.l\t(%sp)+,%d0");
+    ol ("or.l\t(%sp)+,%d0");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * Exclusive 'or' the primary and secondary registers.
  */
-gen_xor()
+gxor()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("xor\t$v0, $t1");
-    //output_line ("mov.l\t(%sp)+,%d1");
-    //output_line ("eor.l\t%d1,%d0");
+    ol ("mov.l\t(%sp)+,%d1");
+    ol ("eor.l\t%d1,%d0");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * 'And' the primary and secondary registers.
  */
-gen_and()
+gand()
 {
-    //output_line ("and.l\t(%sp)+,%d0");
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("and\t$v0, $t1");
+    ol ("and.l\t(%sp)+,%d0");
     stkp = stkp + INTSIZE;
 }
 
@@ -587,11 +519,11 @@ gen_and()
  * times in the primary register.
  * (results in primary register)
  */
-gen_arithm_shift_right()
+gasr()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("srav\t$v0, $t1, $v0");
+    ol ("mov.l\t(%sp)+,%d1");
+    ol ("asr.l\t%d0,%d1");
+    ol ("mov.l\t%d1,%d0");
     stkp = stkp + INTSIZE;
 }
 
@@ -600,74 +532,68 @@ gen_arithm_shift_right()
  * times in the primary register.
  * (results in primary register)
  */
-gen_arithm_shift_left()
+gasl()
 {
-    output_line ("lw\t$t1, 16($sp)");
-    output_line ("addiu\t$sp, 4");
-    output_line ("sllv\t$v0, $t1, $v0");
+    ol ("mov.l\t(%sp)+,%d1");
+    ol ("asl.l\t%d0,%d1");
+    ol ("mov.l\t%d1,%d0");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * Two's complement of primary register.
  */
-gen_twos_complement()
+gneg()
 {
-    output_line ("sub\t$v0, $zero, $v0");
+    ol ("neg.l\t%d0");
 }
 
 /*
  * Logical complement of primary register.
  */
-gen_logical_negation()
+glneg()
 {
-    //gcall ("^lneg");
-    output_line ("sltu\t$t1, $v0, $zero");
-    output_line ("sltu\t$t2, $zero, $v0");
-    output_line ("or\t$v0, $t1, $t2");
-    output_line ("xori\t$v0, 1");
+    gcall ("^lneg");
 }
 
 /*
  * One's complement of primary register.
  */
-gen_complement()
+gcom()
 {
-    output_line ("addiu\t$t1, $zero, -1");
-    output_line ("xor\t$v0, $t1");
+    ol ("not\t%d0");
 }
 
 /*
  * Convert primary register into logical value.
  */
-gen_convert_primary_reg_value_to_bool()
+gbool()
 {
-    output_line ("sltu\t$t1, $v0, $zero");
-    output_line ("sltu\t$t2, $zero, $v0");
-    output_line ("or\t$v0, $t1, $t2");
-    //gcall ("^bool");
+    gcall ("^bool");
 }
 
 /*
  * Increment the primary register by 1 if char, INTSIZE if int.
  */
-gen_increment_primary_reg (lvalue_t *lval)
+ginc (lval)
+    int lval[];
 {
-    if (lval->ptr_type & CINT)
-	output_line("addiu\t$v0, 4");
+    if (lval[2] == CINT)
+        ol ("addq.l\t&4,%d0");
     else
-	output_line("addiu\t$v0, 1");
+        ol ("addq.l\t&1,%d0");
 }
 
 /*
  * Decrement the primary register by one if char, INTSIZE if int.
  */
-gen_decrement_primary_reg (lvalue_t *lval)
+gdec (lval)
+    int lval[];
 {
-    if (lval->ptr_type & CINT)
-	output_line("addiu\t$v0, -4");
+    if (lval[2] == CINT)
+        ol ("subq.l\t&4,%d0");
     else
-	output_line("addiu\t$v0, -1");
+        ol ("subq.l\t&1,%d0");
 }
 
 /*
@@ -676,149 +602,103 @@ gen_decrement_primary_reg (lvalue_t *lval)
  * and put a literl 1 in the primary if the condition is true,
  * otherwise they clear the primary register.
  */
-///// BEEP BEEP actually, compare tos
+
 /*
  * equal
  */
-gen_equal()
+geq()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("sltu\t$t2, $v0, $t1");
-    output_line("sltu\t$v0, $t1, $v0");
-    output_line("or\t$v0, $t2");
-    output_line("xori\t$v0, 1");
-    output_line("addiu\t$sp, 4");
-    //gcall ("^eq");
+    gcall ("^eq");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * not equal
  */
-gen_not_equal()
+gne()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("sltu\t$t2, $v0, $t1");
-    output_line("sltu\t$v0, $t1, $v0");
-    output_line("or\t$v0, $t2");
-    output_line("addiu\t$sp, 4");
-    //gcall ("^ne");
+    gcall ("^ne");
     stkp = stkp + INTSIZE;
 }
 
 /*
- * less than (signed) - TOS < primary
+ * less than (signed)
  */
-gen_less_than()
+glt()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("slt\t$v0, $t1, $v0");
-    //gcall ("^lt");
+    gcall ("^lt");
     stkp = stkp + INTSIZE;
 }
 
 /*
- * less than or equal (signed) TOS <= primary
+ * less than or equal (signed)
  */
-gen_less_or_equal()
+gle()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("slt\t$v0, $v0, $t1"); // primary < tos
-    output_line("xori\t$v0, 1");  // primary >= tos
-    //gcall ("^le");
+    gcall ("^le");
     stkp = stkp + INTSIZE;
 }
 
 /*
- * greater than (signed) TOS > primary
+ * greater than (signed)
  */
-gen_greater_than()
+ggt()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("slt\t$v0, $v0, $t1");   //pimary < TOS
-    //output_line("xori\t$v0, 1");
-    //gcall ("^gt");
+    gcall ("^gt");
     stkp = stkp + INTSIZE;
 }
 
 /*
- * greater than or equal (signed) TOS >= primary
+ * greater than or equal (signed)
  */
-gen_greater_or_equal()
+gge()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("slt\t$v0, $t1, $v0");   //tos < primary
-    output_line("xori\t$v0, 1");    //tos >= primary
-    //gcall ("^ge");
+    gcall ("^ge");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * less than (unsigned)
  */
-gen_unsigned_less_than()
+gult()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("sltu\t$v0, $t1, $v0");
-    //gcall ("^ult");
+    gcall ("^ult");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * less than or equal (unsigned)
  */
-gen_unsigned_less_or_equal()
+gule()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("sltu\t$v0, $v0, $t1"); // primary < tos
-    output_line("xori\t$v0, 1");  // primary >= tos
-    //gcall ("^ule");
+    gcall ("^ule");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * greater than (unsigned)
  */
-gen_usigned_greater_than()
+gugt()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("sltu\t$v0, $v0, $t1");   //pimary < TOS
-    //gcall ("^ugt");
+    gcall ("^ugt");
     stkp = stkp + INTSIZE;
 }
 
 /*
  * greater than or equal (unsigned)
  */
-gen_unsigned_greater_or_equal()
+guge()
 {
-    output_line("lw\t$t1, 16($sp)");
-    output_line("addiu\t$sp, 4");
-    output_line("sltu\t$v0, $t1, $v0");   //tos < primary
-    output_line("xori\t$v0, 1");    //tos >= primary
-    //gcall ("^uge");
+    gcall ("^uge");
     stkp = stkp + INTSIZE;
 }
 
 /*
- * Put first 4 arguments to registers a0-a3.
+ * Squirrel away argument count in a register that modstk/getloc/stloc
+ * doesn't touch.
  */
-gnargs (nargs)
-    int nargs;
+gnargs (d)
+    int d;
 {
-    int i;
-
-    if (nargs > 4) {
-        error("Too many arguments in a function call (max 4 args supported)");
-        nargs = 4;
-    }
-    for (i=0; i<nargs; i++)
-        fprintf(output, "\tlw\t$a%d, %d($sp)\n", i, (nargs-1 - i) * 4 + 16);
+    /* Empty for now. */
 }

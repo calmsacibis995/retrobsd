@@ -3,15 +3,19 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include "curses.ext"
 
-int
+#if !defined(lint) && !defined(NOSCCS)
+static char sccsid[] = "@(#)putchar.c	5.1 (Berkeley) 6/7/85";
+#endif
+
+# include	"curses.ext"
+
+char
 _putchar(c)
-        reg int	c;
-{
+reg char	c; {
+
 	putchar(c);
 #ifdef DEBUG
 	fprintf(outf, "_PUTCHAR(%s)\n", unctrl(c));
 #endif
-        return 0;
 }

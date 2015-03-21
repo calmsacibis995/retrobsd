@@ -22,12 +22,12 @@ all:    	../libvmf.a $(MAN)
 
 ../libvmf.a: 	${OBJS}
 		@echo building normal ../libvmf.a
-		@$(AR) cru ../libvmf.a ${OBJS}
+		@$(AR) ru ../libvmf.a ${OBJS}
 		$(RANLIB) ../libvmf.a
 
 ../libvmf_p.a: 	${OBJS}
 		@echo building profiled ../libvmf.a
-		@cd profiled; $(AR) cru ../../libvmf_p.a ${POBJS}
+		@cd profiled; $(AR) ru ../../libvmf_p.a ${POBJS}
 		$(RANLIB) ../libvmf_p.a
 
 $(MAN):         $(MANSRC)
@@ -35,8 +35,8 @@ $(MAN):         $(MANSRC)
 
 install: 	all
 		cp $(MAN) $(DESTDIR)/share/man/cat3/
-#		cp ../libvmf.a ${DESTDIR}/lib/libvmf.a
-#		$(RANLIB) ${DESTDIR}/lib/libvmf.a
+		cp ../libvmf.a ${DESTDIR}/lib/libvmf.a
+		$(RANLIB) ${DESTDIR}/lib/libvmf.a
 #		cp ../libvmf_p.a ${DESTDIR}/lib/libvmf_p.a
 #		$(RANLIB) ${DESTDIR}/lib/libvmf_p.a
 

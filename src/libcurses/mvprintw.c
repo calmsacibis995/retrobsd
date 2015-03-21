@@ -3,37 +3,32 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#include "curses.ext"
+
+#if !defined(lint) && !defined(NOSCCS)
+static char sccsid[] = "@(#)mvprintw.c	5.1 (Berkeley) 6/7/85";
+#endif
+
+# include	"curses.ext"
 
 /*
  * implement the mvprintw commands.  Due to the variable number of
  * arguments, they cannot be macros.  Sigh....
  *
  */
-int
-mvprintw(int y, int x, char *fmt, ...)
-{
-	va_list args;
-        int ret;
 
-	if (move(y, x) != OK)
-	        return ERR;
-	va_start (args, fmt);
-	ret = _sprintw (stdscr, fmt, args);
-	va_end (args);
-	return ret;
+mvprintw(y, x, fmt, args)
+reg int		y, x;
+char		*fmt;
+int		args; {
+
+	return move(y, x) == OK ? _sprintw(stdscr, fmt, &args) : ERR;
 }
 
-int
-mvwprintw(WINDOW *win, int y, int x, char *fmt, ...)
-{
-	va_list args;
-        int ret;
+mvwprintw(win, y, x, fmt, args)
+reg WINDOW	*win;
+reg int		y, x;
+char		*fmt;
+int		args; {
 
-	if (wmove(win, y, x) != OK)
-	        return ERR;
-	va_start (args, fmt);
-	ret = _sprintw (win, fmt, args);
-	va_end (args);
-	return ret;
+	return wmove(win, y, x) == OK ? _sprintw(win, fmt, &args) : ERR;
 }

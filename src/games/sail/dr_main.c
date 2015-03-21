@@ -3,9 +3,13 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dr_main.c	5.2 (Berkeley) 1/21/86";
+#endif not lint
+
 #include "driver.h"
 
-int
 dr_main()
 {
 	register int n;
@@ -16,10 +20,8 @@ dr_main()
 	(void) signal(SIGINT, SIG_IGN);
 	(void) signal(SIGQUIT, SIG_IGN);
 	(void) signal(SIGTSTP, SIG_IGN);
-#if 0
 	if (issetuid)
 		(void) setruid(geteuid());
-#endif
 	if (game < 0 || game >= NSCENE) {
 		fprintf(stderr, "DRIVER: Bad game number %d\n", game);
 		exit(1);
@@ -43,7 +45,7 @@ dr_main()
 		sp->file->loadR = L_ROUND;
 		sp->file->readyR = R_LOADED|R_INITIAL;
 		sp->file->readyL = R_LOADED|R_INITIAL;
-		sp->file->stern = nat[(int)sp->nationality]++;
+		sp->file->stern = nat[sp->nationality]++;
 		sp->file->dir = sp->shipdir;
 		sp->file->row = sp->shiprow;
 		sp->file->col = sp->shipcol;

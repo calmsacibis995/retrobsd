@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dcrept.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -16,7 +21,7 @@
 **	magic number DAMFAC is used to tell how much faster you can
 **	fix things if you are docked.
 */
-void
+
 dcrept()
 {
 	register int		i, f;
@@ -56,7 +61,7 @@ dcrept()
 		/* compute time till fixed, then adjust by the magic factors */
 		x = e->date - Now.date;
 		printf("%-24s%7.2f  %7.2f\n",
-			Device[(int)e->systemname].name, x * m1 + 0.005, x * m2 + 0.005);
+			Device[e->systemname].name, x * m1 + 0.005, x * m2 + 0.005);
 
 		/* do a little consistancy checking */
 	}

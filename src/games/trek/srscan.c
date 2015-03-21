@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)srscan.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
 # include	"getpar.h"
 
@@ -29,15 +34,14 @@ char	*Color[4] =
 	"RED"
 };
 
-void
 srscan(f)
-        int	f;
+int	f;
 {
 	register int		i, j;
 	register int		statinfo;
 	char			*s;
 	int			percent;
-	struct quad		*q = 0;
+	struct quad		*q;
 	extern struct cvntab	Skitab[];
 	extern struct cvntab	Lentab[];
 	struct cvntab		*p;
@@ -91,7 +95,7 @@ srscan(f)
 				printf("stardate      %.2f", Now.date);
 				break;
 			  case 1:
-				printf("condition     %s", Color[(int)Ship.cond]);
+				printf("condition     %s", Color[Ship.cond]);
 				if (Ship.cloaked)
 					printf(", CLOAKED");
 				break;
@@ -152,10 +156,8 @@ srscan(f)
 		printf("%d ", i);
 	printf("\n");
 
-        if (q) {
-                if (q->qsystemname & Q_DISTRESSED)
-                        printf("Distressed ");
-                if (q->qsystemname)
-                        printf("Starsystem %s\n", systemname(q));
-        }
+	if (q->qsystemname & Q_DISTRESSED)
+		printf("Distressed ");
+	if (q->qsystemname)
+		printf("Starsystem %s\n", systemname(q));
 }

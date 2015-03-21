@@ -44,6 +44,8 @@
 
 		.type	_setjmp, @function
 _setjmp:	.globl 	_setjmp
+		.type	setjmp, @function
+setjmp:		.globl 	setjmp			# temporarily
 
 		sw	$s0, (0 * 4) ($a0)	# save register variables s0-s8
 		sw	$s1, (1 * 4) ($a0)
@@ -58,15 +60,13 @@ _setjmp:	.globl 	_setjmp
 		sw	$gp, (10 * 4) ($a0)	# global data pointer
 		sw	$sp, (11 * 4) ($a0)	# stack pointer
 
-		# For compatibility with longjmp and siglongjmp
-		sw	$zero, (12 * 4) ($a0)   # signal mask saved
-		sw	$zero, (13 * 4) ($a0)   # signal mask
-
 		j	$ra
 		move	$v0, $zero		# return a zero for the setjmp call
 
 		.type	_longjmp, @function
 _longjmp:	.globl	_longjmp
+		.type	longjmp, @function
+longjmp:	.globl	longjmp				# temporarily
 
 		lw	$s0, (0 * 4) ($a0)	# restore register variables s0-s8
 		lw	$s1, (1 * 4) ($a0)

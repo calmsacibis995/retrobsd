@@ -35,7 +35,8 @@
 #include <sys/types.h>
 
 /*
- * Symbol table entry format.
+ * Symbol table entry format.  The #ifdef's are so that programs including
+ * nlist.h can initialize nlist structures statically.
  */
 struct	nlist {
 	char    *n_name;	/* In memory address of symbol name,
@@ -55,12 +56,13 @@ struct	nlist {
 #define	N_BSS	0x04		/* bss segment */
 #define	N_STRNG	0x05		/* string segment (for assembler) */
 #define	N_COMM	0x06		/* .comm segment (for assembler) */
+#define	N_REG	0x14		/* register symbol */
 #define	N_FN	0x1f		/* file name */
 
-#define	N_TYPE	0x1f		/* mask for all the type bits */
 #define	N_EXT	0x20		/* external (global) bit, OR'ed in */
-#define	N_WEAK	0x40		/* weak reference bit, OR'ed in */
-#define	N_LOC	0x80		/* local, for assembler */
+#define	N_TYPE	0x1f		/* mask for all the type bits */
+
+#define	N_FORMAT	"%06o"	/* namelist value format; XXX */
 
 /*
  * Get symbols from a file.

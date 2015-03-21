@@ -7,27 +7,10 @@
 # define	COMP_STRT	20
 # define	CARD_STRT	2
 
-/*
- * show_card:
- *	Show the given card if it is different from the last one shown
- */
-static void
-show_card(y, x, c, lc)
-int		y, x;
-register CARD	c, *lc;
-{
-	if (c == *lc)
-		return;
-
-	mvprintw(y, x, C_fmt, C_name[c]);
-	*lc = c;
-}
-
-void
 prboard() {
 
-	PLAY	*pp;
-	int	i, j, k, temp;
+	reg PLAY	*pp;
+	reg int		i, j, k, temp;
 
 	for (k = 0; k < 2; k++) {
 		pp = &Player[k];
@@ -42,8 +25,8 @@ prboard() {
 		show_card(14, temp, pp->battle, &pp->sh_battle);
 		show_card(16, temp, pp->speed, &pp->sh_speed);
 		for (i = C_25; i <= C_200; i++) {
-			char	*name;
-			int	end;
+			reg char	*name;
+			reg int		end;
 
 			if (pp->nummiles[i] == pp->sh_nummiles[i])
 				continue;
@@ -74,31 +57,28 @@ prboard() {
 	wrefresh(Score);
 }
 
-static char	Score_fmt[] = "%4d";
-
 /*
- * show_score:
- *	Show a score value if it is different from the last time we
- *	showed it.
+ * show_card:
+ *	Show the given card if it is different from the last one shown
  */
-static void
-show_score(y, x, s, ls)
+show_card(y, x, c, lc)
 int		y, x;
-register int	s, *ls;
+register CARD	c, *lc;
 {
-	if (s == *ls)
+	if (c == *lc)
 		return;
 
-	mvprintw(y, x, Score_fmt, s);
-	*ls = s;
+	mvprintw(y, x, C_fmt, C_name[c]);
+	*lc = c;
 }
 
-void
-prscore(for_real)
-bool	for_real; {
+static char	Score_fmt[] = "%4d";
 
-	PLAY	*pp;
-	int	x;
+prscore(for_real)
+reg bool	for_real; {
+
+	reg PLAY	*pp;
+	reg int		x;
 
 	stdscr = Score;
 	for (pp = Player; pp < &Player[2]; pp++) {
@@ -133,4 +113,20 @@ bool	for_real; {
 		}
 	}
 	stdscr = Board;
+}
+
+/*
+ * show_score:
+ *	Show a score value if it is different from the last time we
+ *	showed it.
+ */
+show_score(y, x, s, ls)
+int		y, x;
+register int	s, *ls;
+{
+	if (s == *ls)
+		return;
+
+	mvprintw(y, x, Score_fmt, s);
+	*ls = s;
 }

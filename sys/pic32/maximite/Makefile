@@ -1,83 +1,147 @@
-BUILDPATH = ../../../tools/configsys/../../sys/pic32
-H         = ../../../tools/configsys/../../sys/include
-M         = ../../../tools/configsys/../../sys/pic32
-S         = ../../../tools/configsys/../../sys/kernel
+#
+# Copyright (c) 1988 Regents of the University of California.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms are permitted
+# provided that this notice is preserved and that due credit is given
+# to the University of California at Berkeley. The name of the University
+# may not be used to endorse or promote products derived from this
+# software without specific prior written permission. This software
+# is provided ``as is'' without express or implied warranty.
+#
+H		= ../../include
+M		= ..
+S		= ../../kernel
 
 vpath %.c $(M):$(S)
 vpath %.S $(M):$(S)
 
-KERNOBJ += clock.o cons.o devsw.o exception.o exec_aout.o exec_conf.o exec_elf.o exec_script.o exec_subr.o gpio.o init_main.o init_sysent.o kern_clock.o kern_descrip.o kern_exec.o kern_exit.o kern_fork.o kern_mman.o kern_proc.o kern_prot.o kern_prot2.o kern_resource.o kern_sig.o kern_sig2.o kern_subr.o kern_synch.o kern_sysctl.o kern_time.o machdep.o mem.o rd_sd.o rdisk.o signal.o spi_bus.o startup.o subr_prf.o subr_rmap.o swap.o sys_generic.o sys_inode.o sys_pipe.o sys_process.o syscalls.o sysctl.o tty.o tty_subr.o tty_tty.o ufs_alloc.o ufs_bio.o ufs_bmap.o ufs_dsort.o ufs_fio.o ufs_inode.o ufs_mount.o ufs_namei.o ufs_subr.o ufs_syscalls.o ufs_syscalls2.o usb_device.o usb_function_cdc.o usb_uart.o vers.o vfs_vnops.o vm_sched.o vm_swap.o vm_swp.o 
-EXTRA_TARGETS = bootloader 
+# Kernel options.
+DEFS		+= -I. -I$(H) -DKERNEL -DUCB_METER -DPIC32MX7
 
-DEFS += -DBL_BUTTON_PIN=13
-DEFS += -DBL_BUTTON_PORT=TRISC
-DEFS += -DBL_CLEAR_PIN=0
-DEFS += -DBL_CLEAR_PORT=TRISF
-DEFS += -DBL_LED_PIN=1
-DEFS += -DBL_LED_PORT=TRISE
-DEFS += -DBUS_DIV=1
-DEFS += -DBUS_KHZ='CPU_KHZ/BUS_DIV'
-DEFS += -DCONSOLE_DEVICE=ttyUSB0
-DEFS += -DCPU_IDIV=2
-DEFS += -DCPU_KHZ='((CRYSTAL*1000)/CPU_IDIV*CPU_MUL/CPU_ODIV)'
-DEFS += -DCPU_MUL=20
-DEFS += -DCPU_ODIV=1
-DEFS += -DCRYSTAL=8
-DEFS += -DDC0_DEBUG=DEVCFG0_DEBUG_DISABLED
-DEFS += -DDC0_ICE=0
-DEFS += -DDC1_CKM=0
-DEFS += -DDC1_CKS=0
-DEFS += -DDC1_FNOSC=DEVCFG1_FNOSC_PRIPLL
-DEFS += -DDC1_IESO=DEVCFG1_IESO
-DEFS += -DDC1_OSCIOFNC=0
-DEFS += -DDC1_PBDIV=DEVCFG1_FPBDIV_1
-DEFS += -DDC1_POSCMOD=DEVCFG1_POSCMOD_HS
-DEFS += -DDC1_SOSC=0
-DEFS += -DDC1_WDTEN=0
-DEFS += -DDC1_WDTPS=DEVCFG1_WDTPS_1
-DEFS += -DDC2_PLLIDIV=DEVCFG2_FPLLIDIV_2
-DEFS += -DDC2_PLLMUL=DEVCFG2_FPLLMUL_20
-DEFS += -DDC2_PLLODIV=DEVCFG2_FPLLODIV_1
-DEFS += -DDC2_UPLL=0
-DEFS += -DDC2_UPLLIDIV=DEVCFG2_UPLLIDIV_2
-DEFS += -DDC3_CAN=DEVCFG3_FCANIO
-DEFS += -DDC3_ETH=DEVCFG3_FETHIO
-DEFS += -DDC3_MII=DEVCFG3_FMIIEN
-DEFS += -DDC3_SRS=DEVCFG3_FSRSSEL_7
-DEFS += -DDC3_USBID=DEVCFG3_FUSBIDIO
-DEFS += -DDC3_USERID=0xffff
-DEFS += -DDC3_VBUSON=DEVCFG3_FVBUSONIO
-DEFS += -DEXEC_AOUT
-DEFS += -DEXEC_ELF
-DEFS += -DEXEC_SCRIPT
-DEFS += -DFLASH_USER=0x1d003000
-DEFS += -DGPIO_ENABLED=YES
-DEFS += -DHID_FEATURE_REPORT_BYTES=2
-DEFS += -DHID_INPUT_REPORT_BYTES=2
-DEFS += -DHID_INT_IN_EP_SIZE=64
-DEFS += -DHID_INT_OUT_EP_SIZE=64
-DEFS += -DHID_OUTPUT_REPORT_BYTES=2
-DEFS += -DHID_RPT01_SIZE=29
-DEFS += -DKERNEL
-DEFS += -DLED_DISK_PIN=1
-DEFS += -DLED_DISK_PORT=TRISE
-DEFS += -DLED_KERNEL_INVERT=YES
-DEFS += -DLED_KERNEL_PIN=0
-DEFS += -DLED_KERNEL_PORT=TRISF
-DEFS += -DPIC32MX7
-DEFS += -DSD0_CS_PIN=0
-DEFS += -DSD0_CS_PORT=TRISE
-DEFS += -DSD0_PORT=4
-DEFS += -DUARTUSB_ENABLED=YES
-DEFS += -DUCB_METER
-DEFS += -DUSB_EP0_BUFF_SIZE=8
-DEFS += -DUSB_MAX_EP_NUMBER=3
-DEFS += -DUSB_NUM_STRING_DESCRIPTORS=3
+# CPU frequency 80 MHz.
+DEFS		+= -DCPU_KHZ=80000
+DEFS		+= -DBUS_KHZ=80000
+
+#
+# Maximite board
+# ==============
+#
+# Console on USB
+# For Windows, use the driver:
+# http://geoffg.net/Downloads/BoatComputer/Silicon_Chip_USB_Serial_Port_Driver.zip
+DEFS            += -DCONSOLE_USB -DCONSOLE_PID=0xFD52
+DEFS  		+= -DUSB_NUM_STRING_DESCRIPTORS=3 -DUSB_MAX_EP_NUMBER=3
+
+# SD/MMC card driver on SPI4
+# /CS0 at pin E0
+DEFS            += -DSD_PORT=SPI4CON
+DEFS            += -DSD_CS0_PORT=TRISE -DSD_CS0_PIN=0
+
+# LEDs at pins E1, F0
+DEFS            += -DLED_DISK_PORT=TRISE   -DLED_DISK_PIN=1
+DEFS            += -DLED_KERNEL_PORT=TRISF -DLED_KERNEL_PIN=0 -DLED_KERNEL_INVERT
+
+# Include or exclude drivers
+
+# General Purpose I/O
+DRIVER_GPIO         = yes
+
+# Basic ADC interface
+DRIVER_ADC          = no
+
+# Power control (power LED, and soft power-off by button)
+# requires supported PSU (ATX)
+DRIVER_POWER        = no
+
+POWER_LED_PORT      = TRISG
+POWER_LED_PIN       = 12
+POWER_SWITCH_PORT   = TRISG
+POWER_SWITCH_PIN    = 0
+POWER_CONTROL_PORT  = TRISE
+POWER_CONTROL_PIN   = 9
 
 
-LDSCRIPT = ../../../tools/configsys/../../sys/pic32/cfg/bootloader-maximite.ld
+DEPFLAGS	= -MT $@ -MD -MP -MF .deps/$*.dep
+CFLAGS		= -O $(DEFS) $(DEPFLAGS)
+ASFLAGS		= $(DEFS) $(DEPFLAGS)
 
-CONFIG = MAXIMITE
-CONFIGPATH = ../../../tools/configsys
+include ../gcc-config.mk
 
-include ../../../tools/configsys/../../sys/pic32/kernel-post.mk
+CC		= $(GCCPREFIX)gcc -EL -g -mips32r2
+CC		+= -nostdinc -fno-builtin -Werror -Wall -fno-dwarf2-cfi-asm
+LDFLAGS         += -nostdlib -T using-bootloader.ld -Wl,-Map=unix.map
+SIZE		= $(GCCPREFIX)size
+OBJDUMP		= $(GCCPREFIX)objdump
+OBJCOPY		= $(GCCPREFIX)objcopy
+
+# Machine-dependent files:
+# startup.o MUST be loaded first.
+KERNOBJ		= startup.o clock.o devsw.o sysctl.o \
+		  signal.o machdep.o mem.o exception.o \
+                  usb_device.o usb_function_cdc.o usb_console.o
+
+# Kernel.
+KERNOBJ		+= init_main.o init_sysent.o kern_clock.o \
+		   kern_descrip.o kern_exec.o kern_exit.o kern_fork.o \
+		   kern_mman.o kern_proc.o kern_prot.o \
+		   kern_prot2.o kern_resource.o kern_sig.o kern_sig2.o \
+		   kern_subr.o kern_synch.o kern_sysctl.o kern_time.o \
+		   subr_log.o subr_prf.o subr_rmap.o \
+		   sys_generic.o sys_inode.o syscalls.o \
+		   sys_pipe.o sys_process.o tty.o tty_conf.o \
+		   tty_subr.o tty_tty.o ufs_alloc.o ufs_bio.o \
+		   ufs_bmap.o ufs_dsort.o ufs_fio.o \
+		   ufs_inode.o ufs_mount.o ufs_namei.o ufs_subr.o \
+		   ufs_syscalls.o ufs_syscalls2.o vfs_vnops.o \
+		   vm_sched.o vm_swap.o vm_swp.o kern_glob.o
+
+# Drivers.
+KERNOBJ		+= sd.o #kbd.o video.o
+
+# Configuration-dependent files.
+KERNOBJ		+= vers.o
+
+# This makefile does the work including the right files and options for the drivers
+include ../drivers.mk
+
+
+all:		.deps sys machine unix.elf
+		$(SIZE) unix.elf
+
+clean:
+		rm -rf .deps *.o *.elf *.bin *.dis *.map *.srec core \
+		mklog assym.h vers.c genassym sys machine
+
+.deps:
+		mkdir .deps
+
+sys:
+		ln -s ../../include $@
+
+machine:
+		ln -s .. $@
+
+unix.elf:	$(KERNOBJ) using-bootloader.ld
+		$(CC) $(LDFLAGS) $(KERNOBJ) -o $@
+		chmod -x $@
+		$(OBJDUMP) -d -S $@ > unix.dis
+		$(OBJCOPY) -O binary $@ unix.bin
+		$(OBJCOPY) -O ihex --change-addresses=0x80000000 $@ unix.hex
+		chmod -x $@ unix.bin
+
+load:           unix.elf
+		pic32prog -p unix.hex
+
+vers.o:		../newvers.sh $(H)/*.h $(M)/*.[ch] $(S)/*.c
+		sh ../newvers.sh > vers.c
+		$(CC) -c vers.c
+
+.SUFFIXES:	.i .srec .hex .dis .cpp .cxx .bin .elf
+
+.o.dis:
+		$(OBJDUMP) -d -z -S $< > $@
+
+ifeq (.deps, $(wildcard .deps))
+-include .deps/*.dep
+endif

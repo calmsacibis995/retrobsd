@@ -5,7 +5,7 @@
 #include "phant.h"
 
 bool	findname(name)				/* return TRUE if name in use */
-register char	*name;
+reg	char	*name;
 {
 FILE	*fp;
 struct	stats	buf;
@@ -27,7 +27,7 @@ int	findspace()				/* allocate space for a character in peoplefile */
 {
 FILE	*fp;
 struct	stats	buf;
-register int	loc;
+reg	int	loc;
 
 	loc = 0;
 	fp = fopen(peoplefile,"r");
@@ -52,9 +52,9 @@ register int	loc;
 }
 
 int	findchar(stat)				/* retrieve a character from file */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
-register int	loc = 0, loop;
+reg	int	loc = 0, loop;
 char	name[21];
 FILE	*fp;
 
@@ -63,7 +63,7 @@ FILE	*fp;
 		clear();
 		mvprintw(10,0,"What was your character's name ? ");
 		getstring(name,21);
-		strunc(name);
+		trunc(name);
 		while (fread((char *) stat,sizeof(*stat),1,fp))
 			{
 			if (!strcmp(stat->name,name))
@@ -93,7 +93,7 @@ FILE	*fp;
 }
 
 void	leave(stat)				/* save character in file */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 long	ltemp;
 
@@ -108,7 +108,7 @@ long	ltemp;
 }
 
 void	talk(name)				/* send message to all players */
-register char	*name;
+reg	char	*name;
 {
 FILE	*fp;
 char	aline[160];
@@ -122,12 +122,12 @@ char	aline[160];
 }
 
 void	death(stat)				/* remove a player after dying */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 FILE	*fp;
 char	aline[100];
 int	ch;
-register int	loop;
+reg	int	loop;
 long	ltemp;
 
 	clear();
@@ -171,10 +171,8 @@ long	ltemp;
 		case SPOILED:
 			mvaddstr(4,0,"Your ring has taken control of you and turned you into a monster!\n");
 			fp = fopen(monsterfile,"r");
-			for (loop = 0; loop <= 13; ++loop) {
-				if (! fgets(aline,100,fp))
-				        /*ignore*/;
-                        }
+			for (loop = 0; loop <= 13; ++loop)
+				fgets(aline,100,fp);
 			ltemp = ftell(fp);
 			fclose(fp);
 			fp = fopen(monsterfile,ACCESS);
@@ -209,20 +207,20 @@ long	ltemp;
 		}
 	addstr("Care to give it another try ? ");
 	ch = rgetch();
-	if (toupper(ch) == 'Y') {
+	if (toupper(ch) == 'Y')
+		{
 		endwin();
-		execl(gameprog, "phantasia", "-s", (char*)0);
-	}
+		execl(gameprog,"phantasia","-s",0);
+		}
 	exit1();
 	/*NOTREACHED*/
 }
 
-void
-update(stat,place)			/* update charac file */
-        register struct	stats	*stat;
-        register int	place;
+void	update(stat,place)			/* update charac file */
+reg	struct	stats	*stat;
+reg	int	place;
 {
-        FILE	*fp;
+FILE	*fp;
 
 	fp = fopen(peoplefile,ACCESS);
 	fseek(fp,(long) place*sizeof(*stat),0);
@@ -231,11 +229,11 @@ update(stat,place)			/* update charac file */
 }
 
 void	printplayers(stat)			/* show users */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 FILE	*fp;
 struct	stats	buf;
-register int	loop = 0;
+reg	int	loop = 0;
 double	loc;
 long	ltmp;
 int	ch;
@@ -298,7 +296,7 @@ bool	cowfound = FALSE, kingfound = FALSE;
 struct	stats	buf;
 double	hiexp, nxtexp;
 unsigned	hilvl, nxtlvl;
-register int	loop;
+reg	int	loop;
 
 	mvaddstr(0,15,"W e l c o m e   t o   P h a n t a s i a (vers. 3.2)!");
 	fp = fopen(motd,"r");
@@ -363,8 +361,7 @@ register int	loop;
 	sprintf(instr,"%s  Level:%d   and   %s  Level:%d",hiname,hilvl,nxtname,nxtlvl);
 	mvaddstr(19,40 - strlen(instr)/2,instr);
 	fp = fopen(lastdead,"r");
-	if (! fgets(aline,80,fp))
-	        /*ignore*/;
+	fgets(aline,80,fp);
 	sprintf(instr,"The last character to die is %s",aline);
 	mvaddstr(21,40 - strlen(instr)/2,instr);
 	fclose(fp);
@@ -376,7 +373,7 @@ register int	loop;
 void	printmonster()				/* do a monster list on the terminal */
 {
 FILE	*fp;
-register int	count = 0;
+reg	int	count = 0;
 char	instr[100];
 
 	puts(" #  Name                    Str     Brains  Quick   Hits    Exp     Treas   Type    Flock%\n");
@@ -386,8 +383,7 @@ char	instr[100];
 	fclose(fp);
 }
 
-void
-exit1() 				/* exit, but cleanup */
+void	exit1() 				/* exit, but cleanup */
 {
 	move(23,0);
 	refresh();
@@ -400,14 +396,36 @@ exit1() 				/* exit, but cleanup */
 void	init1() 				/* set up for screen updating */
 {
 		/* catch/ingnore signals */
-	signal(SIGQUIT,SIG_IGN);
-	signal(SIGALRM,SIG_IGN);
-	signal(SIGTERM,SIG_IGN);
-	signal(SIGTSTP,SIG_IGN);
-	signal(SIGTTIN,SIG_IGN);
-	signal(SIGTTOU,SIG_IGN);
+#ifdef	BSD41
+	sigignore(SIGQUIT);
+	sigignore(SIGALRM);
+	sigignore(SIGTERM);
+	sigignore(SIGTSTP);
+	sigignore(SIGTTIN);
+	sigignore(SIGTTOU);
+	sighold(SIGINT);
+#endif
+#ifdef	BSD42
+	signal(SIGQUIT,interrupt,1);
+	signal(SIGALRM,interrupt,1);
+	signal(SIGTERM,interrupt,1);
+	signal(SIGTSTP,interrupt,1);
+	signal(SIGTTIN,interrupt,1);
+	signal(SIGTTOU,interrupt,1);
+	signal(SIGINT,interrupt,1);
+#endif
+#ifdef	USG3
 	signal(SIGINT,SIG_IGN);
-
+	signal(SIGQUIT,SIG_IGN);
+	signal(SIGTERM,SIG_IGN);
+	signal(SIGALRM,SIG_IGN);
+#endif
+#ifdef	USG5
+	signal(SIGINT,SIG_IGN);
+	signal(SIGQUIT,SIG_IGN);
+	signal(SIGTERM,SIG_IGN);
+	signal(SIGALRM,SIG_IGN);
+#endif
 	srand((unsigned) time((long *) NULL));	/* prime random numbers */
 	initscr();
 	noecho();
@@ -416,13 +434,12 @@ void	init1() 				/* set up for screen updating */
 	refresh();
 }
 
-void
-getstring(cp,mx)				/* get a string from the stdscr at current y,x */
-        register char	*cp;
-        register int	mx;
+void	getstring(cp,mx)				/* get a string from the stdscr at current y,x */
+reg	char	*cp;
+reg	int	mx;
 {
-        register int	loop = 0, x, y, xorig;
-        int	ch;
+reg	int	loop = 0, x, y, xorig;
+int	ch;
 
 	getyx(stdscr,y,xorig);
 	clrtoeol();
@@ -475,12 +492,12 @@ FILE	*fp;
 }
 
 void	kingstuff(stat) 			/* stuff upon entering throne */
-register struct 	stats	*stat;
+reg	struct 	stats	*stat;
 {
 FILE	*fp;
 struct	stats	buf;
 struct	nrgvoid	vbuf;
-register int	loc = 0;
+reg	int	loc = 0;
 
 	if (stat->typ < 10)	/* check to see if king -- assumes crown */
 		{
@@ -509,8 +526,7 @@ KING:				stat->typ = abs(stat->typ) + 10;
 					fclose(fp);
 					/* clear all energy voids */
 					fp = fopen(voidfile,"r");
-					if (fread((char *) &vbuf,sizeof(vbuf),1,fp) != 1)
-					        /*ignore*/;
+					fread((char *) &vbuf,sizeof(vbuf),1,fp);
 					fclose(fp);
 					fp = fopen(voidfile,"w");
 					fwrite((char *) &vbuf,sizeof(vbuf),1,fp);
@@ -525,9 +541,8 @@ KING:				stat->typ = abs(stat->typ) + 10;
 EXIT:	mvaddstr(3,0,"0:Decree  ");
 }
 
-void
-paws(where)				/* wait for input to continue */
-        int	where;
+void	paws(where)				/* wait for input to continue */
+int	where;
 {
 	mvaddstr(where,0,"-- more --");
 	rgetch();
@@ -538,7 +553,7 @@ void	cstat() 				/* examine/change stats of a character */
 struct	stats charac;
 char	s[60], flag[2];
 FILE	*fp;
-register int	loc = 0;
+reg	int	loc = 0;
 int	c, temp, today;
 long	ltemp;
 double	dtemp;
@@ -845,29 +860,27 @@ double	expr;
 		return (pow((expr/1250.0), 0.4865));
 }
 
-void	strunc(str)				/* remove blank spaces at the end of str[] */
-register char	*str;
+void	trunc(str)				/* remove blank spaces at the end of str[] */
+reg	char	*str;
 {
-register int	loop;
+reg	int	loop;
 	loop = strlen(str) - 1;
 	while (str[--loop] == ' ')
 		str[loop] = '\0';
 }
 
-double
-inflt()				/* get a floating point # from the terminal */
+double	inflt()				/* get a floating point # from the terminal */
 {
-        char	aline[80];
-        double	res;
-
+char	aline[80];
+double	res;
 	getstring(aline,80);
-	if (sscanf(aline, "%lf", &res) < 1)
+	if (sscanf(aline,"%F",&res) < 1)
 		res = 0;
 	return (res);
 }
 
 void	checkmov(stat)				/* see if beyond PONR */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 	if (beyond)
 		{
@@ -876,11 +889,11 @@ register struct	stats	*stat;
 		}
 }
 void	scramble(stat)			/* mix up some stats */
-register struct	stats	*stat;
+reg	struct	stats	*stat;
 {
 double	buf[5],	temp;
-register int	first, second;
-register double	*bp;
+reg	int	first, second;
+reg	double	*bp;
 
 	bp = buf;
 	*bp++ = stat->str;

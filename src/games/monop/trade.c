@@ -1,7 +1,6 @@
-#include "extern.h"
-#include <stdlib.h>
+# include	"monop.ext"
 
-struct	trd_st {	/* how much to give to other player	*/
+static struct	trd_st {	/* how much to give to other player	*/
 	int	trader;			/* trader number		*/
 	int	cash;			/* amount of cash 		*/
 	int	gojf;			/* # get-out-of-jail-free cards	*/
@@ -16,30 +15,44 @@ static int	used[MAX_PRP];
 
 static TRADE	trades[2];
 
-/*
- *	This routine sets up the list of tradable property.
- */
-static int
-set_list(the_list)
-reg OWN	*the_list; {
+trade() {
 
-	reg int	i;
-	reg OWN	*op;
+	reg int	tradee, i;
 
-	i = 0;
-	for (op = the_list; op; op = op->next)
-		if (!used[i])
-			list[i++] = op->sqr->name;
-	list[i++] = "done";
-	list[i--] = 0;
-	return i;
+	trading = TRUE;
+	for (i = 0; i < 2; i++) {
+		trades[i].cash = 0;
+		trades[i].gojf = FALSE;
+		trades[i].prop_list = NULL;
+	}
+over:
+	if (num_play == 1) {
+		printf("There ain't no-one around to trade WITH!!\n");
+		return;
+	}
+	if (num_play > 2) {
+		tradee = getinp("Which player do you wish to trade with? ",
+		    name_list);
+		if (tradee == num_play)
+			return;
+		if (tradee == player) {
+			printf("You can't trade with yourself!\n");
+			goto over;
+		}
+	}
+	else
+		tradee = 1 - player;
+	get_list(0, player);
+	get_list(1, tradee);
+	if (getyn("Do you wish a summary? ") == 0)
+		summate();
+	if (getyn("Is the trade ok? ") == 0)
+		do_trade();
 }
-
 /*
  *	This routine gets the list of things to be trader for the
  * player, and puts in the structure given.
  */
-static void
 get_list(struct_no, play_no)
 int	struct_no, play_no; {
 
@@ -88,11 +101,26 @@ once_more:
 		}
 	}
 }
+/*
+ *	This routine sets up the list of tradable property.
+ */
+set_list(the_list)
+reg OWN	*the_list; {
 
+	reg int	i;
+	reg OWN	*op;
+
+	i = 0;
+	for (op = the_list; op; op = op->next)
+		if (!used[i])
+			list[i++] = op->sqr->name;
+	list[i++] = "done";
+	list[i--] = 0;
+	return i;
+}
 /*
  *	This routine summates the trade.
  */
-static void
 summate() {
 
 	reg bool	some;
@@ -119,11 +147,17 @@ summate() {
 			printf("\t-- Nothing --\n");
 	}
 }
+/*
+ *	This routine actually executes the trade.
+ */
+do_trade() {
 
+	move_em(&trades[0], &trades[1]);
+	move_em(&trades[1], &trades[0]);
+}
 /*
  *	This routine does a switch from one player to another
  */
-static void
 move_em(from, to)
 TRADE	*from, *to; {
 
@@ -144,69 +178,21 @@ TRADE	*from, *to; {
 	}
 	set_ownlist(to->trader);
 }
-
-/*
- *	This routine actually executes the trade.
- */
-static void
-do_trade() {
-
-	move_em(&trades[0], &trades[1]);
-	move_em(&trades[1], &trades[0]);
-}
-
-void
-trade() {
-
-	reg int	tradee, i;
-
-	trading = TRUE;
-	for (i = 0; i < 2; i++) {
-		trades[i].cash = 0;
-		trades[i].gojf = FALSE;
-		trades[i].prop_list = NULL;
-	}
-over:
-	if (num_play == 1) {
-		printf("There ain't no-one around to trade WITH!!\n");
-		return;
-	}
-	if (num_play > 2) {
-		tradee = getinp("Which player do you wish to trade with? ",
-		    name_list);
-		if (tradee == num_play)
-			return;
-		if (tradee == player) {
-			printf("You can't trade with yourself!\n");
-			goto over;
-		}
-	}
-	else
-		tradee = 1 - player;
-	get_list(0, player);
-	get_list(1, tradee);
-	if (getyn("Do you wish a summary? ") == 0)
-		summate();
-	if (getyn("Is the trade ok? ") == 0)
-		do_trade();
-}
-
 /*
  *	This routine lets a player resign
  */
-void
 resign() {
 
-	reg int	i, new_own = 0;
+	reg int	i, new_own;
 	reg OWN	*op;
 	SQUARE	*sqp;
 
 	if (cur_p->money <= 0) {
-		switch (board[(int)cur_p->loc].type) {
+		switch (board[cur_p->loc].type) {
 		  case UTIL:
 		  case RR:
 		  case PRPTY:
-			new_own = board[(int)cur_p->loc].owner;
+			new_own = board[cur_p->loc].owner;
 			break;
 		  case SPEC:
 		  case CC:
@@ -233,7 +219,7 @@ resign() {
 		} while (new_own == player);
 		name_list[num_play] = "done";
 	}
-	if (getyn("Do you really want to resign? ") != 0)
+	if (getyn("Do you really want to resign? ", yn) != 0)
 		return;
 	if (num_play == 1) {
 		printf("Then NOBODY wins (not even YOU!)\n");
@@ -255,10 +241,10 @@ resign() {
 		for (op = cur_p->own_list; op; op = op->next) {
 			sqp = op->sqr;
 			sqp->owner = -1;
-			((PROP*)sqp->desc)->morg = FALSE;
-			if (op->sqr->type == PRPTY) {
-				isnot_monop(((PROP*)sqp->desc)->mon_desc);
-				((PROP*)sqp->desc)->houses = 0;
+			sqp->desc->morg = FALSE;
+			if (op->type == PRPTY) {
+				isnot_monop(sqp->desc->mon_desc);
+				sqp->desc->houses = 0;
 			}
 		}
 		if (cur_p->num_gojf)
@@ -267,7 +253,7 @@ resign() {
 	for (i = player; i < num_play; i++) {
 		name_list[i] = name_list[i+1];
 		if (i + 1 < num_play)
-			play[i] = play[i+1];
+			cpy_st(&play[i], &play[i+1], sizeof (PLAY));
 	}
 	name_list[num_play--] = 0;
 	for (i = 0; i < N_SQRS; i++)

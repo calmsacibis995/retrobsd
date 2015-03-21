@@ -1,38 +1,23 @@
-#include "mille.h"
-#include <signal.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#ifdef attron
-#   include <term.h>
-#endif
+# include	"mille.h"
+# include	<signal.h>
+# ifdef attron
+#	include	<term.h>
+# endif	attron
 
 /*
  * @(#)mille.c	1.3.1 (2.11BSD GTE) 1/16/95
  */
 
+int	rub();
+
 char	_sobuf[BUFSIZ];
 
-/*
- *	Routine to trap rubouts, and make sure they really want to
- * quit.
- */
-void
-rub(int sig) {
-
-	signal(SIGINT, SIG_IGN);
-	if (getyn(REALLYPROMPT))
-		die();
-	signal(SIGINT, rub);
-}
-
-int
 main(ac, av)
-int	ac;
-char	*av[]; {
+reg int		ac;
+reg char	*av[]; {
 
-	bool	restore;
-	unsigned avs[3];
+	reg bool	restore;
+	double		avs[3];
 
 	if (strcmp(av[0], "a.out") == 0) {
 		outf = fopen("q", "w");
@@ -41,7 +26,8 @@ char	*av[]; {
 	}
 	restore = FALSE;
 
-	if (getloadavg(avs, 3) >= 0 && avs[2] > 400) {
+	getloadavg(avs, 3);
+	if (avs[2] > 4.0) {
 		printf("Sorry.  The load average is too high.\n");
 		printf("Please try again later\n");
 		exit(1);
@@ -123,9 +109,20 @@ char	*av[]; {
 }
 
 /*
+ *	Routine to trap rubouts, and make sure they really want to
+ * quit.
+ */
+rub() {
+
+	signal(SIGINT, SIG_IGN);
+	if (getyn(REALLYPROMPT))
+		die();
+	signal(SIGINT, rub);
+}
+
+/*
  *	Time to go beddy-by
  */
-void
 die() {
 
 	signal(SIGINT, SIG_IGN);
@@ -135,3 +132,4 @@ die() {
 	endwin();
 	exit(1);
 }
+

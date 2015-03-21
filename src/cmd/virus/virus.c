@@ -88,8 +88,6 @@ char *vi_Version =
 #include "lib/strlcat.c"
 #include "lib/strlcpy.c"
 
-#include <strings.h>
-
 #ifndef TRUE
 #define TRUE			((int)1)
 #define FALSE			((int)0)
@@ -826,15 +824,6 @@ static void do_cmd(Byte c)
 		//  hitting "Insert" twice means "R" replace mode
 		if (c == VI_K_INSERT) goto dc5;
 		// insert the char c at "dot"
-                if (c == 8) {
-                        dir = -1;
-                        if (dot[dir] != '\n') {
-                                dot--;  // delete prev char
-                                dot = yank_delete(dot, dot, 0, YANKDEL);        // delete char
-                                goto dc1;
-                        }
-                }
-
 		if (1 <= c && c <= 127) {
 			dot = char_insert(dot, c);	// only ASCII chars
 		}
@@ -1974,7 +1963,7 @@ static void colon(Byte * buf)
 	  vc2:
 #endif							/* BB_FEATURE_VI_SET */
 		Hit_Return();
-	} else if ((strncasecmp((char *) cmd, "quit", i) == 0) || (strncasecmp((char *) cmd, "q", i) == 0) || 	// Quit
+	} else if ((strncasecmp((char *) cmd, "quit", i) == 0) ||	// Quit
 			   (strncasecmp((char *) cmd, "next", i) == 0)) {	// edit next file
 		if (useforce == TRUE) {
 			// force end of argv list
@@ -2228,15 +2217,15 @@ static void Hit_Return(void)
 //----- Synchronize the cursor to Dot --------------------------
 static void sync_cursor(Byte * d, int *row, int *col)
 {
-	Byte *beg_cur/*, *end_cur*/;	// begin and end of "d" line
-	Byte /**beg_scr,*/ *end_scr;	// begin and end of screen
+	Byte *beg_cur, *end_cur;	// begin and end of "d" line
+	Byte *beg_scr, *end_scr;	// begin and end of screen
 	Byte *tp;
 	int cnt, ro, co;
 
 	beg_cur = begin_line(d);	// first char of cur line
-	/*end_cur =*/ end_line(d);	// last char of cur line
+	end_cur = end_line(d);	// last char of cur line
 
-	/*beg_scr =*/ end_scr = screenbegin;	// first char of screen
+	beg_scr = end_scr = screenbegin;	// first char of screen
 	end_scr = end_screen();	// last char of screen
 
 	if (beg_cur < screenbegin) {
@@ -3125,9 +3114,9 @@ static Byte *text_yank(Byte * p, Byte * q, int dest)	// copy text into a registe
 static Byte what_reg(void)
 {
 	Byte c;
-//	int i;
+	int i;
 
-//	i = 0;
+	i = 0;
 	c = 'D';			// default to D-reg
 	if (0 <= YDreg && YDreg <= 25)
 		c = 'a' + (Byte) YDreg;
@@ -3528,7 +3517,7 @@ static int file_size(Byte * fn) // what is the byte size of "fn"
 	struct stat st_buf;
 	int cnt, sr;
 
-	if (fn == 0 || strlen((const char*)fn) <= 0)
+	if (fn == 0 || strlen(fn) <= 0)
 		return (-1);
 	cnt = -1;
 	sr = stat((char *) fn, &st_buf);	// see if file exists

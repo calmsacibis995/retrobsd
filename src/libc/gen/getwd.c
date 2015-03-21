@@ -12,7 +12,6 @@
 #include <sys/stat.h>
 #include <sys/dir.h>
 #include <string.h>
-#include <unistd.h>
 
 #define GETWDERR(s)	strcpy(pathname, (s));
 

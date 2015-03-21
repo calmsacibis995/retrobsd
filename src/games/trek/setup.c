@@ -3,10 +3,13 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)setup.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
 # include	"getpar.h"
-# include	<stdlib.h>
-# include	<float.h>
 
 /*
 **  INITIALIZE THE GAME
@@ -21,31 +24,31 @@
 
 struct cvntab	Lentab[] =
 {
-	{ "s",		"hort",			(void (*)())1,		0 },
-	{ "m",		"edium",		(void (*)())2,		0 },
-	{ "l",		"ong",			(void (*)())4,		0 },
-	{ "restart",	"",			0,                      0 },
-	{ 0 },
+	"s",		"hort",			(int (*)())1,		0,
+	"m",		"edium",		(int (*)())2,		0,
+	"l",		"ong",			(int (*)())4,		0,
+	"restart",	"",			0,		0,
+	0
 };
 
 struct cvntab	Skitab[] =
 {
-	{ "n",		"ovice",		(void (*)())1,		0 },
-	{ "f",		"air",			(void (*)())2,		0 },
-	{ "g",		"ood",			(void (*)())3,		0 },
-	{ "e",		"xpert",		(void (*)())4,		0 },
-	{ "c",		"ommodore",		(void (*)())5,		0 },
-	{ "i",		"mpossible",		(void (*)())6,		0 },
-	{ 0 },
+	"n",		"ovice",		(int (*)())1,		0,
+	"f",		"air",			(int (*)())2,		0,
+	"g",		"ood",			(int (*)())3,		0,
+	"e",		"xpert",		(int (*)())4,		0,
+	"c",		"ommodore",		(int (*)())5,		0,
+	"i",		"mpossible",		(int (*)())6,		0,
+	0
 };
 
-void
 setup()
 {
 	struct cvntab		*r;
 	register int		i, j;
 	double			f;
 	int			d;
+	int			fd;
 	int			klump;
 	int			ix, iy;
 	register struct quad	*q;
@@ -172,7 +175,7 @@ setup()
 	for (i = 0; i < MAXEVENTS; i++)
 	{
 		e = &Event[i];
-		e->date = DBL_MAX;
+		e->date = 1e50;
 		e->evcode = 0;
 	}
 	xsched(E_SNOVA, 1, 0, 0, 0);

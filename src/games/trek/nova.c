@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)nova.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -18,9 +23,9 @@
 **	destroyed.  And if the starship is next to it, it gets zapped.
 **	If the zap is too much, it gets destroyed.
 */
-void
+
 nova(x, y)
-        int	x, y;
+int	x, y;
 {
 	register int		i, j;
 	register int		se;
@@ -32,10 +37,8 @@ nova(x, y)
 		printf("Spock: Star at %d,%d failed to nova.\n", x, y);
 		return;
 	}
-	if (ranf(100) < 5) {
-	        snova(x, y);
-		return;
-        }
+	if (ranf(100) < 5)
+		return (snova(x, y));
 	printf("Spock: Star at %d,%d gone nova\n", x, y);
 
 	if (ranf(4) != 0)
@@ -83,15 +86,17 @@ nova(x, y)
 			  case ENTERPRISE:
 			  case QUEENE:
 				se = 2000;
-				if (Ship.shldup) {
-					if (Ship.shield >= se) {
+				if (Ship.shldup)
+					if (Ship.shield >= se)
+					{
 						Ship.shield -= se;
 						se = 0;
-					} else {
+					}
+					else
+					{
 						se -= Ship.shield;
 						Ship.shield = 0;
 					}
-                                }
 				Ship.energy -= se;
 				if (Ship.energy <= 0)
 					lose(L_SUICID);
@@ -105,4 +110,5 @@ nova(x, y)
 			}
 		}
 	}
+	return;
 }

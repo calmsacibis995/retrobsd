@@ -3,13 +3,25 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)parse.c	1.2 4/24/85";
+#endif
+
 #include "externs.h"
 
-int
+wordinit()
+{
+	register struct wlist *w;
+
+	for (w = wlist; w->string; w++)
+		install(w);
+}
+
 hash(s)
 	register char *s;
 {
-	register int hashval = 0;
+	register hashval = 0;
 
 	while (*s) {
 		hashval += *s++;
@@ -31,7 +43,6 @@ lookup(s)
 	return NULL;
 }
 
-static void
 install(wp)
 	register struct wlist *wp;
 {
@@ -45,20 +56,10 @@ install(wp)
 		printf("Multiply defined %s.\n", wp->string);
 }
 
-void
-wordinit()
-{
-	register struct wlist *w;
-
-	for (w = wlist; w->string; w++)
-		install(w);
-}
-
-void
 parse()
 {
 	register struct wlist *wp;
-	register int n;
+	register n;
 
 	wordnumber = 0;           /* for cypher */
 	for (n = 0; n <= wordcount; n++) {

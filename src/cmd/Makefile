@@ -10,14 +10,13 @@ CFLAGS          += -Werror
 
 # Programs that live in subdirectories, and have makefiles of their own.
 # /bin
-SUBDIR		= adb adc-demo aout ar as awk basic cc chflags chpass \
-                  cpp dc diff emg env fdisk find forth fstat glcdtest \
-                  hostname id la lcc lcpp ld ls login make man med \
+SUBDIR		= adb adc-demo ar as awk basic cc chflags chpass \
+                  cpp dc diff env find forth fstat glcdtest hostname \
+                  id la lcc lcpp ld ls login make man med \
                   more nm passwd picoc portio printf pwm \
-                  rdprof ranlib re renice retroforth scm setty sl \
-                  sed sh smallc smlrc stty sysctl test uname wiznet xargs \
-                  zmodem gtest msec unixbench cron compress date2 tip \
-                  talloc devupdate uucp smux
+                  ranlib re renice retroforth scm setty sl \
+                  sed sh smallc stty sysctl test uname wiznet xargs \
+                  zmodem gtest
 
 # /sbin
 SUBDIR         += chown chroot disktool fsck getty init \
@@ -33,11 +32,11 @@ SCRIPT		= false nohup true #lorder mkdep
 # C programs that live in the current directory and do not need
 # explicit make lines.
 #
-STD		= basename cal cat cb chgrp chmod cmp col comm cp dd \
-                  diskspeed du echo ed fgrep file grep head hostid join \
-                  kill last ln mesg mkdir mv nice od pagesize pr printenv \
-                  pwd rev rm rmail rmdir size sleep sort split sum sync \
-                  tail tar tee time touch tr tsort tty uniq w wc whereis who
+STD		= basename cal cat cb chgrp chmod cmp col comm cp date dd du \
+		  echo ed fgrep file grep head hostid join kill last ln \
+                  mesg mkdir mv nice od pagesize pr printenv pwd rev rm rmail rmdir \
+                  size sleep sort split sum sync tail tar tee time touch tr \
+                  tsort tty uniq w wc whereis who
 
 # C programs that live in the current directory and need explicit make lines.
 #

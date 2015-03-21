@@ -2,11 +2,10 @@
 
 char *
 fgets(s, n, iop)
-        char *s;
-        int n;
-        register FILE *iop;
+char *s;
+register FILE *iop;
 {
-	register int c = EOF;
+	register c;
 	register char *cs;
 
 	cs = s;

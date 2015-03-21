@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)check_out.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -15,9 +20,9 @@
 **
 **	It prints appropriate messages too.
 */
-int
+
 check_out(device)
-        int	device;
+int	device;
 {
 	register int	dev;
 

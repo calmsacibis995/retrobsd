@@ -103,7 +103,7 @@ typedef union __attribute__ ((packed))
         unsigned long Length3;
         unsigned char Type4;		// End of sections list indicator goes here, fill with 0xFF.
         unsigned char ExtraPadBytes[33];
-    } query;
+    };
 } packet_t;
 
 static packet_t send;           // 64-byte send buffer (EP1 IN to the PC)
@@ -125,20 +125,29 @@ static unsigned int buf_index;
 static unsigned int base_address;
 
 /*
- * GPIO pin control.
+ * Chip configuration.
  */
-#define TRIS_VAL(p)     (&p)[0]
-#define TRIS_CLR(p)     (&p)[1]
-#define TRIS_SET(p)     (&p)[2]
-#define TRIS_INV(p)     (&p)[3]
-#define PORT_VAL(p)     (&p)[4]
-#define PORT_CLR(p)     (&p)[5]
-#define PORT_SET(p)     (&p)[6]
-#define PORT_INV(p)     (&p)[7]
-#define LAT_VAL(p)      (&p)[8]
-#define LAT_CLR(p)      (&p)[9]
-#define LAT_SET(p)      (&p)[10]
-#define LAT_INV(p)      (&p)[11]
+PIC32_DEVCFG (
+    DEVCFG0_DEBUG_DISABLED,     /* ICE debugger disabled */
+
+    DEVCFG1_FNOSC_PRIPLL |      /* Primary oscillator with PLL */
+    DEVCFG1_IESO |              /* Internal-external switch over */
+    DEVCFG1_POSCMOD_HS |        /* HS oscillator */
+    DEVCFG1_FPBDIV_1 |          /* Peripheral bus clock = SYSCLK/1 */
+    DEVCFG1_WDTPS_1,            /* Watchdog postscale = 1/1024 */
+
+    DEVCFG2_FPLLIDIV_2 |        /* PLL divider = 1/2 */
+    DEVCFG2_FPLLMUL_20 |        /* PLL multiplier = 20x */
+    DEVCFG2_UPLLIDIV_2 |        /* USB PLL divider = 1/2 */
+    DEVCFG2_FPLLODIV_1,         /* PLL postscaler = 1/1 */
+
+    DEVCFG3_USERID(0xffff) |    /* User-defined ID */
+    DEVCFG3_FSRSSEL_7 |         /* Assign irq priority 7 to shadow set */
+    DEVCFG3_FMIIEN |            /* Ethernet MII enable */
+    DEVCFG3_FETHIO |            /* Ethernet pins default */
+    DEVCFG3_FCANIO |            /* CAN pins default */
+    DEVCFG3_FUSBIDIO |          /* USBID pin: controlled by USB */
+    DEVCFG3_FVBUSONIO);         /* VBuson pin: controlled by USB */
 
 /*
  * Boot code.
@@ -152,117 +161,97 @@ asm ("          la      $gp, _gp");
 asm ("          jr      $ra");
 asm ("          .text");
 
-/*
- * A single button is used to control the bootloader mode.
- * Configured by parameters:
- *      BL_BUTTON_PORT = TRISA ... TRISG
- *      BL_BUTTON_PIN  = 0 ... 15
- */
 static inline void button_init()
 {
-    TRIS_SET(BL_BUTTON_PORT) = 1 << BL_BUTTON_PIN;
+#if defined (UBW32)
+    TRISESET = 1 << 7;
+
+#elif defined (MAXIMITE)
+    TRISCSET = 1 << 13;
+
+#elif defined (DIP)
+    TRISGSET = 1 << 6;
+
+#elif defined (STARTERKIT)
+    TRISDSET = 1 << 6;
+
+#elif defined (FUBARINO)
+    TRISESET = 1 << 7;
+#else
+#error "Unknown board"
+#endif
 }
 
 static inline int button_pressed()
 {
-    return ! (PORT_VAL(BL_BUTTON_PORT) & (1 << BL_BUTTON_PIN));
+#if defined (UBW32)
+    return ! (PORTE & (1 << 7));
+
+#elif defined (MAXIMITE)
+    return ! (PORTC & (1 << 13));
+
+#elif defined (DIP)
+    return ! (PORTG & (1 << 6));
+
+#elif defined (STARTERKIT)
+    return ! (PORTD & (1 << 6));
+
+#elif defined (FUBARINO)
+    return ! (PORTE & (1 << 7));
+#else
+#error "Unknown board"
+#endif
 }
 
-/*
- * Up to three LEDs can be used to indicate a bootloader mode.
- * Configured by parameters:
- *      - first LED:  BL_LED_PORT, BL_LED_PIN, BL_LED_INVERT
- *      - second LED: BL_LED2_PORT, BL_LED2_PIN, BL_LED2_INVERT
- *      - third LED:  BL_LED3_PORT, BL_LED3_PIN, BL_LED3_INVERT
- *
- * Additionally, up to two output signals can be set or cleared at startup.
- * Configured by parameters:
- *      BL_SET_PORT, BL_SET_PIN
- *      BL_SET2_PORT, BL_SET2_PIN
- *      BL_CLEAR_PORT, BL_CLEAR_PIN
- *      BL_CLEAR2_PORT, BL_CLEAR2_PIN
- *
- * Settings for UBW32 board:
- *      - first LED is E2, inverted
- *      - second LED is E3
- *      - set signals E0 and E1
- *
- * For Maximite board:
- *      - LED is E1, inverted
- *      - clear signal F0
- *
- * For eflightworks DIP board:
- *      - first LED is E6, inverted
- *      - second LED is E7
- *      - clear signals E4 and E5
- *
- * For PIC32 Starter Kit board:
- *      - first LED is D0
- *      - second LED is D1, inverted
- *      - third LED is D2, inverted
- */
 static inline void led_init()
 {
-    /* First LED. */
-#ifdef BL_LED_INVERT
-    LAT_SET(BL_LED_PORT) = 1 << BL_LED_PIN;
-#else
-    LAT_CLR(BL_LED_PORT) = 1 << BL_LED_PIN;
-#endif
-    TRIS_CLR(BL_LED_PORT) = 1 << BL_LED_PIN;
+#if defined (UBW32)
+    LATECLR = 0xF;
+    TRISECLR = 0xF;
+    PORTEINV = 7;
 
-    /* Optional second LED. */
-#ifdef BL_LED2_PORT
-#ifdef BL_LED2_INVERT
-    LAT_SET(BL_LED2_PORT) = 1 << BL_LED2_PIN;
-#else
-    LAT_CLR(BL_LED2_PORT) = 1 << BL_LED2_PIN;
-#endif
-    TRIS_CLR(BL_LED2_PORT) = 1 << BL_LED2_PIN;
-#endif
+#elif defined (MAXIMITE)
+    LATECLR = 2;
+    TRISECLR = 2;
+    LATFCLR = 1;
+    TRISFCLR = 1;
 
-    /* Optional third LED. */
-#ifdef BL_LED3_PORT
-#ifdef BL_LED3_INVERT
-    LAT_SET(BL_LED3_PORT) = 1 << BL_LED3_PIN;
-#else
-    LAT_CLR(BL_LED3_PORT) = 1 << BL_LED3_PIN;
-#endif
-    TRIS_CLR(BL_LED3_PORT) = 1 << BL_LED3_PIN;
-#endif
+#elif defined (DIP)
+    LATECLR = 0xF0;
+    TRISECLR = 0xF0;
+    PORTEINV = 0x40;
 
-    /* Additional signals. */
-#ifdef BL_SET_PORT
-    LAT_SET(BL_SET_PORT) = 1 << BL_SET_PIN;
-    TRIS_CLR(BL_SET_PORT) = 1 << BL_SET_PIN;
-#endif
-#ifdef BL_SET2_PORT
-    LAT_SET(BL_SET2_PORT) = 1 << BL_SET2_PIN;
-    TRIS_CLR(BL_SET2_PORT) = 1 << BL_SET2_PIN;
-#endif
-#ifdef BL_CLEAR_PORT
-    LAT_CLR(BL_CLEAR_PORT) = 1 << BL_CLEAR_PIN;
-    TRIS_CLR(BL_CLEAR_PORT) = 1 << BL_CLEAR_PIN;
-#endif
-#ifdef BL_CLEAR2_PORT
-    LAT_CLR(BL_CLEAR2_PORT) = 1 << BL_CLEAR2_PIN;
-    TRIS_CLR(BL_CLEAR2_PORT) = 1 << BL_CLEAR2_PIN;
+#elif defined (STARTERKIT)
+    TRISDCLR = 7 << 0;
+    LATDCLR = 1 << 0;
+    LATDSET = 6 << 0;
+
+#elif defined (FUBARINO)
+    TRISECLR = 1 << 5;
+    LATECLR = 1 << 5;
+#else
+#error "Unknown board"
 #endif
 }
 
 static inline void led_toggle()
 {
-    /* First LED. */
-    LAT_INV(BL_LED_PORT) = 1 << BL_LED_PIN;
+#if defined (UBW32)
+    PORTEINV = 3 << 2;
 
-    /* Optional second LED. */
-#ifdef BL_LED2_PORT
-    LAT_INV(BL_LED2_PORT) = 1 << BL_LED2_PIN;
-#endif
+#elif defined (MAXIMITE)
+    PORTEINV = 1 << 1;
 
-    /* Optional third LED. */
-#ifdef BL_LED3_PORT
-    LAT_INV(BL_LED3_PORT) = 1 << BL_LED3_PIN;
+#elif defined (DIP)
+    PORTEINV = 3 << 6;
+
+#elif defined (STARTERKIT)
+    LATDINV = 7 << 0;
+
+#elif defined (FUBARINO)
+    LATEINV = 1 << 5;
+#else
+#error "Unknown board"
 #endif
 }
 
@@ -469,13 +458,13 @@ static int handle_packet()
         // Prepare a response packet, which lets the PC software know
         // about the memory ranges of this device.
         memzero (&send, PACKET_SIZE);
-        send.query.Command = QUERY_DEVICE;
-        send.query.PacketDataFieldSize = REQUEST_SIZE;
-        send.query.DeviceFamily = 3;            /* PIC32 */
-        send.query.Type1 = 1;                   /* 'program' memory type */
-        send.query.Address1 = FLASH_USER;
-        send.query.Length1 = FLASH_BASE + BMXPFMSZ - FLASH_USER;
-        send.query.Type2 = 0xFF;                /* end of list */
+        send.Command = QUERY_DEVICE;
+        send.PacketDataFieldSize = REQUEST_SIZE;
+        send.DeviceFamily = 3;            /* PIC32 */
+        send.Type1 = 1;                   /* 'program' memory type */
+        send.Address1 = FLASH_USER;
+        send.Length1 = FLASH_BASE + BMXPFMSZ - FLASH_USER;
+        send.Type2 = 0xFF;                /* end of list */
         return 1;
 
     case UNLOCK_CONFIG:
@@ -509,7 +498,8 @@ static int handle_packet()
 
                 // Data field is right justified.
                 // Need to put it in the buffer left justified.
-                buf [buf_index++] = receive.Data [index];
+                buf [buf_index++] =
+                    receive.Data [(REQUEST_SIZE - receive.Size) / sizeof(unsigned) + i];
                 base_address += sizeof(unsigned);
                 if (buf_index == REQUEST_SIZE / sizeof(unsigned)) {
                     write_flash_block();
@@ -559,12 +549,6 @@ static int handle_packet()
  */
 int main()
 {
-    // IM: Quick fix to enable a smooth start @120MHz
-    /* Wait until both System and USB PLL are locked */
-    // while ( (OSCCON & 0x60) != 0x60 );   // does not work
-    while(!(OSCCON & 0x60));
-
-
     /* Initialize STATUS register: master interrupt disable. */
     mips_write_c0_register (C0_STATUS, 0, ST_CU0 | ST_BEV);
 

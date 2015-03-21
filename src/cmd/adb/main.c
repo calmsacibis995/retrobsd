@@ -1,5 +1,4 @@
 #include "defs.h"
-#include <fcntl.h>
 
 char *Ipath = "/share/adb";
 
@@ -60,27 +59,22 @@ main(argc, argv)
         myname = "adb";
     mynamelen = strlen(myname);
 
-#ifdef TIOCGETP
     ioctl(0, TIOCGETP, &adbtty);
     ioctl(0, TIOCGETP, &usrtty);
-#else
-    tcgetattr(0, &adbtty);
-    tcgetattr(0, &usrtty);
-#endif
     while (argc > 1) {
-        if (strcmp("-w", argv[1]) == 0) {
-            wtflag = O_RDWR;
+        if (! strcmp("-w", argv[1])) {
+            wtflag = 2;
             argc--;
             argv++;
             continue;
         }
-        if (strcmp("-k", argv[1]) == 0) {
+        if (! strcmp("-k", argv[1])) {
             kernel++;
             argc--;
             argv++;
             continue;
         }
-        if (strcmp("-I", argv[1]) == 0) {
+        if (! strcmp("-I", argv[1])) {
             Ipath = argv[2];
             argc -= 2;
             argv += 2;
@@ -127,7 +121,7 @@ main(argc, argv)
         flushbuf();
         if (errflg) {
             print("%s\n", errflg);
-            exitflg = (errflg != 0);
+            exitflg = (int) errflg;
             errflg = 0;
         }
         if (mkfault) {

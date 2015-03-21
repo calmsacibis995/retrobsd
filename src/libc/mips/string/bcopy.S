@@ -88,11 +88,11 @@ FUNCTION:
 	#
 	# Forward aligned->aligned copy, 8*4 bytes at a time.
 	#
-	li	$at,-32
-	and	$t0,SIZEREG,$at		# count truncated to multiple of 32 */
+	li	$AT,-32
+	and	$t0,SIZEREG,$AT		# count truncated to multiple of 32 */
 	addu	$a3,SRCREG,$t0		# run fast loop up to this address
-	sltu	$at,SRCREG,$a3		# any work to do?
-	beq	$at,$zero,2f
+	sltu	$AT,SRCREG,$a3		# any work to do?
+	beq	$AT,$zero,2f
 	subu	SIZEREG,$t0
 
 	#
@@ -103,7 +103,7 @@ FUNCTION:
 	lw	$v1,4(SRCREG)
 	lw	$t0,8(SRCREG)
 	lw	$t1,12(SRCREG)
-	addiu	SRCREG,32
+	addu	SRCREG,32
 	sw	$t3,0(DSTREG)
 	sw	$v1,4(DSTREG)
 	sw	$t0,8(DSTREG)
@@ -112,7 +112,7 @@ FUNCTION:
 	lw	$t0,-8(SRCREG)
 	lw	$v1,-12(SRCREG)
 	lw	$t3,-16(SRCREG)
-	addiu	DSTREG,32
+	addu	DSTREG,32
 	sw	$t1,-4(DSTREG)
 	sw	$t0,-8(DSTREG)
 	sw	$v1,-12(DSTREG)
@@ -130,21 +130,21 @@ FUNCTION:
 	subu	SIZEREG,SIZEREG,$t2
 1:
 	lw	$t3,0(SRCREG)
-	addiu	SRCREG,4
+	addu	SRCREG,4
 	sw	$t3,0(DSTREG)
 	bne	SRCREG,$t0,1b
-	addiu	DSTREG,4
+	addu	DSTREG,4
 
 3:	# bytecopy
 	beq	SIZEREG,$zero,4f	# nothing left to do?
 	nop
 1:
 	lb	$t3,0(SRCREG)
-	addiu	SRCREG,1
+	addu	SRCREG,1
 	sb	$t3,0(DSTREG)
-	addiu	SIZEREG,-1
+	subu	SIZEREG,1
 	bgtz	SIZEREG,1b
-	addiu	DSTREG,1
+	addu	DSTREG,1
 
 4:	# copydone
 	j	$ra
@@ -183,8 +183,8 @@ FUNCTION:
 	#
 	# Forward aligned->aligned copy, 8*4 bytes at a time.
 	#
-	li	$at,-32
-	and	$t0,SIZEREG,$at		# count truncated to multiple of 32
+	li	$AT,-32
+	and	$t0,SIZEREG,$AT		# count truncated to multiple of 32
 	beq	$t0,$zero,2f		# any work to do?
 	subu	SIZEREG,$t0
 	subu	$a3,SRCREG,$t0
@@ -197,7 +197,7 @@ FUNCTION:
 	lw	$v1,-12(SRCREG)
 	lw	$t0,-8(SRCREG)
 	lw	$t1,-4(SRCREG)
-	addiu	SRCREG,-32
+	subu	SRCREG,32
 	sw	$t3,-16(DSTREG)
 	sw	$v1,-12(DSTREG)
 	sw	$t0,-8(DSTREG)
@@ -206,7 +206,7 @@ FUNCTION:
 	lw	$t0,8(SRCREG)
 	lw	$v1,4(SRCREG)
 	lw	$t3,0(SRCREG)
-	addiu	DSTREG,-32
+	subu	DSTREG,32
 	sw	$t1,12(DSTREG)
 	sw	$t0,8(DSTREG)
 	sw	$v1,4(DSTREG)
@@ -224,21 +224,21 @@ FUNCTION:
 	subu	SIZEREG,SIZEREG,$t2
 1:
 	lw	$t3,-4(SRCREG)
-	addiu	SRCREG,-4
+	subu	SRCREG,4
 	sw	$t3,-4(DSTREG)
 	bne	SRCREG,$t0,1b
-	addiu	DSTREG,-4
+	subu	DSTREG,4
 
 3:	# bytecopy
 	beq	SIZEREG,$zero,4f	# nothing left to do?
 	nop
 1:
 	lb	$t3,-1(SRCREG)
-	addiu	SRCREG,-1
+	subu	SRCREG,1
 	sb	$t3,-1(DSTREG)
-	addiu	SIZEREG,-1
+	subu	SIZEREG,1
 	bgtz	SIZEREG,1b
-	addiu	DSTREG,-1
+	subu	DSTREG,1
 
 4:	# copydone
 	j	$ra
@@ -258,10 +258,10 @@ FUNCTION:
 1:
 	LWHI	$t3,-4(SRCREG)
 	LWLO	$t3,-1(SRCREG)
-	addiu	SRCREG,-4
+	subu	SRCREG,4
 	sw	$t3,-4(DSTREG)
 	bne	SRCREG,$a3,1b
-	addiu	DSTREG,-4
+	subu	DSTREG,4
 
 	j	3b
 	nop

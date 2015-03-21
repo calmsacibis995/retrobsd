@@ -3,6 +3,15 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#if	!defined(lint) && defined(DOSCCS)
+char copyright[] =
+"@(#) Copyright (c) 1980 Regents of the University of California.\n\
+ All rights reserved.\n";
+
+static char sccsid[] = "@(#)boggle.c	5.1.1 (2.11BSD) 1997/10/2";
+#endif
+
 #include <ctype.h>
 #include <errno.h>
 #include <setjmp.h>
@@ -10,11 +19,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <time.h>
-#include <fcntl.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
-#include <sys/wait.h>
 
 /* basic parameters */
 #define N 4
@@ -57,7 +62,7 @@ long logloc;
 char logbuff[100] = {"inst\t"};
 
 /* dictionary interface */
-char defname[] = "/games/lib/bogdict";
+char defname[] = "/usr/games/lib/bogdict";
 char *dictname = &defname[0];
 FILE *dict;
 
@@ -84,13 +89,14 @@ char *cube [BSIZE] = {
 	"anedvz", "pinesh", "abilyt", "gkyleu"
 };
 
+
 /* storage for words found */
 int ubotch, ustart, wcount;
 char *word [MAXWORDS];
 char *freesp;
 char space[10000];
 
-void endline ()
+endline ()
 {
 	if (column != 0) {
 		putchar('\n');
@@ -98,7 +104,7 @@ void endline ()
 	}
 }
 
-void timeout ()
+timeout ()
 {
 	if (*timept > 0) {
 		signal (SIGALRM, timeout);
@@ -107,7 +113,7 @@ void timeout ()
 	putchar('\007');
 }
 
-void interrupt ()
+interrupt ()
 {
 	signal(SIGINT, interrupt);
 	if (delct++ >= 1)
@@ -115,7 +121,7 @@ void interrupt ()
 	timept = &zero;
 }
 
-void goodbye (stat)
+goodbye (stat)
 int stat;
 {
 	if (master != 0) {
@@ -128,13 +134,19 @@ int stat;
 	exit(stat);
 }
 
-void clearscreen ()
+clearscreen ()
 {
 	stty (fileno(stdin), &tempttyb);
 	printf("\n\f\r");
 }
 
-int wordcomp (p, q)
+compare (a, b)
+char **a, **b;
+{
+	return(wordcomp(*a, *b));
+}
+
+wordcomp (p, q)
 register char *p, *q;
 {
 	if (*p=='0' && *q!='0')
@@ -149,13 +161,7 @@ register char *p, *q;
 	return(*p-*q);
 }
 
-int compare (a, b)
-char **a, **b;
-{
-	return(wordcomp(*a, *b));
-}
-
-void printinst ()
+printinst ()
 {
 	stty (fileno(stdin), &tempttyb);
 	printf("instructions?");
@@ -171,10 +177,10 @@ void printinst ()
 		printf("     This program is intended  for  people  wishing  to  sharpen  their\n");
 		printf("skills  at  Boggle.   If  you  invoke the program with 4 arguments of 4\n");
 		printf("letters each, (e.g. \"boggle appl epie moth erhd\") the program forms the\n");
-		printf("obvious  Boggle grid and lists all the words from /share/dict/words found\n");
+		printf("obvious  Boggle grid and lists all the words from /usr/dict/words found\n");
 		printf("therein.  If you invoke the program without arguments, it will generate\n");
 		printf("a  board  for you, let you enter words for 3 minutes, and then tell you\n");
-		printf("how well you did relative to /share/dict/words.\n");
+		printf("how well you did relative to /usr/dict/words.\n");
 		printf("     In interactive play, enter your words separated by  spaces,  tabs,\n");
 		printf("or  newlines.   A  bell will ring when there is 2:00, 1:00, 0:10, 0:02,\n");
 		printf("0:01, and 0:00 time left.  You may complete any word started before the\n");
@@ -192,7 +198,7 @@ void printinst ()
 	stty (fileno(stdin), &tempttyb);
 }
 
-void setup ()
+setup ()
 {
 	register int i, j;
 	int rd, cd, k;
@@ -223,7 +229,7 @@ void setup ()
 	level[1] = &stack[1];
 }
 
-void makelists ()
+makelists ()
 {
 	register int i, c;
 	for (i=0; i<26; i++)
@@ -235,7 +241,7 @@ void makelists ()
 	}
 }
 
-void genboard ()
+genboard ()
 {
 	register int i, j;
 	for (i=0; i<BSIZE; i++)
@@ -248,7 +254,7 @@ void genboard ()
 	}
 }
 
-void printboard ()
+printboard ()
 {
 	register int i, j;
 	for (i=0; i<N; i++) {
@@ -262,7 +268,7 @@ void printboard ()
 	putchar('\n');
 }
 
-int getdword ()
+getdword ()
 {
 	/* input:  numsame = # chars same as last word   */
 	/* output: numsame = # same chars for next word  */
@@ -278,7 +284,7 @@ int getdword ()
 	return (1);
 }
 
-int getuword ()
+getuword ()
 {
 	int c;
 	register char *p, *q, *r;
@@ -310,13 +316,13 @@ int getuword ()
 	return(1);
 }
 
-void aputuword (ways)
+aputuword (ways)
 int ways;
 {
 	*word[wcount-1] = ways>=10 ? '*' : '0'+ways;
 }
 
-void aputword (ways)
+aputword (ways)
 int ways;
 {
 	/* store (wbuff, ways) in next slot in space */
@@ -327,7 +333,16 @@ int ways;
 	word[++wcount] = freesp;
 }
 
-void outword (p)
+tputword (ways)
+int ways;
+{
+	/* print (wbuff, ways) on terminal */
+	wbuff[wlength+1] = '0';
+	wbuff[0] = ways>=10 ? '*' : '0'+ways;
+	outword(&wbuff[0]);
+}
+
+outword (p)
 register char *p;
 {
 	register int newcol;
@@ -356,16 +371,7 @@ register char *p;
 	}
 }
 
-void tputword (ways)
-int ways;
-{
-	/* print (wbuff, ways) on terminal */
-	wbuff[wlength+1] = '0';
-	wbuff[0] = ways>=10 ? '*' : '0'+ways;
-	outword(&wbuff[0]);
-}
-
-void printdiff ()
+printdiff ()
 {
 	register int c, d, u;
 	char both, donly, uonly;
@@ -417,7 +423,7 @@ void printdiff ()
 	}
 }
 
-int numways (leaf, last)
+numways (leaf, last)
 register struct frame *leaf;
 struct frame *last;
 {
@@ -438,9 +444,8 @@ struct frame *last;
 	return(count);
 }
 
-int evalboard (getword, putword)
-int (*getword)();
-void (*putword)();
+evalboard (getword, putword)
+int (*getword)(), (*putword)();
 {
 	register struct frame *top;
 	register int l, q;
@@ -456,7 +461,7 @@ void (*putword)();
 		if (!(*getword) ())
 			break;
 		top = level[l+1];
-
+	
 		while (1) {
 			level[l+1] = lastparent = top;
 			/* wbuff[1]...wbuff[l] have been matched */
@@ -496,7 +501,7 @@ void (*putword)();
 	return(found);
 }
 
-int main (argc, argv)
+main (argc, argv)
 int argc;
 char **argv;
 {
@@ -511,13 +516,13 @@ char **argv;
 		goodbye(0);
 	signal (SIGINT, interrupt);
 	timein = time(0L);
-	if (argv[0][0] != 'a' && (logfile = open("/games/lib/boglog", 1)) >= 0) {
+	if (argv[0][0] != 'a' && (logfile = open("/usr/games/lib/boglog", 1)) >= 0) {
 		p = &logbuff[5];
 		q = getlogin();
-		while ((*p++ = *q++));
+		while (*p++ = *q++);
 		p[-1] = '\t';
 		q = ctime(&timein);
-		while ((*p++ = *q++));
+		while (*p++ = *q++);
 		logloc = lseek(logfile, 0L, 2);
 		write(logfile, &logbuff[0], p-&logbuff[1]);
 	}
@@ -607,12 +612,11 @@ char **argv;
 			evalboard(getdword, aputword);
 			p = freesp;
 			while ((i = read(pipefd[0], freesp, 512)) != 0) {
-				if (i < 0) {
+				if (i < 0)
 					if (errno != EINTR)
 						break;
 					else
 						i = 0;
-                                }
 				freesp += i;
 			}
 			close(pipefd[0]);

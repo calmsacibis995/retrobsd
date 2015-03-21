@@ -63,6 +63,12 @@
 #define SLOT_B		VIEW_B
 #define SLOT_R		(SLOT_L+SLOT_X-1)
 
+#ifdef SIGTSTP
+#define SCREENTEST()	(initscr() != ERR && signal(SIGTSTP, SIG_DFL) != BADSIG && STAT_R < COLS && SCROLL_Y > 0)
+#else
+#define SCREENTEST()	(initscr() != ERR && STAT_R < COLS && SCROLL_Y > 0)
+#endif
+
 WINDOW *view_w;
 WINDOW *slot_w;
 WINDOW *scroll_w;
@@ -74,7 +80,7 @@ char loaded, fired, changed, repaired;
 char dont_adjust;
 int viewrow, viewcol;
 char movebuf[sizeof SHIP(0)->file->movebuf];
-extern char version[];
+char version[];
 int player;
 struct ship *ms;		/* memorial structure, &cc->ship[player] */
 struct File *mf;		/* ms->file */
@@ -87,6 +93,3 @@ struct shipspecs *mc;		/* ms->specs */
 #define LEAVE_DRIVER	3
 #define LEAVE_FORK	4
 #define LEAVE_SYNC	5
-
-void choke(int sig);
-void child(int sig);

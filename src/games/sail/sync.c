@@ -3,12 +3,14 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)sync.c	5.2 (Berkeley) 1/21/86";
+#endif not lint
+
 #include "externs.h"
-#include <time.h>
 #include <sys/file.h>
 #include <sys/errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 #define BUFSIZE 4096
 
@@ -22,7 +24,6 @@ static FILE *sync_fp;
 #define LF "/tmp/#saillock.%d"
 
 /*VARARGS3*/
-void
 makesignal(from, fmt, ship, a, b, c)
 	struct ship *from;
 	char *fmt;
@@ -39,7 +40,8 @@ makesignal(from, fmt, ship, a, b, c)
 	Write(W_SIGNAL, from, 1, (int)message, 0, 0, 0);
 }
 
-int
+#include <sys/types.h>
+#include <sys/stat.h>
 sync_exists(game)
 {
 	char buf[sizeof sync_file];
@@ -59,7 +61,6 @@ sync_exists(game)
 		return 1;
 }
 
-int
 sync_open()
 {
 	if (sync_fp != NULL)
@@ -78,9 +79,8 @@ sync_open()
 	return 0;
 }
 
-void
 sync_close(remove)
-	int remove;
+	char remove;
 {
 	if (sync_fp != 0)
 		(void) fclose(sync_fp);
@@ -88,7 +88,114 @@ sync_close(remove)
 		(void) unlink(sync_file);
 }
 
-static int
+Write(type, ship, isstr, a, b, c, d)
+	int type;
+	struct ship *ship;
+	char isstr;
+	int a, b, c, d;
+{
+	if (isstr)
+		(void) sprintf(sync_bp, "%d %d %d %s\n",
+			type, ship->file->index, isstr, a);
+	else
+		(void) sprintf(sync_bp, "%d %d %d %d %d %d %d\n",
+			type, ship->file->index, isstr, a, b, c, d);
+	while (*sync_bp++)
+		;
+	sync_bp--;
+	if (sync_bp >= &sync_buf[sizeof sync_buf])
+		abort();
+	(void) sync_update(type, ship, a, b, c, d);
+}
+
+Sync()
+{
+	int (*sighup)(), (*sigint)();
+	register n;
+	int type, shipnum, isstr, a, b, c, d;
+	char buf[80];
+	char erred = 0;
+	extern errno;
+
+	sighup = signal(SIGHUP, SIG_IGN);
+	sigint = signal(SIGINT, SIG_IGN);
+	for (n = TIMEOUT; --n >= 0;) {
+#ifdef LOCK_EX
+		if (flock(fileno(sync_fp), LOCK_EX|LOCK_NB) >= 0)
+			break;
+		if (errno != EWOULDBLOCK)
+			return -1;
+#else
+		if (link(sync_file, sync_lock) >= 0)
+			break;
+		if (errno != EEXIST)
+			return -1;
+#endif
+		sleep(1);
+	}
+	if (n <= 0)
+		return -1;
+	(void) fseek(sync_fp, sync_seek, 0);
+	for (;;) {
+		switch (fscanf(sync_fp, "%d%d%d", &type, &shipnum, &isstr)) {
+		case 3:
+			break;
+		case EOF:
+			goto out;
+		default:
+			goto bad;
+		}
+		if (shipnum < 0 || shipnum >= cc->vessels)
+			goto bad;
+		if (isstr != 0 && isstr != 1)
+			goto bad;
+		if (isstr) {
+			register char *p;
+			for (p = buf;;) {
+				switch (*p++ = getc(sync_fp)) {
+				case '\n':
+					p--;
+				case EOF:
+					break;
+				default:
+					if (p >= buf + sizeof buf)
+						p--;
+					continue;
+				}
+				break;
+			}
+			*p = 0;
+			for (p = buf; *p == ' '; p++)
+				;
+			a = (int)p;
+			b = c = d = 0;
+		} else
+			if (fscanf(sync_fp, "%d%d%d%d", &a, &b, &c, &d) != 4)
+				goto bad;
+		if (sync_update(type, SHIP(shipnum), a, b, c, d) < 0)
+			goto bad;
+	}
+bad:
+	erred++;
+out:
+	if (!erred && sync_bp != sync_buf) {
+		(void) fseek(sync_fp, 0L, 2);
+		(void) fwrite(sync_buf, sizeof *sync_buf, sync_bp - sync_buf,
+			sync_fp);
+		(void) fflush(sync_fp);
+		sync_bp = sync_buf;
+	}
+	sync_seek = ftell(sync_fp);
+#ifdef LOCK_EX
+	(void) flock(fileno(sync_fp), LOCK_UN);
+#else
+	(void) unlink(sync_lock);
+#endif
+	(void) signal(SIGHUP, sighup);
+	(void) signal(SIGINT, sigint);
+	return erred ? -1 : 0;
+}
+
 sync_update(type, ship, a, b, c, d)
 	int type;
 	register struct ship *ship;
@@ -129,7 +236,7 @@ sync_update(type, ship, a, b, c, d)
 		}
 	case W_UNFOUL: {
 		register struct snag *p = &ship->file->foul[a];
-		if (p->sn_count > 0) {
+		if (p->sn_count > 0)
 			if (b) {
 				ship->file->nfoul -= p->sn_count;
 				p->sn_count = 0;
@@ -137,12 +244,11 @@ sync_update(type, ship, a, b, c, d)
 				ship->file->nfoul--;
 				p->sn_count--;
 			}
-                }
 		break;
 		}
 	case W_UNGRAP: {
 		register struct snag *p = &ship->file->grap[a];
-		if (p->sn_count > 0) {
+		if (p->sn_count > 0)
 			if (b) {
 				ship->file->ngrap -= p->sn_count;
 				p->sn_count = 0;
@@ -150,16 +256,14 @@ sync_update(type, ship, a, b, c, d)
 				ship->file->ngrap--;
 				p->sn_count--;
 			}
-                }
 		break;
 		}
 	case W_SIGNAL:
-		if (mode == MODE_PLAYER) {
+		if (mode == MODE_PLAYER)
 			if (nobells)
-				Signal("%s (%c%c): %s", ship, a, 0, 0, 0);
+				Signal("%s (%c%c): %s", ship, a);
 			else
-				Signal("\7%s (%c%c): %s", ship, a, 0, 0, 0);
-                }
+				Signal("\7%s (%c%c): %s", ship, a);
 		break;
 	case W_CREW: {
 		register struct shipspecs *s = ship->specs;
@@ -287,113 +391,4 @@ sync_update(type, ship, a, b, c, d)
 		return -1;
 	}
 	return 0;
-}
-
-void
-Write(type, ship, isstr, a, b, c, d)
-	int type;
-	struct ship *ship;
-	int isstr;
-	int a, b, c, d;
-{
-	if (isstr)
-		(void) sprintf(sync_bp, "%d %d %d %s\n",
-			type, ship->file->index, isstr, (char*) a);
-	else
-		(void) sprintf(sync_bp, "%d %d %d %d %d %d %d\n",
-			type, ship->file->index, isstr, a, b, c, d);
-	while (*sync_bp++)
-		;
-	sync_bp--;
-	if (sync_bp >= &sync_buf[sizeof sync_buf])
-		abort();
-	(void) sync_update(type, ship, a, b, c, d);
-}
-
-int
-Sync()
-{
-	void (*sighup)(int), (*sigint)(int);
-	register int n;
-	int type, shipnum, isstr, a, b, c, d;
-	char buf[80];
-	int erred = 0;
-
-	sighup = signal(SIGHUP, SIG_IGN);
-	sigint = signal(SIGINT, SIG_IGN);
-	for (n = TIMEOUT; --n >= 0;) {
-#ifdef LOCK_EX
-		if (flock(fileno(sync_fp), LOCK_EX|LOCK_NB) >= 0)
-			break;
-		if (errno != EWOULDBLOCK)
-			return -1;
-#else
-		if (link(sync_file, sync_lock) >= 0)
-			break;
-		if (errno != EEXIST)
-			return -1;
-#endif
-		sleep(1);
-	}
-	if (n <= 0)
-		return -1;
-	(void) fseek(sync_fp, sync_seek, 0);
-	for (;;) {
-		switch (fscanf(sync_fp, "%d%d%d", &type, &shipnum, &isstr)) {
-		case 3:
-			break;
-		case EOF:
-			goto out;
-		default:
-			goto bad;
-		}
-		if (shipnum < 0 || shipnum >= cc->vessels)
-			goto bad;
-		if (isstr != 0 && isstr != 1)
-			goto bad;
-		if (isstr) {
-			register char *p;
-			for (p = buf;;) {
-				switch (*p++ = getc(sync_fp)) {
-				case '\n':
-					p--;
-				case (char)EOF:
-					break;
-				default:
-					if (p >= buf + sizeof buf)
-						p--;
-					continue;
-				}
-				break;
-			}
-			*p = 0;
-			for (p = buf; *p == ' '; p++)
-				;
-			a = (int)p;
-			b = c = d = 0;
-		} else
-			if (fscanf(sync_fp, "%d%d%d%d", &a, &b, &c, &d) != 4)
-				goto bad;
-		if (sync_update(type, SHIP(shipnum), a, b, c, d) < 0)
-			goto bad;
-	}
-bad:
-	erred++;
-out:
-	if (!erred && sync_bp != sync_buf) {
-		(void) fseek(sync_fp, 0L, 2);
-		(void) fwrite(sync_buf, sizeof *sync_buf, sync_bp - sync_buf,
-			sync_fp);
-		(void) fflush(sync_fp);
-		sync_bp = sync_buf;
-	}
-	sync_seek = ftell(sync_fp);
-#ifdef LOCK_EX
-	(void) flock(fileno(sync_fp), LOCK_UN);
-#else
-	(void) unlink(sync_lock);
-#endif
-	(void) signal(SIGHUP, sighup);
-	(void) signal(SIGINT, sigint);
-	return erred ? -1 : 0;
 }

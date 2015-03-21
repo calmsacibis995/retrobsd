@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)schedule.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-# include	<float.h>
 
 /*
 **  SCHEDULE AN EVENT
@@ -15,12 +19,12 @@
 **
 **	The address of the slot is returned.
 */
-struct event *
-schedule(type, offset, x, y, z)
-        int	type;
-        double	offset;
-        int	x, y;
-        int	z;
+
+struct event *schedule(type, offset, x, y, z)
+int	type;
+double	offset;
+char	x, y;
+char	z;
 {
 	register struct event	*e;
 	register int		i;
@@ -47,7 +51,6 @@ schedule(type, offset, x, y, z)
 		return (e);
 	}
 	syserr("Cannot schedule event %d parm %d %d %d", type, x, y, z);
-	return 0;
 }
 
 
@@ -57,10 +60,10 @@ schedule(type, offset, x, y, z)
 **	The event pointed to by 'e' is rescheduled to the current
 **	time plus 'offset'.
 */
-void
+
 reschedule(e1, offset)
-        struct event	*e1;
-        double		offset;
+struct event	*e1;
+double		offset;
 {
 	double			date;
 	register struct event	*e;
@@ -74,6 +77,7 @@ reschedule(e1, offset)
 		printf("reschedule: type %d parm %d %d %d @ %.2f\n",
 			e->evcode, e->x, e->y, e->systemname, date);
 #	endif
+	return;
 }
 
 
@@ -82,9 +86,9 @@ reschedule(e1, offset)
 **
 **	The event at slot 'e' is deleted.
 */
-void
+
 unschedule(e1)
-        struct event	*e1;
+struct event	*e1;
 {
 	register struct event	*e;
 
@@ -96,8 +100,9 @@ unschedule(e1)
 			e->evcode, e->date, e->x, e->y, e->systemname);
 #	endif
 	Now.eventptr[e->evcode & E_EVENT] = 0;
-	e->date = DBL_MAX;
+	e->date = 1e50;
 	e->evcode = 0;
+	return;
 }
 
 
@@ -107,11 +112,11 @@ unschedule(e1)
 **	Parameters are the event index and a factor for the time
 **	figure.
 */
-struct event *
-xsched(ev1, factor, x, y, z)
-        int	ev1;
-        int	factor;
-        int	x, y, z;
+
+struct event *xsched(ev1, factor, x, y, z)
+int	ev1;
+int	factor;
+int	x, y, z;
 {
 	register int	ev;
 
@@ -126,11 +131,11 @@ xsched(ev1, factor, x, y, z)
 **	Parameters are the event index, the initial date, and the
 **	division factor.  Look at the code to see what really happens.
 */
-void
+
 xresched(e1, ev1, factor)
-        struct event	*e1;
-        int		ev1;
-        int		factor;
+struct event	*e1;
+int		ev1;
+int		factor;
 {
 	register int		ev;
 	register struct event	*e;

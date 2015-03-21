@@ -3,14 +3,19 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)score.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 # include	"getpar.h"
 
 /*
 **  PRINT OUT THE CURRENT SCORE
 */
-long
-score()
+
+long score()
 {
 	register int		u;
 	register int		t;

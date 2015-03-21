@@ -3,8 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)kill.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
-# include	<float.h>
 
 /*
 **  KILL KILL KILL !!!
@@ -21,11 +25,11 @@
 **	the event is to be caught.  Also, the time left is recomputed,
 **	and the game is won if that was the last klingon.
 */
-void
+
 killk(ix, iy)
-        int	ix, iy;
+int	ix, iy;
 {
-	register int		i;
+	register int		i, j;
 
 	printf("   *** Klingon at %d,%d destroyed ***\n", ix, iy);
 
@@ -54,15 +58,16 @@ killk(ix, iy)
 
 	/* recompute time left */
 	Now.time = Now.resource / Now.klings;
+	return;
 }
 
 
 /*
 **  handle a starbase's death
 */
-void
+
 killb(qx, qy)
-        int	qx, qy;
+int	qx, qy;
 {
 	register struct quad	*q;
 	register struct xy	*b;
@@ -71,22 +76,22 @@ killb(qx, qy)
 
 	if (q->bases <= 0)
 		return;
- 	if (!damaged(SSRADIO)) {
+	if (!damaged(SSRADIO))
 		/* then update starchart */
 		if (q->scanned < 1000)
 			q->scanned -= 10;
-		else if (q->scanned > 1000)
-			q->scanned = -1;
-        }
+		else
+			if (q->scanned > 1000)
+				q->scanned = -1;
 	q->bases = 0;
 	Now.bases -= 1;
 	for (b = Now.base; ; b++)
 		if (qx == b->x && qy == b->y)
 			break;
-	bmove(&Now.base[(int)Now.bases], b, sizeof *b);
+	bmove(&Now.base[Now.bases], b, sizeof *b);
 	if (qx == Ship.quadx && qy == Ship.quady)
 	{
-		Sect[(int)Etc.starbase.x][(int)Etc.starbase.y] = EMPTY;
+		Sect[Etc.starbase.x][Etc.starbase.y] = EMPTY;
 		if (Ship.cond == DOCKED)
 			undock();
 		printf("Starbase at %d,%d destroyed\n", Etc.starbase.x, Etc.starbase.y);
@@ -99,21 +104,23 @@ killb(qx, qy)
 			printf("   quadrant %d,%d has been destroyed\n", qx, qy);
 		}
 		else
-			schedule(E_KATSB | E_GHOST, DBL_MAX, qx, qy, 0);
+			schedule(E_KATSB | E_GHOST, 1e50, qx, qy, 0);
 	}
 }
+
 
 /**
  **	kill an inhabited starsystem
  **/
-void
+
 kills(x, y, f)
-        int	x, y;	/* quad coords if f == 0, else sector coords */
-        int	f;	/* f != 0 -- this quad;  f < 0 -- Enterprise's fault */
+int	x, y;	/* quad coords if f == 0, else sector coords */
+int	f;	/* f != 0 -- this quad;  f < 0 -- Enterprise's fault */
 {
 	register struct quad	*q;
 	register struct event	*e;
 	register char		*name;
+	char			*systemname();
 
 	if (f)
 	{
@@ -138,20 +145,21 @@ kills(x, y, f)
 		/* distressed starsystem */
 		e = &Event[q->qsystemname & Q_SYSTEM];
 		printf("Distress call for %s invalidated\n",
-			Systemname[(int)e->systemname]);
+			Systemname[e->systemname]);
 		unschedule(e);
 	}
 	q->qsystemname = 0;
 	q->stars -= 1;
 }
 
+
 /**
  **	"kill" a distress call
  **/
-void
+
 killd(x, y, f)
-        int	x, y;		/* quadrant coordinates */
-        int	f;		/* set if user is to be informed */
+int	x, y;		/* quadrant coordinates */
+int	f;		/* set if user is to be informed */
 {
 	register struct event	*e;
 	register int		i;
@@ -179,7 +187,7 @@ killd(x, y, f)
 			if (f)
 			{
 				printf("Distress call for %s in quadrant %d,%d nullified\n",
-					Systemname[(int)e->systemname], x, y);
+					Systemname[e->systemname], x, y);
 				q->qsystemname = e->systemname;
 				unschedule(e);
 			}

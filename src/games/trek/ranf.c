@@ -3,12 +3,15 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-# include	<stdlib.h>
-# include	"trek.h"
 
-int
+#ifndef lint
+static char sccsid[] = "@(#)ranf.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
+# include	<stdio.h>
+
 ranf(max)
-        int	max;
+int	max;
 {
 	register int	t;
 
@@ -18,8 +21,8 @@ ranf(max)
 	return (t % max);
 }
 
-double
-franf()
+
+double franf()
 {
 	double		t;
 	t = rand() & 077777;

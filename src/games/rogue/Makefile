@@ -11,12 +11,12 @@
 #
 TOPSRC		= $(shell cd ../../..; pwd)
 include $(TOPSRC)/target.mk
+#include $(TOPSRC)/cross.mk
 
-CFLAGS		+= -mips16
-CFLAGS		+= -Os -DUNIX -DUNIX_BSD4_2 -DCURSES -DANSI -Werror -Wall
+CFLAGS		+= -Os -DUNIX -DUNIX_BSD4_2 -DCURSES -Werror #-Wall
+LIBS            = #-lcurses -ltermcap
 
 OBJS            = curses.o	\
-                  doprnt.o	\
                   hit.o		\
                   init.o	\
                   inventory.o	\
@@ -60,4 +60,4 @@ install:        all
 		install rogue $(DESTDIR)/games/
 		cp ${MAN} $(DESTDIR)/share/man/cat6/
 
-#$(OBJS):        rogue.h
+$(OBJS):        rogue.h

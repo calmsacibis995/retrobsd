@@ -1,5 +1,4 @@
-#include "mille.h"
-#include <stdlib.h>
+# include	"mille.h"
 
 /*
  *	This routine rolls ndie nside-sided dice.
@@ -8,11 +7,11 @@
  *
  */
 
-int
 roll(ndie, nsides)
-int	ndie, nsides; {
+reg int	ndie, nsides; {
 
-	int	tot;
+	reg int			tot;
+	extern unsigned int	random();
 
 	tot = 0;
 	while (ndie--)

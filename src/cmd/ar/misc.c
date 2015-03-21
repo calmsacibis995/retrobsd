@@ -34,26 +34,19 @@
  * SUCH DAMAGE.
  */
 #ifdef CROSS
-#   include <sys/types.h>
-#   include <sys/select.h>
-#   include <sys/time.h>
-#   include <stdio.h>
-#   include <string.h>
-#   include <stdlib.h>
-#   include <stdint.h>
-#   include <unistd.h>
-#   include <errno.h>
+#   include </usr/include/stdio.h>
+#   include </usr/include/errno.h>
 #else
-#   include <sys/param.h>
-#   include <sys/dir.h>
 #   include <stdio.h>
-#   include <string.h>
-#   include <stdlib.h>
-#   include <unistd.h>
 #   include <errno.h>
-#   include <signal.h>
-#   include <paths.h>
 #endif
+#include <sys/param.h>
+#include <signal.h>
+#include <sys/dir.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <paths.h>
 #include "archive.h"
 #include "extern.h"
 
@@ -65,9 +58,7 @@ int
 tmp()
 {
 	extern char *envtmp;
-#ifndef CROSS
 	sigset_t set, oset;
-#endif
 	static int first;
 	static const char *artmp = _PATH_ARTMP;
 	int fd;
@@ -84,17 +75,13 @@ tmp()
 	} else {
 		strcpy(path, artmp);
         }
-#ifndef CROSS
 	sigfillset(&set);
 	(void)sigprocmask(SIG_BLOCK, &set,  &oset);
-#endif
 	fd = mkstemp(path);
 	if (fd == -1)
 		error(tname);
         (void)unlink(path);
-#ifndef CROSS
 	(void)sigprocmask(SIG_SETMASK, &oset, NULL);
-#endif
 	return(fd);
 }
 

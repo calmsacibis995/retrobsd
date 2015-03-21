@@ -1,72 +1,133 @@
-BUILDPATH = ../../../tools/configsys/../../sys/pic32
-H         = ../../../tools/configsys/../../sys/include
-M         = ../../../tools/configsys/../../sys/pic32
-S         = ../../../tools/configsys/../../sys/kernel
+#
+# Build RetroBSD kernel for PIC32 platform.
+#
+H		= ../../include
+M		= ..
+S		= ../../kernel
 
 vpath %.c $(M):$(S)
 vpath %.S $(M):$(S)
 
-KERNOBJ += clock.o cons.o devcfg.o devsw.o exception.o exec_aout.o exec_conf.o exec_elf.o exec_script.o exec_subr.o gpio.o init_main.o init_sysent.o kern_clock.o kern_descrip.o kern_exec.o kern_exit.o kern_fork.o kern_mman.o kern_proc.o kern_prot.o kern_prot2.o kern_resource.o kern_sig.o kern_sig2.o kern_subr.o kern_synch.o kern_sysctl.o kern_time.o machdep.o mem.o rd_sd.o rdisk.o signal.o spi_bus.o startup.o subr_prf.o subr_rmap.o swap.o sys_generic.o sys_inode.o sys_pipe.o sys_process.o syscalls.o sysctl.o tty.o tty_subr.o tty_tty.o uart.o ufs_alloc.o ufs_bio.o ufs_bmap.o ufs_dsort.o ufs_fio.o ufs_inode.o ufs_mount.o ufs_namei.o ufs_subr.o ufs_syscalls.o ufs_syscalls2.o vers.o vfs_vnops.o vm_sched.o vm_swap.o vm_swp.o 
-EXTRA_TARGETS = 
+# Kernel options.
+DEFS		+= -I. -I$(H) -DKERNEL -DUCB_METER -DPIC32MX7
 
-DEFS += -DBUS_DIV=1
-DEFS += -DBUS_KHZ=80000
-DEFS += -DCONSOLE_DEVICE=tty1
-DEFS += -DCPU_IDIV=2
-DEFS += -DCPU_KHZ=80000
-DEFS += -DCPU_MUL=20
-DEFS += -DCPU_ODIV=1
-DEFS += -DCRYSTAL=8
-DEFS += -DDC0_DEBUG=DEVCFG0_DEBUG_DISABLED
-DEFS += -DDC0_ICE=0
-DEFS += -DDC1_CKM=0
-DEFS += -DDC1_CKS=0
-DEFS += -DDC1_FNOSC=DEVCFG1_FNOSC_PRIPLL
-DEFS += -DDC1_IESO=DEVCFG1_IESO
-DEFS += -DDC1_OSCIOFNC=0
-DEFS += -DDC1_PBDIV=DEVCFG1_FPBDIV_1
-DEFS += -DDC1_POSCMOD=DEVCFG1_POSCMOD_HS
-DEFS += -DDC1_SOSC=0
-DEFS += -DDC1_WDTEN=0
-DEFS += -DDC1_WDTPS=DEVCFG1_WDTPS_1
-DEFS += -DDC2_PLLIDIV=DEVCFG2_FPLLIDIV_2
-DEFS += -DDC2_PLLMUL=DEVCFG2_FPLLMUL_20
-DEFS += -DDC2_PLLODIV=DEVCFG2_FPLLODIV_1
-DEFS += -DDC2_UPLL=0
-DEFS += -DDC2_UPLLIDIV=DEVCFG2_UPLLIDIV_2
-DEFS += -DDC3_CAN=DEVCFG3_FCANIO
-DEFS += -DDC3_ETH=DEVCFG3_FETHIO
-DEFS += -DDC3_MII=DEVCFG3_FMIIEN
-DEFS += -DDC3_SRS=DEVCFG3_FSRSSEL_7
-DEFS += -DDC3_USBID=DEVCFG3_FUSBIDIO
-DEFS += -DDC3_USERID=0xffff
-DEFS += -DDC3_VBUSON=DEVCFG3_FVBUSONIO
-DEFS += -DEXEC_AOUT
-DEFS += -DEXEC_ELF
-DEFS += -DEXEC_SCRIPT
-DEFS += -DGPIO_ENABLED=YES
-DEFS += -DKERNEL
-DEFS += -DLED_DISK_PIN=0
-DEFS += -DLED_DISK_PORT=TRISA
-DEFS += -DLED_KERNEL_PIN=1
-DEFS += -DLED_KERNEL_PORT=TRISA
-DEFS += -DLED_SWAP_PIN=3
-DEFS += -DLED_SWAP_PORT=TRISA
-DEFS += -DLED_TTY_PIN=2
-DEFS += -DLED_TTY_PORT=TRISA
-DEFS += -DPIC32MX7
-DEFS += -DSD0_CS_PIN=1
-DEFS += -DSD0_CS_PORT=TRISB
-DEFS += -DSD0_MHZ=10
-DEFS += -DSD0_PORT=1
-DEFS += -DUART2_BAUD=115200
-DEFS += -DUART2_ENABLED=YES
-DEFS += -DUCB_METER
+# CPU frequency 80 MHz.
+DEFS		+= -DCPU_KHZ=80000
+DEFS		+= -DBUS_KHZ=80000
+
+#
+# Explorer16 board
+# ================
+#
+# Console on UART2
+DEFS            += -DCONSOLE_UART2
+# SD/MMC card driver on SPI1
+DEFS            += -DSD_PORT=SPI1CON -DSD_MHZ=10
+# /CS0 at pin B1
+DEFS            += -DSD_CS0_PORT=TRISB -DSD_CS0_PIN=1
+# LEDs at pins A0, A1, A2, A3
+DEFS            += -DLED_DISK_PORT=TRISA   -DLED_DISK_PIN=0
+DEFS            += -DLED_KERNEL_PORT=TRISA -DLED_KERNEL_PIN=1
+DEFS            += -DLED_TTY_PORT=TRISA    -DLED_TTY_PIN=2
+DEFS            += -DLED_AUX_PORT=TRISA    -DLED_AUX_PIN=3
+
+# Include or exclude drivers
+
+# General Purpose I/O
+DRIVER_GPIO         = yes
+
+# Basic ADC interface
+DRIVER_ADC          = no
+
+# Power control (power LED, and soft power-off by button)
+# requires supported PSU (ATX)
+DRIVER_POWER        = no
+
+POWER_LED_PORT      = TRISG
+POWER_LED_PIN       = 12
+POWER_SWITCH_PORT   = TRISG
+POWER_SWITCH_PIN    = 0
+POWER_CONTROL_PORT  = TRISE
+POWER_CONTROL_PIN   = 9
 
 
-LDSCRIPT = ../../../tools/configsys/../../sys/pic32/cfg/bare.ld
+DEPFLAGS	= -MT $@ -MD -MP -MF .deps/$*.dep
+CFLAGS		= -O $(DEFS) $(DEPFLAGS)
+ASFLAGS		= $(DEFS) $(DEPFLAGS)
 
-CONFIG = EXPLORER16
-CONFIGPATH = ../../../tools/configsys
+include ../gcc-config.mk
 
-include ../../../tools/configsys/../../sys/pic32/kernel-post.mk
+CC		= $(GCCPREFIX)gcc -EL -g -mips32r2
+CC		+= -nostdinc -fno-builtin -Werror -Wall -fno-dwarf2-cfi-asm
+LDFLAGS         += -nostdlib -T bare-metal.ld -Wl,-Map=unix.map
+SIZE		= $(GCCPREFIX)size
+OBJDUMP		= $(GCCPREFIX)objdump
+OBJCOPY		= $(GCCPREFIX)objcopy
+MPIDE           = /Applications/Mpide.app/Contents/Resources/Java/
+
+# Machine-dependent files:
+# startup.o MUST be loaded first.
+KERNOBJ		= startup.o clock.o devsw.o cons.o sysctl.o \
+		  signal.o machdep.o mem.o exception.o
+
+# Kernel.
+KERNOBJ		+= init_main.o init_sysent.o kern_clock.o \
+		   kern_descrip.o kern_exec.o kern_exit.o kern_fork.o \
+		   kern_mman.o kern_proc.o kern_prot.o \
+		   kern_prot2.o kern_resource.o kern_sig.o kern_sig2.o \
+		   kern_subr.o kern_synch.o kern_sysctl.o kern_time.o \
+		   subr_log.o subr_prf.o subr_rmap.o \
+		   sys_generic.o sys_inode.o syscalls.o \
+		   sys_pipe.o sys_process.o tty.o tty_conf.o \
+		   tty_subr.o tty_tty.o ufs_alloc.o ufs_bio.o \
+		   ufs_bmap.o ufs_dsort.o ufs_fio.o \
+		   ufs_inode.o ufs_mount.o ufs_namei.o ufs_subr.o \
+		   ufs_syscalls.o ufs_syscalls2.o vfs_vnops.o \
+		   vm_sched.o vm_swap.o vm_swp.o kern_glob.o
+
+# Drivers.
+KERNOBJ		+= sd.o
+
+# Configuration-dependent files.
+KERNOBJ		+= vers.o devcfg.o
+
+# This makefile does the work including the right files and options for the drivers
+include ../drivers.mk
+
+all:		.deps sys machine unix.elf
+		$(SIZE) unix.elf
+
+clean:
+		rm -rf .deps *.o *.elf *.bin *.dis *.map *.srec core \
+		mklog assym.h vers.c genassym sys machine
+
+.deps:
+		mkdir .deps
+
+sys:
+		ln -s ../../include $@
+
+machine:
+		ln -s .. $@
+
+unix.elf:	$(KERNOBJ) bare-metal.ld
+		$(CC) $(LDFLAGS) $(KERNOBJ) -o $@
+		chmod -x $@
+		$(OBJDUMP) -d -S $@ > unix.dis
+		$(OBJCOPY) -O ihex --change-addresses=0x80000000 $@ unix.hex
+
+load:           unix.elf
+		pic32prog unix.hex
+
+vers.o:		../newvers.sh $(H)/*.h $(M)/*.[ch] $(S)/*.c
+		sh ../newvers.sh > vers.c
+		$(CC) -c vers.c
+
+.SUFFIXES:	.i .srec .hex .dis .cpp .cxx .bin .elf
+
+.o.dis:
+		$(OBJDUMP) -d -z -S $< > $@
+
+ifeq (.deps, $(wildcard .deps))
+-include .deps/*.dep
+endif

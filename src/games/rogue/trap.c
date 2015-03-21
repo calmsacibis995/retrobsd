@@ -9,7 +9,7 @@
 #include "rogue.h"
 
 trap traps[MAX_TRAPS];
-char trap_door = 0;
+boolean trap_door = 0;
 short bear_trap = 0;
 
 char *trap_strings[TRAPS * 2] = {
@@ -27,11 +27,17 @@ char *trap_strings[TRAPS * 2] = {
 			"a gush of water hits you on the head"
 };
 
-int
+extern short cur_level, party_room;
+extern char *new_level_message;
+extern boolean interrupted;
+extern short ring_exp;
+extern boolean sustain_strength;
+extern short blind;
+
 trap_at(row, col)
-        register int row, col;
+register row, col;
 {
-	int i;
+	short i;
 
 	for (i = 0; ((i < MAX_TRAPS) && (traps[i].trap_type != NO_TRAP)); i++) {
 		if ((traps[i].trap_row == row) && (traps[i].trap_col == col)) {
@@ -41,14 +47,12 @@ trap_at(row, col)
 	return(NO_TRAP);
 }
 
-void
 trap_player(row, col)
-        int row, col;
+short row, col;
 {
-	int t;
+	short t;
 
-	t = trap_at(row, col);
-	if (t == NO_TRAP) {
+	if ((t = trap_at(row, col)) == NO_TRAP) {
 		return;
 	}
 	dungeon[row][col] &= (~HIDDEN);
@@ -95,11 +99,10 @@ trap_player(row, col)
 	}
 }
 
-void
 add_traps()
 {
-	int i, n, tries = 0;
-	int row, col;
+	short i, n, tries = 0;
+	short row, col;
 
 	if (cur_level <= 2) {
 		n = 0;
@@ -140,10 +143,9 @@ add_traps()
 	}
 }
 
-void
 id_trap()
 {
-	int dir, row, col, d, t;
+	short dir, row, col, d, t;
 
 	message("direction? ", 0);
 
@@ -168,10 +170,9 @@ id_trap()
 	}
 }
 
-void
 show_traps()
 {
-	int i, j;
+	short i, j;
 
 	for (i = 0; i < DROWS; i++) {
 		for (j = 0; j < DCOLS; j++) {
@@ -182,13 +183,12 @@ show_traps()
 	}
 }
 
-void
 search(n, is_auto)
-        int n;
-        boolean is_auto;
+short n;
+boolean is_auto;
 {
-	int s, i, j, row, col, t;
-	int shown = 0, found = 0;
+	short s, i, j, row, col, t;
+	short shown = 0, found = 0;
 	static boolean reg_search;
 
 	for (i = -1; i <= 1; i++) {

@@ -31,7 +31,6 @@
  * SUCH DAMAGE.
  */
 #include <stdlib.h>
-#include <string.h>
 
 /*
  * The SVID interface to getsubopt provides no way of figuring out which
@@ -41,10 +40,8 @@
  */
 char *suboptarg;
 
-int
 getsubopt(optionp, tokens, valuep)
-	register char **optionp;
-	register char **valuep;
+	register char **optionp, **valuep;
 	register char **tokens;
 {
 	register int cnt;

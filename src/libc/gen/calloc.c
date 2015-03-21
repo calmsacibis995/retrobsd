@@ -12,13 +12,11 @@ calloc(num, size)
 	register char *p;
 
 	size *= num;
-	p = malloc(size);
-	if (p)
+	if (p = malloc(size))
 		bzero(p, size);
 	return (p);
 }
 
-void
 cfree(p, num, size)
 	char *p;
 	unsigned num;

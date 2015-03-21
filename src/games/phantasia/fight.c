@@ -11,15 +11,15 @@
 #include "phant.h"
 
 void	fight(stat,particular)			/* monster fighting routine */
-        register struct	stats	*stat;
-        int	particular;
+reg	struct	stats	*stat;
+int	particular;
 {
-        bool	fghttofin = FALSE, luckout = FALSE;
-        char	aline[80];
-        double	monhit, mdamage, sdamage, monspd, maxspd, inflict, monstr, temp, shield;
-        int	ch;
-        register int	whichm, size, hwmany, lines;
-        struct	mstats	monster;
+bool	fghttofin = FALSE, luckout = FALSE;
+char	aline[80];
+double	monhit, mdamage, sdamage, monspd, maxspd, inflict, monstr, temp, shield;
+int	ch;
+reg	int	whichm, size, hwmany, lines;
+struct	mstats	monster;
 
 	fghting = changed = TRUE;
 	shield = 0.0;
@@ -39,7 +39,7 @@ void	fight(stat,particular)			/* monster fighting routine */
 		whichm = roll(0,50) + roll(14,26);
 	else if (size > 3)
 		whichm = roll(14,50);
-	else
+	else 
 		whichm = roll(14,25);
 
 CALL:	move(3,0);
@@ -362,7 +362,7 @@ MELEE:				inflict = roll(strength/2 + 5,1.3*strength) + (stat->rng.type < 0 ? st
 									{
 									mvaddstr(6,0,"How much manna for bolt? ");
 									getstring(aline,80);
-									sscanf(aline,"%lf",&temp);
+									sscanf(aline,"%F",&temp);
 									}
 								while (temp < 0 || temp > stat->man);
 								stat->man -= floor(temp);

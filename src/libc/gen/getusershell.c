@@ -20,7 +20,6 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #define SHELLS "/etc/shells"
 
@@ -96,9 +95,9 @@ getusershell()
 	return (ret);
 }
 
-void
 endusershell()
 {
+
 	if (shells != NULL)
 		free((char *)shells);
 	shells = NULL;
@@ -108,8 +107,8 @@ endusershell()
 	curshell = NULL;
 }
 
-void
 setusershell()
 {
+
 	curshell = initshells();
 }

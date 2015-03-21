@@ -3,7 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-# include "trek.h"
+
+#ifndef lint
+static char sccsid[] = "@(#)abandon.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
+# include	"trek.h"
 
 /*
 **  Abandon Ship
@@ -29,7 +34,7 @@
 **
 **	Uses trace flag 40
 */
-void
+
 abandon()
 {
 	register struct quad	*q;
@@ -37,16 +42,12 @@ abandon()
 	int			j;
 	register struct event	*e;
 
-	if (Ship.ship == QUEENE) {
-	        printf("You may not abandon ye Faire Queene\n");
-		return;
-        }
+	if (Ship.ship == QUEENE)
+		return (printf("You may not abandon ye Faire Queene\n"));
 	if (Ship.cond != DOCKED)
 	{
-		if (damaged(SHUTTLE)) {
-		        out(SHUTTLE);
-			return;
-                }
+		if (damaged(SHUTTLE))
+			return (out(SHUTTLE));
 		printf("Officers escape in shuttlecraft\n");
 		/* decide on fate of crew */
 		q = &Quad[Ship.quadx][Ship.quady];

@@ -3,13 +3,17 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dr_5.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "externs.h"
 
-void
 subtract(from, totalfrom, crewfrom, fromcap, pcfrom)
-        struct ship *from, *fromcap;
-        int pcfrom;
-        register int totalfrom, crewfrom[3];
+struct ship *from, *fromcap;
+int pcfrom;
+register int  totalfrom, crewfrom[3];
 {
 	register int n;
 
@@ -31,11 +35,10 @@ subtract(from, totalfrom, crewfrom, fromcap, pcfrom)
 	}
 }
 
-int
 mensent(from, to, crew, captured, pc, isdefense)
-        struct ship *from, *to, **captured;
-        int crew[3], *pc;
-        int isdefense;
+struct ship *from, *to, **captured;
+int crew[3], *pc;
+char isdefense;
 {					/* returns # of crew squares sent */
 	int men = 0;
 	register int n;

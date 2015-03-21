@@ -9,7 +9,6 @@
 /*
  * Backwards compatible nice.
  */
-int
 nice(incr)
 	int incr;
 {
@@ -20,5 +19,5 @@ nice(incr)
 	prio = getpriority(PRIO_PROCESS, 0);
 	if (prio == -1 && errno)
 		return (-1);
-	return setpriority(PRIO_PROCESS, 0, prio + incr);
+	return (setpriority(PRIO_PROCESS, 0, prio + incr));
 }

@@ -5,10 +5,8 @@
  *
  *	@(#)trek.h	5.1 (Berkeley) 1/29/86
  */
-# include <stdio.h>
-# include <unistd.h>
-# include <math.h>
 
+#
 /*
 **  Global Declarations
 **
@@ -26,6 +24,16 @@
 **	systems) have to change everything in here to be "extern" and
 **	actually allocate stuff in "externs.c"
 */
+
+/* external function definitions */
+extern double	franf();	/* floating random number function */
+extern double	sqrt();		/* square root */
+extern double	sin(), cos();	/* trig functions */
+extern double	atan2();	/* fancy arc tangent function */
+extern double	log();		/* log base e */
+extern double	pow();		/* power function */
+extern double	fabs();		/* absolute value function */
+extern double	exp();		/* exponential function */
 
 /*********************  GALAXY  **************************/
 
@@ -215,7 +223,7 @@ struct
 	char	sinsbad;	/* Space Inertial Navigation System condition */
 	char	*shipname;	/* name of current starship */
 	char	ship;		/* current starship */
-	int	distressed;	/* number of distress calls */
+	int	distressed	/* number of distress calls */
 }	Ship;
 
 /* sinsbad is set if SINS is working but not calibrated */
@@ -344,60 +352,3 @@ struct
 /* Trace info */
 # define	xTRACE		1
 int	Trace;
-
-struct event *schedule(int type, double offset, int x, int y, int z);
-struct event * xsched(int ev1, int factor, int x, int y, int z);
-
-char *systemname(struct quad *q1);
-
-void *bmove(void *a, void *b, int l);
-
-int damaged(int dev);
-int ranf(int max);
-int check_out(int device);
-int readdelim(int d);
-int cgetc(int i);
-int sequal(char *a, char *b);
-int dumpssradio(void);
-int events(int warp);
-int getcodi(int *co, double *di);
-int length(char *s);
-int restartgame(void);
-
-long score(void);
-
-double franf(void);
-double move(int ramflag, int course, double time, double speed);
-
-void out(int dev);
-void lose(int why);
-void unschedule(struct event *e1);
-void initquad(int f);
-void dock(void);
-void compkldist(int f);
-void klmove(int fl);
-void damage(int dev1, double dam);
-void warp(int fl, int c, double d);
-void attack(int resting);
-void capture(void);
-void killk(int ix, int iy);
-void killd(int x, int y, int f);
-void autover(void);
-void reschedule(struct event *e1, double offset);
-void syserr(char *fmt, ...);
-void skiptonl(int c);
-void snova(int x, int y);
-void xresched(struct event *e1, int ev1, int factor);
-void killb(int qx, int qy);
-void sector(int *x, int *y);
-void shield(int f);
-void win(void);
-void undock(void);
-void setup(void);
-void play(void);
-void checkcond(void);
-void dumpme(int flag);
-void ram(int ix, int iy);
-void kills(int x, int y, int f);
-void srscan(int f);
-void nova(int x, int y);

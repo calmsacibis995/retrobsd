@@ -5,20 +5,20 @@
 #
 # Alex P. Roudnev, Moscow, KIAE, 1984
 #
-CFLAGS          = -Os -g -Wall -Werror -DDEBUG -DMULTIWIN=0
+CFLAGS          = -Os -g -Wall -Werror -DDEBUG
 
 # For Linux and Mac OS X
 CFLAGS          += -DTERMIOS
 
 all:            re
 
-OBJS            = r.cmd.o r.edit.o r.file.o r.gettc.o r.misc.o \
-                  r.macro.o r.main.o r.display.o r.termcap.o r.ttyio.o r.window.o
+OBJ             = r.cmd.o r.edit.o r.file.o r.gettc.o r.hlam.o \
+                  r.mac.o r.main.o r.tele.o r.termc.o r.ttyio.o r.wind.o
 
-re:             $(OBJS)
-		cc $(OBJS) -o $@
+re:             $(OBJ)
+		cc $(OBJ) -o $@
 
-$(OBJS):        r.defs.h
+$(OBJ):         r.defs.h
 
 clean:
-		rm -f *.o *~ re *.dis *.elf
+		rm -f *.o *~ re

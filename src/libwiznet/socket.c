@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <wiznet/socket.h>
 
-unsigned _socket_port [MAX_SOCK_NUM] = { 0 };
+uint16_t _socket_port [MAX_SOCK_NUM] = { 0 };
 
 static unsigned local_port;
 
@@ -301,6 +301,7 @@ unsigned socket_recvfrom (unsigned sock, uint8_t *buf, unsigned len,
 
 unsigned socket_igmpsend (unsigned sock, const uint8_t * buf, unsigned len)
 {
+    unsigned status = 0;
     unsigned ret = 0;
 
     if (len > TXBUF_SIZE)
@@ -315,7 +316,7 @@ unsigned socket_igmpsend (unsigned sock, const uint8_t * buf, unsigned len)
     w5100_socket_cmd (sock, Sock_SEND);
 
     while ((w5100_readSnIR (sock) & SnIR_SEND_OK) != SnIR_SEND_OK) {
-        w5100_readSnSR (sock);
+        status = w5100_readSnSR (sock);
         if (w5100_readSnIR (sock) & SnIR_TIMEOUT) {
             /* in case of igmp, if send fails, then socket closed */
             /* if you want change, remove this code. */

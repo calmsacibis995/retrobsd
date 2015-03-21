@@ -229,7 +229,7 @@ incore (dev, blkno)
  * Select something from a free list.
  * Preference is to AGE list, then LRU list.
  */
-struct buf *
+static struct buf *
 getnewbuf()
 {
 	register struct buf *bp, *dp;

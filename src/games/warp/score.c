@@ -3,16 +3,16 @@
 /* $Log:	score.c,v $
  * Revision 7.0.1.2a  87/07/03  02:13:26  games
  * Fixed numerous long vs. int bugs in printfs, etc.
- *
+ * 
  * Revision 7.0.1.2  86/10/20  12:06:56  lwall
  * Made all exits reset tty.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:52:47  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:13:14  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -27,15 +27,12 @@
 #include "weapon.h"
 #include "INTERN.h"
 #include "score.h"
-#include <unistd.h>
-#include <time.h>
-#include <math.h>
 
 void
 score_init()
 {
-    register char *s;
-    register int i;
+    Reg1 char *s;
+    Reg2 int i;
     FILE *savfil;
 
     if (stat(SAVEDIR,&filestat)) {
@@ -50,12 +47,19 @@ score_init()
 	printf("%s is not protected correctly (must be u+rw o+rx).\r\n",SAVEDIR);
 	finalize(1);
     }
-
+    
+#ifdef SCOREFULL
+    interp(longlognam, sizeof longlognam, "%N");
+    for (i=strlen(longlognam); i<24; i++)
+	longlognam[i] = ' ';	/* make sure it is 24 long for strncmp */
+    longlognam[24] = '\0';
+#else
     interp(longlognam, sizeof longlognam, "%L");
     for (i=strlen(longlognam); i<8; i++)
 	longlognam[i] = ' ';	/* make sure it is 8 long for strncmp */
     longlognam[8] = '\0';
-
+#endif
+    
     if (scorespec)
 	wscore();
 
@@ -71,7 +75,7 @@ score_init()
 
 	    tmpbuf[strlen(tmpbuf)-1] = '\0';
 	    printf("You seem to have left a game %s.\r\n",tmpbuf+9);
-	    s = strchr(tmpbuf+9, ',');
+	    s = index(tmpbuf+9, ',');
 	    *s = '\0';
 	    processnum = atoi(s+11);
 	    if (kill(processnum, SIGINT)) {
@@ -136,8 +140,7 @@ That process does not seem to exist anymore, so you'll have to start the\r\n");
 		}
 		savfil = fopen(savefilename,"r");
 		if (savfil != NULL) {
-		    if (fgets(spbuf,100,savfil) == 0)
-		        /*ignore*/;
+		    Fgets(spbuf,100,savfil);
 		}
 	    }
 	}
@@ -236,7 +239,9 @@ wscore()
     printf("WHO           SCORE  DF   CDF  E  B  WV  FLAGS\r\n");
     resetty();
     Sprintf(spbuf,"/bin/cat %ssave.*",SAVEDIR);
-    execl("/bin/sh", "sh", "-c", spbuf, (char*)0);
+#ifndef lint
+    execl("/bin/sh", "sh", "-c", spbuf, 0);
+#endif
     finalize(1);
 }
 
@@ -244,7 +249,7 @@ wscore()
 void
 display_status()
 {
-    register int tmp;
+    Reg1 int tmp;
     static char *status_names[] = {"Impl", "Warp", "Base", "****" };
 
     if (oldstatus != status) {
@@ -373,6 +378,10 @@ wavescore()
     long tmp;
     FILE *mapfp;
     int row;
+    double pow();
+#ifndef lint
+    double atan2();
+#endif
 
     clear();
     if (curscore > possiblescore)
@@ -391,8 +400,12 @@ wavescore()
 	    power += (350.0 - (double)inumstars) * ((double)inumenemies - 5.0);
     if (inumstars > 850 && inumenemies > 2)
 	    power += ((double)inumstars - 850.0) * ((double)inumenemies - 2.0);
+#ifndef lint
     effectscore = ((double)curscore / possiblescore) *
 	atan2(power, (double) timer + 1.0) / pi_over_2;
+#else
+    effectscore = pi_over_2;
+#endif
     if (inumstars)
 	starscore = (double) numstars / (double) inumstars;
     else
@@ -414,8 +427,10 @@ wavescore()
     Sprintf(spbuf,"Star save ratio:         %1.8f (%d/%d)",
 	starscore, numstars, inumstars);
     mvaddstr( 6,5, spbuf);
+#ifndef lint
     bonuses += tmp = (long) (((double)curscore / possiblescore) *
 	(starscore*starscore) * smarts * 20);
+#endif
     Sprintf(spbuf, "%6ld", tmp);
     mvaddstr( 6, 68, spbuf);
     row = 7;
@@ -500,7 +515,7 @@ wavescore()
     if (starscore < 0.8 && inumstars > 200 && numstars > 50) {
 	Sprintf(spbuf, "smap.%d",rand_mod(MAPS-PERMMAPS)+PERMMAPS);
 	if ((mapfp = fopen(spbuf,"w")) != NULL) {
-	    register OBJECT *obj;
+	    Reg1 OBJECT *obj;
 
 	    fprintf(mapfp,"%d\n",numstars);
 	    for (obj = root.next; obj != &root; obj = obj->next) {
@@ -517,10 +532,10 @@ void
 score()
 {
     char tmp, *retval, cdate[30];
-    register FILE *logfd;
-    register FILE *outfd;
-    register int i;
-    long nowtime;
+    Reg1 FILE *logfd;
+    Reg2 FILE *outfd;
+    Reg3 int i;
+    long nowtime, time();
     char *scoreboard;
 
     for (i=0; link(LOGFILE, LOCKFILE) == -1 && i<10; i++)
@@ -589,7 +604,7 @@ score()
 	    Fclose(outfd);
 	    while (unlink(scoreboard) == 0)
 		;
-	    link(TMPSCOREBOARD,scoreboard) >= 0;
+	    link(TMPSCOREBOARD,scoreboard);
 	    unlink(TMPSCOREBOARD);
 	    logfd = fopen(scoreboard,"r");
 	}
@@ -612,8 +627,8 @@ score()
     eat_typeahead();
     do {
 	getcmd(&tmp);
-    } while (tmp != INTRCH && tmp != BREAKCH && !strchr(" rqQ",tmp));
-    if (strchr("qQr",tmp)) {
+    } while (tmp != INTRCH && tmp != BREAKCH && !index(" rqQ",tmp));
+    if (index("qQr",tmp)) {
 	justonemoretime = (tmp == 'r');
 	if (logfd != NULL)
 	    Fclose(logfd);
@@ -643,7 +658,7 @@ score()
 	eat_typeahead();
 	do {
 	    getcmd(&tmp);
-	} while (tmp != INTRCH && tmp != BREAKCH && !strchr("nNyY \n\r",tmp));
+	} while (tmp != INTRCH && tmp != BREAKCH && !index("nNyY \n\r",tmp));
 	if (tmp == 'n' || tmp == 'N' || tmp == INTRCH || tmp == BREAKCH)
 	    justonemoretime = FALSE;
     }

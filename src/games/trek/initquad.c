@@ -3,21 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)initquad.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-
-void
-sector(x, y)
-        int	*x, *y;
-{
-	register int		i, j;
-
-	do {
-		i = ranf(NSECTS);
-		j = ranf(NSECTS);
-	} while (Sect[i][j] != EMPTY);
-	*x = i;
-	*y = j;
-}
 
 /*
 **  Paramize Quadrant Upon Entering
@@ -35,9 +26,9 @@ sector(x, y)
 **	This mode is used in situations where you know you are going
 **	to be docked, i.e., abandon() and help().
 */
-void
+
 initquad(f)
-        int	f;
+int	f;
 {
 	register int		i, j;
 	int			rx, ry;
@@ -115,4 +106,20 @@ initquad(f)
 		Sect[rx][ry] = STAR;
 	}
 	Move.newquad = 1;
+}
+
+
+sector(x, y)
+int	*x, *y;
+{
+	register int		i, j;
+
+	do
+	{
+		i = ranf(NSECTS);
+		j = ranf(NSECTS);
+	} while (Sect[i][j] != EMPTY);
+	*x = i;
+	*y = j;
+	return;
 }

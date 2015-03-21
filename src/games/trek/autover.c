@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)autover.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -22,7 +27,7 @@
 **	This routine will never try to send you more than sqrt(2)
 **	quadrants, since that is all that is needed.
 */
-void
+
 autover()
 {
 	double			dist;

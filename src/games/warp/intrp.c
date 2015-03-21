@@ -6,16 +6,16 @@
  *
  * Revision 7.0.1.2a  87/07/03  00:56:37  games
  * Included shortnames.h for 2.10BSD
- *
+ * 
  * Revision 7.0.1.2  86/12/12  16:59:04  lwall
  * Baseline for net release.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:51:43  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:12:19  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -26,10 +26,31 @@
 #include "INTERN.h"
 #include "intrp.h"
 #include <unistd.h>
-#include <sys/utsname.h>
 
 /* name of this host */
-struct utsname uts;
+#ifdef GETHOSTNAME
+    char *hostname;
+#   undef HOSTNAME
+#   define HOSTNAME hostname
+#else /* !GETHOSTNAME */
+#   ifdef DOUNAME
+#	include <sys/utsname.h>
+	struct utsname uts;
+#	undef HOSTNAME
+#	define HOSTNAME uts.nodename
+#   else /* !DOUNAME */
+#	ifdef PHOSTNAME
+	    char *hostname;
+#	    undef HOSTNAME
+#	    define HOSTNAME hostname
+#	else /* !PHOSTNAME */
+#	    ifdef WHOAMI
+#		undef HOSTNAME
+#		define HOSTNAME sysname
+#	    endif /* WHOAMI */
+#	endif /* PHOSTNAME */
+#   endif /* DOUNAME */
+#endif /* GETHOSTNAME */
 
 #ifdef TILDENAME
 static char *tildename = Nullch;
@@ -68,26 +89,54 @@ char *tcbuf;
     if (logname == Nullch)
 	logname = savestr(getlogin());
 #endif
-
+    
     /* get the real name of the person (%N) */
-    /* Must be done after logname is read in */
+    /* Must be done after logname is read in because BERKNAMES uses that */
 
     strcpy(tcbuf,getrealname(getuid()));
     realname = savestr(tcbuf);
 
     /* name of this host (%H) */
+
+#ifdef GETHOSTNAME
+    gethostname(buf,sizeof buf);
+    hostname = savestr(buf);
+#else
+#ifdef DOUNAME
     /* get sysname */
     uname(&uts);
-    hostname = savestr(uts.nodename);
+#else
+#ifdef PHOSTNAME
+    {
+	FILE *popen();
+	FILE *pipefp = popen(PHOSTNAME,"r");
+	
+	if (pipefp == Nullfp) {
+	    printf("Can't find hostname\r\n");
+	    sig_catcher(0);
+	}
+	Fgets(buf,sizeof buf,pipefp);
+	buf[strlen(buf)-1] = '\0';	/* wipe out newline */
+	hostname = savestr(buf);
+	pclose(pipefp);
+    }
+#endif
+#endif
+#endif
+    if (index(HOSTNAME,'.'))
+	hostname = savestr(HOSTNAME);
+    else {
+	char hname[128];
 
+	strcpy(hname,HOSTNAME);
+	strcat(hname,MYDOMAIN);
+	hostname=savestr(hname);
+    }
     warplib = savestr(filexp(WARPLIB));
 
     if (scorespec)			/* that getwd below takes ~1/3 sec. */
 	return;				/* and we do not need it for -s */
-    if (! getwd(tcbuf)) {               /* find working directory name */
-        perror("getcwd");
-        exit(1);
-    }
+    (void) getwd(tcbuf);		/* find working directory name */
     origdir = savestr(tcbuf);		/* and remember it */
 }
 
@@ -97,11 +146,11 @@ char *tcbuf;
 
 char *
 filexp(s)
-register char *s;
+Reg1 char *s;
 {
     static char filename[CBUFLEN];
     char scrbuf[CBUFLEN];
-    register char *d;
+    Reg2 char *d;
 
 #ifdef DEBUGGING
     if (debug & DEB_FILEXP)
@@ -144,14 +193,51 @@ register char *s;
 		}
 		tildedir = Nullch;
 		tildename = savestr(scrbuf);
+#ifdef GETPWENT		/* getpwnam() is not the paragon of efficiency */
 		{
+		    struct passwd *getpwnam();
 		    struct passwd *pwd = getpwnam(tildename);
 
 		    Sprintf(scrbuf,"%s%s",pwd->pw_dir,s);
 		    tildedir = savestr(pwd->pw_dir);
 		    strcpy(filename,scrbuf);
+#ifdef GETPWENT
 		    endpwent();
+#endif
 		}
+#else			/* this will run faster, and is less D space */
+		{	/* just be sure LOGDIRFIELD is correct */
+		    FILE *pfp = fopen("/etc/passwd","r");
+		    char tmpbuf[512];
+		    int i;
+		    
+		    if (pfp == Nullfp) {
+			printf(cantopen,"passwd");
+			sig_catcher(0);
+		    }
+		    while (fgets(tmpbuf,512,pfp) != Nullch) {
+			d = cpytill(scrbuf,tmpbuf,':');
+#ifdef DEBUGGING
+			if (debug & DEB_FILEXP)
+			    printf("p %s\r\n",tmpbuf);
+#endif
+			if (strEQ(scrbuf,tildename)) {
+			    for (i=LOGDIRFIELD-2; i; i--) {
+				if (d)
+				    d = index(d+1,':');
+			    }
+			    if (d) {
+				Cpytill(scrbuf,d+1,':');
+				tildedir = savestr(scrbuf);
+				strcat(scrbuf,s);
+				strcpy(filename,scrbuf);
+			    }
+			    break;
+			}
+		    }
+		    Fclose(pfp);
+		}
+#endif
 	    }
 #else /* !TILDENAME */
 #ifdef VERBOSE
@@ -197,11 +283,11 @@ register char *s;
 
 char *
 skipinterp(pattern,stoppers)
-register char *pattern;
+Reg1 char *pattern;
 char *stoppers;
 {
 
-    while (*pattern && (!stoppers || !strchr(stoppers,*pattern))) {
+    while (*pattern && (!stoppers || !index(stoppers,*pattern))) {
 #ifdef DEBUGGING
 	if (debug & 8)
 	    printf("skipinterp till %s at %s\r\n",stoppers?stoppers:"",pattern);
@@ -263,19 +349,19 @@ getout:
 
 char *
 dointerp(dest,destsize,pattern,stoppers)
-register char *dest;
-register int destsize;
-register char *pattern;
+Reg1 char *dest;
+Reg2 int destsize;
+Reg3 char *pattern;
 char *stoppers;
 {
-    register char *s;
-    register int i;
+    Reg4 char *s;
+    Reg5 int i;
     char scrbuf[512];
     bool upper = FALSE;
     bool lastcomp = FALSE;
     int metabit = 0;
 
-    while (*pattern && (!stoppers || !strchr(stoppers,*pattern))) {
+    while (*pattern && (!stoppers || !index(stoppers,*pattern))) {
 #ifdef DEBUGGING
 	if (debug & 8)
 	    printf("dointerp till %s at %s\r\n",stoppers?stoppers:"",pattern);
@@ -293,7 +379,7 @@ char *stoppers;
 		    break;
 		case '{':
 		    pattern = cpytill(scrbuf,pattern+1,'}');
-		    if (s = strchr(scrbuf,'-'))
+		    if (s = index(scrbuf,'-'))
 			*s++ = '\0';
 		    else
 			s = nullstr;
@@ -303,7 +389,7 @@ char *stoppers;
 		case '(': {
 		    char rch;
 		    bool matched;
-
+		    
 		    pattern = dointerp(dest,destsize,pattern+1,"!=");
 		    rch = *pattern;
 		    if (rch == '!')
@@ -369,8 +455,7 @@ char *stoppers;
 		    pattern = dointerp(scrbuf,(sizeof scrbuf),pattern+1,"\"");
 		    fputs(scrbuf,stdout);
 		    resetty();
-		    if (! gets(scrbuf))
-		        /* ignore */;
+		    gets(scrbuf);
 		    crmode();
 		    raw();
 		    noecho();
@@ -424,7 +509,7 @@ char *stoppers;
 		    Safecpy(scrbuf,s,(sizeof scrbuf));
 		    s = scrbuf;
 		}
-		if (upper || !(t=strrchr(s,'/')))
+		if (upper || !(t=rindex(s,'/')))
 		    t = s;
 		while (*t && !isalpha(*t))
 		    t++;
@@ -470,9 +555,9 @@ char *stoppers;
 	    else if (*pattern == '\\' && pattern[1]) {
 		++pattern;			/* skip backslash */
 		i = *pattern;		/* get char into a register */
-
+    
 		/* this used to be a switch but the if may save space */
-
+		
 		if (i >= '0' && i <= '7') {
 		    i = 1;
 		    while (i < 01000 && *pattern >= '0' && *pattern <= '7') {
@@ -527,12 +612,17 @@ int uid;
 {
     char *s, *c;
 
+#ifdef PASSNAMES
     struct passwd *pwd = getpwuid(uid);
-
+    
     s = pwd->pw_gecos;
-    if ((c = strchr(s, ',')) != Nullch)
+#ifdef BERKNAMES
+#ifdef BERKJUNK
+    while (*s && !isalnum(*s) && *s != '&') s++;
+#endif
+    if ((c = index(s, ',')) != Nullch)
 	*c = '\0';
-    if ((c = strchr(s, ';')) != Nullch)
+    if ((c = index(s, ';')) != Nullch)
 	*c = '\0';
     s = cpytill(buf,s,'&');
     if (*s == '&') {			/* whoever thought this one up was */
@@ -542,8 +632,42 @@ int uid;
 	if (islower(*c))
 	    *c = toupper(*c);		/* gack and double gack */
     }
+#else
+    if ((c = index(s, '(')) != Nullch)
+	*c = '\0';
+    if ((c = index(s, '-')) != Nullch)
+	s = c;
+    strcpy(buf,tmpbuf);
+#endif
     endpwent();
     return buf;				/* return something static */
+#else
+    if ((tmpfp=fopen(filexp(FULLNAMEFILE),"r")) != Nullfp) {
+	Fgets(buf,sizeof buf,tmpfp);
+	Fclose(tmpfp);
+    }
+    else {
+	resetty();
+	printf("What is your name? ");
+	Fgets(buf,(sizeof buf),stdin);
+	crmode();
+	raw();
+	noecho();
+	nonl();
+	if (fork())
+	    wait(0);
+	else {
+	    setuid(getuid());
+	    if ((tmpfp = fopen(filexp(FULLNAMEFILE),"w")) == NULL)
+		exit(1);
+	    fprintf(tmpfp, "%s\n", buf);
+	    Fclose(tmpfp);
+	    exit(0);
+	}
+    }
+    buf[strlen(buf)-1] = '\0';
+    return buf;
+#endif
 }
 
 static void

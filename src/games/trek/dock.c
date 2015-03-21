@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dock.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -19,17 +24,15 @@
 **	place sooner.  This provides for the faster repairs when you
 **	are docked.
 */
-void
+
 dock()
 {
 	register int		i, j;
 	int			ok;
 	register struct event	*e;
 
-	if (Ship.cond == DOCKED) {
-	        printf("Chekov: But captain, we are already docked\n");
-		return;
-        }
+	if (Ship.cond == DOCKED)
+		return (printf("Chekov: But captain, we are already docked\n"));
 	/* check for ok to dock, i.e., adjacent to a starbase */
 	ok = 0;
 	for (i = Ship.sectx - 1; i <= Ship.sectx + 1 && !ok; i++)
@@ -47,10 +50,8 @@ dock()
 			}
 		}
 	}
-	if (!ok) {
-	        printf("Chekov: But captain, we are not adjacent to a starbase.\n");
-		return;
-        }
+	if (!ok)
+		return (printf("Chekov: But captain, we are not adjacent to a starbase.\n"));
 
 	/* restore resources */
 	Ship.energy = Param.energy;
@@ -80,6 +81,7 @@ dock()
 			continue;
 		reschedule(e, (e->date - Now.date) * Param.dockfac);
 	}
+	return;
 }
 
 
@@ -89,13 +91,14 @@ dock()
 **	This is the inverse of dock().  The main function it performs
 **	is to reschedule any damages so that they will take longer.
 */
-void
+
 undock()
 {
 	register struct event	*e;
 	register int		i;
 
-	if (Ship.cond != DOCKED) {
+	if (Ship.cond != DOCKED)
+	{
 		printf("Sulu: Pardon me captain, but we are not docked.\n");
 		return;
 	}
@@ -110,4 +113,5 @@ undock()
 			continue;
 		reschedule(e, (e->date - Now.date) / Param.dockfac);
 	}
+	return;
 }

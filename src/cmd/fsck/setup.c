@@ -18,140 +18,169 @@
 #include <sys/inode.h>
 #include <sys/fs.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <sys/swap.h>
 #include "fsck.h"
 
 int
 setup(dev)
-    char *dev;
+	char *dev;
 {
-    dev_t rootdev;
-    off_t smapsz, lncntsz, allocd;
-    daddr_t bcnt, nscrblk;
-    struct stat statb;
-    BUFAREA *bp;
+	dev_t rootdev;
+	off_t smapsz, totsz, lncntsz;
+	daddr_t bcnt, nscrblk;
+	struct stat statb;
+	u_int msize;
+	char *mbase;
+	BUFAREA *bp;
 
-    if (stat("/", &statb) < 0)
-        errexit("Can't stat root\n");
-    rootdev = statb.st_dev;
-    if (stat(dev, &statb) < 0) {
-        printf("Can't stat %s\n", dev);
-        return (0);
-    }
-    rawflg = 0;
-    if ((statb.st_mode & S_IFMT) == S_IFBLK)
-        ;
-    else if ((statb.st_mode & S_IFMT) == S_IFCHR)
-        rawflg++;
-    else {
+	if (stat("/", &statb) < 0)
+		errexit("Can't stat root\n");
+	rootdev = statb.st_dev;
+	if (stat(dev, &statb) < 0) {
+		printf("Can't stat %s\n", dev);
+		return (0);
+	}
+	rawflg = 0;
+	if ((statb.st_mode & S_IFMT) == S_IFBLK)
+		;
+	else if ((statb.st_mode & S_IFMT) == S_IFCHR)
+		rawflg++;
+	else {
 #ifndef CROSS
-        if (reply("file is not a block or character device; OK") == 0)
-            return (0);
+		if (reply("file is not a block or character device; OK") == 0)
+			return (0);
 #endif
-    }
-    if (rootdev == statb.st_rdev)
-        hotroot++;
-    dfile.rfdes = open(dev, O_RDONLY);
-    if (dfile.rfdes < 0) {
-        printf("Can't open %s\n", dev);
-        return (0);
-    }
-    if (preen == 0)
-        printf("** %s", dev);
-    if (nflag || (dfile.wfdes = open(dev, O_RDWR)) < 0) {
-        dfile.wfdes = -1;
-        if (preen)
-            pfatal("NO WRITE ACCESS\n");
-        printf(" (NO WRITE)");
-    }
-    if (preen == 0)
-        printf("\n");
-    dfile.mod = 0;
-    lfdir = 0;
-    initbarea(&sblk);
-    initbarea(&fileblk);
-    initbarea(&inoblk);
-    /*
-     * Read in the super block and its summary info.
-     */
-    if (bread(&dfile, (char *)&sblock, SUPERB, SBSIZE) != 0)
-        return (0);
-    sblk.b_bno = SUPERB;
-    sblk.b_size = SBSIZE;
+	}
+	if (rootdev == statb.st_rdev)
+		hotroot++;
+	if ((dfile.rfdes = open(dev, 0)) < 0) {
+		printf("Can't open %s\n", dev);
+		return (0);
+	}
+	if (preen == 0)
+		printf("** %s", dev);
+	if (nflag || (dfile.wfdes = open(dev, 1)) < 0) {
+		dfile.wfdes = -1;
+		if (preen)
+			pfatal("NO WRITE ACCESS\n");
+		printf(" (NO WRITE)");
+	}
+	if (preen == 0)
+		printf("\n");
+	dfile.mod = 0;
+	lfdir = 0;
+	initbarea(&sblk);
+	initbarea(&fileblk);
+	initbarea(&inoblk);
+	/*
+	 * Read in the super block and its summary info.
+	 */
+	if (bread(&dfile, (char *)&sblock, SUPERB, SBSIZE) != 0)
+		return (0);
+	sblk.b_bno = SUPERB;
+	sblk.b_size = SBSIZE;
 
-    imax = ((ino_t)sblock.fs_isize - (SUPERB+1)) * INOPB;
-    fsmin = (daddr_t)sblock.fs_isize;   /* first data blk num */
-    fsmax = sblock.fs_fsize;        /* first invalid blk num */
-    startib = fsmax;
-    if (fsmin >= fsmax ||
-        (imax/INOPB) != ((ino_t)sblock.fs_isize-(SUPERB+1))) {
-        pfatal("Size check: fsize %ld isize %d\n",
-            sblock.fs_fsize,sblock.fs_isize);
-        printf("\n");
-        ckfini();
-        return(0);
-    }
-    if (preen == 0)
-        printf("File System: %.12s\n\n", sblock.fs_fsmnt);
-    /*
-     * allocate and initialize the necessary maps
-     */
-    bmapsz = roundup (howmany (fsmax, BITSPB), sizeof (*lncntp));
-    smapsz = roundup (howmany ((long) (imax+1), STATEPB), sizeof (*lncntp));
-    lncntsz = (long) (imax+1) * sizeof (*lncntp);
-    if (bmapsz > smapsz+lncntsz)
-        smapsz = bmapsz-lncntsz;
-    bzero(membase, memsize);
-    muldup = enddup = duplist;
-    zlnp = zlnlist;
+	imax = ((ino_t)sblock.fs_isize - (SUPERB+1)) * INOPB;
+	fsmin = (daddr_t)sblock.fs_isize;	/* first data blk num */
+	fsmax = sblock.fs_fsize;		/* first invalid blk num */
+	startib = fsmax;
+	if (fsmin >= fsmax ||
+		(imax/INOPB) != ((ino_t)sblock.fs_isize-(SUPERB+1))) {
+		pfatal("Size check: fsize %ld isize %d\n",
+			sblock.fs_fsize,sblock.fs_isize);
+		printf("\n");
+		ckfini();
+		return(0);
+	}
+	if (preen == 0)
+		printf("File System: %.12s\n\n", sblock.fs_fsmnt);
+	/*
+	 * allocate and initialize the necessary maps
+	 */
+	bmapsz = roundup (howmany (fsmax, BITSPB), sizeof (*lncntp));
+	smapsz = roundup (howmany ((long) (imax+1), STATEPB), sizeof (*lncntp));
+	lncntsz = (long) (imax+1) * sizeof (*lncntp);
+	if (bmapsz > smapsz+lncntsz)
+		smapsz = bmapsz-lncntsz;
+	totsz = bmapsz+smapsz+lncntsz;
+	msize = memsize;
+	mbase = membase;
+	bzero(mbase,msize);
+	muldup = enddup = duplist;
+	zlnp = zlnlist;
 
-    if ((off_t)memsize < bmapsz + smapsz + lncntsz) {
-        bmapsz = roundup(bmapsz, DEV_BSIZE);
-        smapsz = roundup(smapsz, DEV_BSIZE);
-        lncntsz = roundup(lncntsz, DEV_BSIZE);
-        nscrblk = (bmapsz + smapsz + lncntsz) >> DEV_BSHIFT;
+	if ((off_t)msize < totsz) {
+		bmapsz = roundup(bmapsz,DEV_BSIZE);
+		smapsz = roundup(smapsz,DEV_BSIZE);
+		lncntsz = roundup(lncntsz,DEV_BSIZE);
+		nscrblk = (bmapsz+smapsz+lncntsz)>>DEV_BSHIFT;
+		if (scrfile[0] == 0) {
+		        /* Use tail of swap file for temporary data. */
+                        strcpy(scrfile, "/swap");
+                        if (stat(scrfile, &statb) < 0 ||
+                            statb.st_size < bmapsz+smapsz+lncntsz + 512*1024)
+                        {
+                                pfatal("TMP FILE (%s) TOO SMALL (need %u kbytes)\n",
+                                        scrfile, bmapsz+smapsz+lncntsz);
+                                ckfini();
+                                return(0);
+                        }
+                        /* Temporarily clear immutable flag.  */
+                        chflags(scrfile, statb.st_flags & ~(UF_IMMUTABLE | SF_IMMUTABLE));
+                        sfile.wfdes = open(scrfile, 1);
+                        chflags(scrfile, statb.st_flags);
+                        if (sfile.wfdes < 0 ||
+                            (sfile.rfdes = open(scrfile, 0)) < 0) {
+                                printf("Can't open %s\n", scrfile);
+                                ckfini();
+                                return(0);
+                        }
+                        sfile.offset = statb.st_size - (nscrblk << DEV_BSHIFT);
+                        /*printf("Using scratch file %s, offset %u\n",
+                                scrfile, (unsigned) sfile.offset);*/
+		} else {
+		        /* User-define scratch file prefix. */
+                        char junk[80 + sizeof (".XXXXX") + 1];
 
-        /* Use /dev/temp0 as a scratch file. */
-        strcpy(scrfile, "/dev/temp0");
-        sfile.wfdes = open(scrfile, O_RDWR);
-        if (! sfile.wfdes) {
-            errexit("Unable to open temp device\n");
-        }
-        allocd = nscrblk;
-        ioctl(sfile.wfdes, TFALLOC, &allocd);
-        if (allocd != nscrblk) {
-            printf("Wanted %lu kbytes, got %lu\n", nscrblk, allocd);
-            errexit("Unable to allocate temp space\n");
-        }
-        sfile.rfdes = open(scrfile, O_RDONLY);
-        sfile.offset = 0;
-
-        bp = &((BUFAREA *)membase)[(memsize/sizeof(BUFAREA))];
-        poolhead = NULL;
-        while(--bp >= (BUFAREA *)membase) {
-            initbarea(bp);
-            bp->b_next = poolhead;
-            poolhead = bp;
-        }
-        bp = poolhead;
-        for(bcnt = 0; bcnt < nscrblk; bcnt++) {
-            bp->b_bno = bcnt;
-            dirty(bp);
-            flush(&sfile,bp);
-        }
-        blockmap = freemap = statemap = (char *) NULL;
-        lncntp = (short *) NULL;
-        bmapblk = 0;
-        smapblk = bmapblk + bmapsz / DEV_BSIZE;
-        lncntblk = smapblk + smapsz / DEV_BSIZE;
-        fmapblk = smapblk;
-    } else {
-        poolhead = NULL;
-        blockmap = membase;
-        statemap = &membase[bmapsz];
-        freemap = statemap;
-        lncntp = (short *)&statemap[smapsz];
-    }
-    return(1);
+                        strcpy(junk, scrfile);
+                        strcat(junk, ".XXXXX");
+                        sfile.wfdes = mkstemp(junk);
+                        if (sfile.wfdes < 0 ||
+                            (sfile.rfdes = open(junk, 0)) < 0) {
+                                printf("Can't create %s\n", junk);
+                                ckfini();
+                                return(0);
+                        }
+                        unlink(junk);	/* make it invisible incase we exit */
+                        if (hotroot && (fstat(sfile.wfdes,&statb)==0)
+                            && ((statb.st_mode & S_IFMT) == S_IFREG)
+                            && (statb.st_dev==rootdev))
+                             pfatal("TMP FILE (%s) ON ROOT WHEN CHECKING ROOT\n", junk);
+                }
+		bp = &((BUFAREA *)mbase)[(msize/sizeof(BUFAREA))];
+		poolhead = NULL;
+		while(--bp >= (BUFAREA *)mbase) {
+			initbarea(bp);
+			bp->b_next = poolhead;
+			poolhead = bp;
+		}
+		bp = poolhead;
+		for(bcnt = 0; bcnt < nscrblk; bcnt++) {
+			bp->b_bno = bcnt;
+			dirty(bp);
+			flush(&sfile,bp);
+		}
+		blockmap = freemap = statemap = (char *) NULL;
+		lncntp = (short *) NULL;
+		bmapblk = 0;
+		smapblk = bmapblk + bmapsz / DEV_BSIZE;
+		lncntblk = smapblk + smapsz / DEV_BSIZE;
+		fmapblk = smapblk;
+	} else {
+		poolhead = NULL;
+		blockmap = mbase;
+		statemap = &mbase[bmapsz];
+		freemap = statemap;
+		lncntp = (short *)&statemap[smapsz];
+	}
+	return(1);
 }

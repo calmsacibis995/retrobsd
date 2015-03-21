@@ -4,6 +4,10 @@
  * the terms of the Berkeley Software License Agreement.
  */
 
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)battlestar.c	1.3 4/24/85";
+#endif
+
 /*
  * Battlestar - a stellar-tropical adventure game
  *
@@ -12,10 +16,10 @@
  */
 
 #include "externs.h"
-int
+
 main(argc,argv)
-        int  argc;
-        char **argv;
+int  argc;
+char **argv;
 {
 	char mainbuf[LINELENGTH];
 	char instackbuf[BUFSIZ];
@@ -54,6 +58,6 @@ run:
 		case 0:
 			goto start;
 		default:
-			exit(0);
+			exit();
 	}
 }

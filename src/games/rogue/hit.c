@@ -12,11 +12,14 @@
 object *fight_monster = 0;
 char hit_message[80] = "";
 
-void
+extern short halluc, blind, cur_level;
+extern short add_strength, ring_exp, r_rings;
+extern boolean being_held, interrupted, wizard, con_mon;
+
 mon_hit(monster)
-        register object *monster;
+register object *monster;
 {
-	int damage, hit_chance;
+	short damage, hit_chance;
 	char *mn;
 	float minus;
 
@@ -59,7 +62,7 @@ mon_hit(monster)
 			minus = (float) get_armor_class(rogue.armor) * 3.00;
 			minus = minus/100.00 * (float) damage;
 		}
-		damage -= (int) minus;
+		damage -= (short) minus;
 	} else {
 		damage = monster->stationary_damage++;
 	}
@@ -74,12 +77,11 @@ mon_hit(monster)
 	}
 }
 
-void
 rogue_hit(monster, force_hit)
-        register object *monster;
-        boolean force_hit;
+register object *monster;
+boolean force_hit;
 {
-	int damage, hit_chance;
+	short damage, hit_chance;
 
 	if (monster) {
 		if (check_imitator(monster)) {
@@ -113,11 +115,10 @@ RET:	check_gold_seeker(monster);
 	}
 }
 
-void
 rogue_damage(d, monster, other)
-        int d;
-        object *monster;
-        int other;
+short d;
+object *monster;
+short other;
 {
 	if (d >= rogue.hp_current) {
 		rogue.hp_current = 0;
@@ -130,12 +131,11 @@ rogue_damage(d, monster, other)
 	}
 }
 
-int
 get_damage(ds, r)
-        char *ds;
-        boolean r;
+char *ds;
+boolean r;
 {
-	register int i = 0, j, n, d, total = 0;
+	register i = 0, j, n, d, total = 0;
 
 	while (ds[i]) {
 		n = get_number(ds+i);
@@ -157,13 +157,12 @@ get_damage(ds, r)
 	return(total);
 }
 
-int
 get_w_damage(obj)
-        object *obj;
+object *obj;
 {
 	char new_damage[12];
-	register int to_hit, damage;
-	register int i = 0;
+	register to_hit, damage;
+	register i = 0;
 
 	if ((!obj) || (obj->what_is != WEAPON)) {
 		return(-1);
@@ -177,12 +176,11 @@ get_w_damage(obj)
 	return(get_damage(new_damage, 1));
 }
 
-int
 get_number(s)
-        register char *s;
+register char *s;
 {
-	register int i = 0;
-	register int total = 0;
+	register i = 0;
+	register total = 0;
 
 	while ((s[i] >= '0') && (s[i] <= '9')) {
 		total = (10 * total) + (s[i] - '0');
@@ -193,9 +191,9 @@ get_number(s)
 
 long
 lget_number(s)
-        char *s;
+char *s;
 {
-	int i = 0;
+	short i = 0;
 	long total = 0;
 
 	while ((s[i] >= '0') && (s[i] <= '9')) {
@@ -205,9 +203,8 @@ lget_number(s)
 	return(total);
 }
 
-int
 to_hit(obj)
-        object *obj;
+object *obj;
 {
 	if (!obj) {
 		return(1);
@@ -215,10 +212,9 @@ to_hit(obj)
 	return(get_number(obj->damage) + obj->hit_enchant);
 }
 
-int
 damage_for_strength()
 {
-	int strength;
+	short strength;
 
 	strength = rogue.str_current + add_strength;
 
@@ -246,13 +242,12 @@ damage_for_strength()
 	return(8);
 }
 
-int
 mon_damage(monster, damage)
-        object *monster;
-        int damage;
+object *monster;
+short damage;
 {
 	char *mn;
-	int row, col;
+	short row, col;
 
 	monster->hp_to_kill -= damage;
 
@@ -280,14 +275,13 @@ mon_damage(monster, damage)
 	return(1);
 }
 
-void
 fight(to_the_death)
-        boolean to_the_death;
+boolean to_the_death;
 {
-	int ch, c, d;
-	int row, col;
+	short ch, c, d;
+	short row, col;
 	boolean first_miss = 1;
-	int possible_damage;
+	short possible_damage;
 	object *monster;
 
 	while (!is_direction(ch = rgetchar(), &d)) {
@@ -332,11 +326,10 @@ fight(to_the_death)
 	}
 }
 
-void
 get_dir_rc(dir, row, col, allow_off_screen)
-        int dir;
-        int *row, *col;
-        int allow_off_screen;
+short dir;
+short *row, *col;
+short allow_off_screen;
 {
 	switch(dir) {
 	case LEFT:
@@ -386,11 +379,10 @@ get_dir_rc(dir, row, col, allow_off_screen)
 	}
 }
 
-int
 get_hit_chance(weapon)
-        object *weapon;
+object *weapon;
 {
-	int hit_chance;
+	short hit_chance;
 
 	hit_chance = 40;
 	hit_chance += 3 * to_hit(weapon);
@@ -398,11 +390,10 @@ get_hit_chance(weapon)
 	return(hit_chance);
 }
 
-int
 get_weapon_damage(weapon)
-        object *weapon;
+object *weapon;
 {
-	int damage;
+	short damage;
 
 	damage = get_w_damage(weapon);
 	damage += damage_for_strength();
@@ -410,9 +401,8 @@ get_weapon_damage(weapon)
 	return(damage);
 }
 
-void
 s_con_mon(monster)
-        object *monster;
+object *monster;
 {
 	if (con_mon) {
 		monster->m_flags |= CONFUSED;

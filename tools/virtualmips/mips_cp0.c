@@ -153,7 +153,7 @@ void mips_cp0_exec_mtc0 (cpu_mips_t * cpu, u_int gp_reg, u_int cp0_reg,
 }
 
 /* Set a cp0 register */
-void mips_cp0_set_reg (cpu_mips_t * cpu, u_int cp0_reg, u_int sel,
+inline void mips_cp0_set_reg (cpu_mips_t * cpu, u_int cp0_reg, u_int sel,
     m_uint32_t val)
 {
     mips_cp0_t *cp0 = &cpu->cp0;

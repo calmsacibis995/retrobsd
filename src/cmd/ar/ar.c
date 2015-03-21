@@ -34,71 +34,27 @@
  * SUCH DAMAGE.
  */
 #ifdef CROSS
-#   include <stdint.h>
-#   include <stdio.h>
-#   include <string.h>
-#   include <stdlib.h>
-#   include <errno.h>
-#   include <getopt.h>
+#   include </usr/include/stdio.h>
+#   include </usr/include/errno.h>
 #else
-#   include <sys/param.h>
-#   include <sys/dir.h>
 #   include <stdio.h>
-#   include <string.h>
-#   include <stdlib.h>
-#   include <unistd.h>
 #   include <errno.h>
 #endif
+#include <sys/param.h>
+#include <sys/dir.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <ar.h>
+#include <string.h>
 #include "archive.h"
 #include "extern.h"
 
 extern int errno;
 
 CHDR chdr;
-unsigned options;
+u_int options;
 char *archive, *envtmp, *posarg, *posname;
-
-static void
-usage()
-{
-	(void)fprintf(stderr, "Usage:\n");
-	(void)fprintf(stderr, "  ar -d [-Tv] archive file ...\n");
-	(void)fprintf(stderr, "  ar -m [-Tv] archive file ...\n");
-	(void)fprintf(stderr, "  ar -m [-abiTv] position archive file ...\n");
-	(void)fprintf(stderr, "  ar -p [-Tv] archive [file ...]\n");
-	(void)fprintf(stderr, "  ar -q [-cTv] archive file ...\n");
-	(void)fprintf(stderr, "  ar -r [-cuTv] archive file ...\n");
-	(void)fprintf(stderr, "  ar -r [-abciuTv] position archive file ...\n");
-	(void)fprintf(stderr, "  ar -t [-Tv] archive [file ...]\n");
-	(void)fprintf(stderr, "  ar -x [-ouTv] archive [file ...]\n");
-	(void)fprintf(stderr, "Commands:\n");
-	(void)fprintf(stderr, "  -d      Delete file(s) from the archive\n");
-	(void)fprintf(stderr, "  -m      Move file(s) in the archive\n");
-	(void)fprintf(stderr, "  -p      Print file(s) found in the archive\n");
-	(void)fprintf(stderr, "  -q      Quick append file(s) to the archive\n");
-	(void)fprintf(stderr, "  -r      Replace existing or insert new file(s) into the archive\n");
-	(void)fprintf(stderr, "  -t      Display contents of archive\n");
-	(void)fprintf(stderr, "  -x      Extract file(s) from the archive\n");
-	(void)fprintf(stderr, "Modifiers:\n");
-	(void)fprintf(stderr, "  -a      Put file(s) after [member-name]\n");
-	(void)fprintf(stderr, "  -b, -i  Put file(s) before [member-name]\n");
-	(void)fprintf(stderr, "  -c      Do not warn if the library had to be created\n");
-	(void)fprintf(stderr, "  -u      Only replace files that are newer than current archive contents\n");
-	(void)fprintf(stderr, "  -o      Preserve original dates\n");
-	(void)fprintf(stderr, "  -T      Make a thin archive\n");
-	(void)fprintf(stderr, "  -v      Be verbose\n");
-	exit(1);
-}
-
-static void
-badoptions(arg)
-	char *arg;
-{
-	(void)fprintf(stderr,
-	    "ar: illegal option combination for %s.\n", arg);
-	usage();
-}
+static void badoptions(), usage();
 
 /*
  * main --
@@ -114,7 +70,8 @@ main(argc, argv)
 	extern int optind;
 	int c;
 	char *p;
-	int (*fcall)() = 0;
+	int (*fcall)() = 0, append(), contents(), delete(), extract(),
+	    move(), print(), replace();
 
 	if (argc < 3)
 		usage();
@@ -124,7 +81,7 @@ main(argc, argv)
 	 * Fix it, if necessary.
 	*/
 	if (*argv[1] != '-') {
-		if (!(p = malloc((unsigned)(strlen(argv[1]) + 2)))) {
+		if (!(p = malloc((u_int)(strlen(argv[1]) + 2)))) {
 			(void)fprintf(stderr, "ar: %s.\n", strerror(errno));
 			exit(1);
 		}
@@ -252,4 +209,45 @@ main(argc, argv)
         if (! fcall)
                 exit(1);
 	exit((*fcall)(argv));
+}
+
+static void
+badoptions(arg)
+	char *arg;
+{
+	(void)fprintf(stderr,
+	    "ar: illegal option combination for %s.\n", arg);
+	usage();
+}
+
+static void
+usage()
+{
+	(void)fprintf(stderr, "Usage:\n");
+	(void)fprintf(stderr, "  ar -d [-Tv] archive file ...\n");
+	(void)fprintf(stderr, "  ar -m [-Tv] archive file ...\n");
+	(void)fprintf(stderr, "  ar -m [-abiTv] position archive file ...\n");
+	(void)fprintf(stderr, "  ar -p [-Tv] archive [file ...]\n");
+	(void)fprintf(stderr, "  ar -q [-cTv] archive file ...\n");
+	(void)fprintf(stderr, "  ar -r [-cuTv] archive file ...\n");
+	(void)fprintf(stderr, "  ar -r [-abciuTv] position archive file ...\n");
+	(void)fprintf(stderr, "  ar -t [-Tv] archive [file ...]\n");
+	(void)fprintf(stderr, "  ar -x [-ouTv] archive [file ...]\n");
+	(void)fprintf(stderr, "Commands:\n");
+	(void)fprintf(stderr, "  -d      Delete file(s) from the archive\n");
+	(void)fprintf(stderr, "  -m      Move file(s) in the archive\n");
+	(void)fprintf(stderr, "  -p      Print file(s) found in the archive\n");
+	(void)fprintf(stderr, "  -q      Quick append file(s) to the archive\n");
+	(void)fprintf(stderr, "  -r      Replace existing or insert new file(s) into the archive\n");
+	(void)fprintf(stderr, "  -t      Display contents of archive\n");
+	(void)fprintf(stderr, "  -x      Extract file(s) from the archive\n");
+	(void)fprintf(stderr, "Modifiers:\n");
+	(void)fprintf(stderr, "  -a      Put file(s) after [member-name]\n");
+	(void)fprintf(stderr, "  -b, -i  Put file(s) before [member-name]\n");
+	(void)fprintf(stderr, "  -c      Do not warn if the library had to be created\n");
+	(void)fprintf(stderr, "  -u      Only replace files that are newer than current archive contents\n");
+	(void)fprintf(stderr, "  -o      Preserve original dates\n");
+	(void)fprintf(stderr, "  -T      Make a thin archive\n");
+	(void)fprintf(stderr, "  -v      Be verbose\n");
+	exit(1);
 }

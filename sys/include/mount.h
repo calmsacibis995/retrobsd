@@ -91,11 +91,5 @@ struct	mount
 #define	MNT_NOWAIT	2
 
 #ifdef KERNEL
-
 struct	mount mount[NMOUNT];
-
-#else
-
-int getfsstat (struct statfs *buf, int bufsize, unsigned flags);
-
 #endif

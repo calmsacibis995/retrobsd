@@ -3,6 +3,11 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)getcom.c	1.3 4/24/85";
+#endif
+
 #include <stdio.h>
 #include <ctype.h>
 
@@ -13,7 +18,7 @@ getcom(buf, size, prompt, error)
 	char *prompt, *error;
 {
 	for (;;) {
-		fputs(prompt, stdout);
+		fputs(prompt, stdout); 
 		if (fgets(buf, size, stdin) == 0) {
 			clearerr(stdin);
 			continue;
@@ -36,7 +41,7 @@ getcom(buf, size, prompt, error)
 char *
 getword(buf1, buf2, flag)
 	register char *buf1, *buf2;
-	register int flag;
+	register flag;
 {
 	while (isspace(*buf1))
 		buf1++;

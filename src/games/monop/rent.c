@@ -1,34 +1,33 @@
-#include "extern.h"
+# include	"monop.ext"
 
 /*
  *	This routine has the player pay rent
  */
-void
 rent(sqp)
 reg SQUARE	*sqp; {
 
-	reg int		rnt = 0;
+	reg int		rnt;
 	reg PROP	*pp;
 	PLAY		*plp;
 
-	plp = &play[(int)sqp->owner];
+	plp = &play[sqp->owner];
 	printf("Owned by %s\n", plp->name);
-	if (((PROP*)sqp->desc)->morg) {
+	if (sqp->desc->morg) {
 		lucky("The thing is mortgaged.  ");
 		return;
 	}
 	switch (sqp->type) {
 	  case PRPTY:
-		pp = (PROP*) sqp->desc;
+		pp = sqp->desc;
 		if (pp->monop)
 			if (pp->houses == 0)
 				printf("rent is %d\n", rnt=pp->rent[0] * 2);
 			else if (pp->houses < 5)
 				printf("with %d houses, rent is %d\n",
-				    pp->houses, rnt=pp->rent[(int)pp->houses]);
+				    pp->houses, rnt=pp->rent[pp->houses]);
 			else
 				printf("with a hotel, rent is %d\n",
-				    rnt=pp->rent[(int)pp->houses]);
+				    rnt=pp->rent[pp->houses]);
 		else
 			printf("rent is %d\n", rnt = pp->rent[0]);
 		break;

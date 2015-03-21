@@ -61,15 +61,9 @@ typedef	struct fd_set {
 #define FD_ZERO(p)	bzero((char *)(p), sizeof(*(p)))
 
 #ifndef KERNEL
-#ifndef CROSS
-void     bzero(void *, unsigned long);
-#endif
-
-/* According to POSIX.1-2001 */
-struct timeval;
-int select (int nfds, fd_set *readfds, fd_set *writefds,
-            fd_set *exceptfds, struct timeval *timeout);
-
+void     bzero(void *, size_t);
+//int	select();
+//int	pselect();
 #endif /* !KERNEL */
 
 #endif /* !_SYS_SELECT_H_ */

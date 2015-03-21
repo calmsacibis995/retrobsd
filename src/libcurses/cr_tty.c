@@ -40,20 +40,19 @@ static int	destcol, destline;
  */
 short	ospeed = -1;
 
-void
-gettmode()
-{
-	if (ioctl(_tty_ch, TIOCGETP, &_tty) < 0)
+gettmode() {
+
+	if (gtty(_tty_ch, &_tty) < 0)
 		return;
 	savetty();
-	if (ioctl(_tty_ch, TIOCSETP, &_tty) < 0)
+	if (stty(_tty_ch, &_tty) < 0)
 		_tty.sg_flags = _res_flg;
 	ospeed = _tty.sg_ospeed;
 	_res_flg = _tty.sg_flags;
 	GT = ((_tty.sg_flags & XTABS) == 0);
 	NONL = ((_tty.sg_flags & CRMOD) == 0);
 	_tty.sg_flags &= ~XTABS;
-	ioctl(_tty_ch, TIOCSETP, &_tty);
+	stty(_tty_ch, &_tty);
 # ifdef DEBUG
 	fprintf(outf, "GETTMODE: GT = %s\n", GT ? "TRUE" : "FALSE");
 	fprintf(outf, "GETTMODE: NONL = %s\n", NONL ? "TRUE" : "FALSE");
@@ -61,62 +60,9 @@ gettmode()
 # endif
 }
 
-/*
- * This routine gets all the terminal flags from the termcap database
- */
-static void
-zap()
-{
-	register char	*namp;
-	register bool	**fp;
-	register char	***sp;
-#ifdef	DEBUG
-	register char	*cp;
-#endif
-
-	namp = "ambsdadbeohchzinmimsncnsosulxbxnxtxsxx";
-	fp = sflags;
-	do {
-		*(*fp++) = tgetflag(namp);
-#ifdef DEBUG
-		fprintf(outf, "%2.2s = %s\n", namp, *fp[-1] ? "TRUE" : "FALSE");
-#endif
-		namp += 2;
-	} while (*namp);
-	namp = "albcbtcdceclcmcrcsdcdldmdoedeik0k1k2k3k4k5k6k7k8k9hoicimipkdkekhklkrkskullmandnlpcrcscsesfsosrtatetiucueupusvbvsveALDLUPDOLERI";
-	sp = sstrs;
-	do {
-		*(*sp++) = tgetstr(namp, &aoftspace);
-#ifdef DEBUG
-		fprintf(outf, "%2.2s = %s", namp, *sp[-1] == NULL ? "NULL\n" : "\"");
-		if (*sp[-1] != NULL) {
-			for (cp = *sp[-1]; *cp; cp++)
-				fprintf(outf, "%s", unctrl(*cp));
-			fprintf(outf, "\"\n");
-		}
-#endif
-		namp += 2;
-	} while (*namp);
-	if (XS)
-		SO = SE = NULL;
-	else {
-		if (tgetnum("sg") > 0)
-			SO = NULL;
-		if (tgetnum("ug") > 0)
-			US = NULL;
-		if (!SO && US) {
-			SO = US;
-			SE = UE;
-		}
-	}
-	if (DO && !NL)
-	        NL = DO;
-}
-
-int
 setterm(type)
-        reg char	*type;
-{
+reg char	*type; {
+
 	reg int		unknown;
 	static char	genbuf[1024];
 # ifdef TIOCGWINSZ
@@ -184,6 +130,57 @@ setterm(type)
 	if (unknown)
 		return ERR;
 	return OK;
+}
+
+/*
+ *	This routine gets all the terminal flags from the termcap database
+ */
+
+zap()
+{
+	register char	*namp;
+	register bool	**fp;
+	register char	***sp;
+#ifdef	DEBUG
+	register char	*cp;
+#endif
+	extern char	*tgetstr();
+
+	namp = "ambsdadbeohchzinmimsncnsosulxbxnxtxsxx";
+	fp = sflags;
+	do {
+		*(*fp++) = tgetflag(namp);
+#ifdef DEBUG
+		fprintf(outf, "%2.2s = %s\n", namp, *fp[-1] ? "TRUE" : "FALSE");
+#endif
+		namp += 2;
+	} while (*namp);
+	namp = "albcbtcdceclcmcrcsdcdldmdoedeik0k1k2k3k4k5k6k7k8k9hoicimipkdkekhklkrkskullmandnlpcrcscsesfsosrtatetiucueupusvbvsveALDLUPDOLERI";
+	sp = sstrs;
+	do {
+		*(*sp++) = tgetstr(namp, &aoftspace);
+#ifdef DEBUG
+		fprintf(outf, "%2.2s = %s", namp, *sp[-1] == NULL ? "NULL\n" : "\"");
+		if (*sp[-1] != NULL) {
+			for (cp = *sp[-1]; *cp; cp++)
+				fprintf(outf, "%s", unctrl(*cp));
+			fprintf(outf, "\"\n");
+		}
+#endif
+		namp += 2;
+	} while (*namp);
+	if (XS)
+		SO = SE = NULL;
+	else {
+		if (tgetnum("sg") > 0)
+			SO = NULL;
+		if (tgetnum("ug") > 0)
+			US = NULL;
+		if (!SO && US) {
+			SO = US;
+			SE = UE;
+		}
+	}
 }
 
 /*

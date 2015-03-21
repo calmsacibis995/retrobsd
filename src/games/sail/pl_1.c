@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)pl_1.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "player.h"
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -15,9 +20,8 @@
  * Of course, we don't do any more Sync()'s if we got here
  * because of a Sync() failure.
  */
-void
 leave(conditions)
-        int conditions;
+int conditions;
 {
 	(void) signal(SIGHUP, SIG_IGN);
 	(void) signal(SIGINT, SIG_IGN);
@@ -27,27 +31,27 @@ leave(conditions)
 
 	if (done_curses) {
 		Signal("It looks like you've had it!",
-			(struct ship *)0, 0, 0, 0, 0);
+			(struct ship *)0);
 		switch (conditions) {
 		case LEAVE_QUIT:
 			break;
 		case LEAVE_CAPTURED:
 			Signal("Your ship was captured.",
-				(struct ship *)0, 0, 0, 0, 0);
+				(struct ship *)0);
 			break;
 		case LEAVE_HURRICAN:
 			Signal("Hurricane!  All ships destroyed.",
-				(struct ship *)0, 0, 0, 0, 0);
+				(struct ship *)0);
 			break;
 		case LEAVE_DRIVER:
-			Signal("The driver died.", (struct ship *)0, 0, 0, 0, 0);
+			Signal("The driver died.", (struct ship *)0);
 			break;
 		case LEAVE_SYNC:
-			Signal("Synchronization error.", (struct ship *)0, 0, 0, 0, 0);
+			Signal("Synchronization error.", (struct ship *)0);
 			break;
 		default:
 			Signal("A funny thing happened (%d).",
-				(struct ship *)0, conditions, 0, 0, 0);
+				(struct ship *)0, conditions);
 		}
 	} else {
 		switch (conditions) {
@@ -69,10 +73,10 @@ leave(conditions)
 	}
 
 	if (ms != 0) {
-		logmsg(ms);
+		log(ms);
 		if (conditions != LEAVE_SYNC) {
 			makesignal(ms, "Captain %s relinquishing.",
-				(struct ship *)0, (int)mf->captain, 0, 0);
+				(struct ship *)0, mf->captain);
 			Write(W_END, ms, 0, 0, 0, 0, 0);
 			(void) Sync();
 		}
@@ -82,22 +86,20 @@ leave(conditions)
 	exit(0);
 }
 
-void
-choke(int sig)
+choke()
 {
 	leave(LEAVE_QUIT);
 }
 
-void
-child(int sig)
+child()
 {
-	int status;
+	union wait status;
 	int pid;
 
 	(void) signal(SIGCHLD, SIG_IGN);
 	do {
 		pid = wait3(&status, WNOHANG, (struct rusage *)0);
-		if (pid < 0 || (pid > 0 && !WIFSTOPPED(status)))
+		if (pid < 0 || pid > 0 && !WIFSTOPPED(status))
 			hasdriver = 0;
 	} while (pid > 0);
 	(void) signal(SIGCHLD, child);

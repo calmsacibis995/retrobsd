@@ -6,7 +6,7 @@
 TOPSRC		= $(shell cd ../../..; pwd)
 include $(TOPSRC)/target.mk
 
-CFLAGS		+= ${DEFS} -Os -Wall -Werror
+CFLAGS		+= ${DEFS}
 
 SRCS		= ${STDSRC}
 OBJS		= ${STDOBJ}

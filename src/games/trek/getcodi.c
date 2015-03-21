@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)getcodi.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"getpar.h"
 
 /*
@@ -14,11 +19,12 @@
 **	The return value is zero for success, one for an invalid input
 **	(meaning to drop the request).
 */
-int
+
 getcodi(co, di)
-        int	*co;
-        double	*di;
+int	*co;
+double	*di;
 {
+
 	*co = getintpar("Course");
 
 	/* course must be in the interval [0, 360] */

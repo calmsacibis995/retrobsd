@@ -63,6 +63,12 @@
 #   include <errno.h>
 #endif
 
+#ifdef WIN32
+#include <windows.h>
+#include <process.h>
+#include <io.h>
+#endif
+
 #define	MKS(x) _MKS(x)
 #define _MKS(x) #x
 
@@ -102,8 +108,8 @@
 #define MAXLIB 1000
 #define MAXAV  1000
 #define MAXOPT 100
-char	*tmp_as;
-char	*tmp_cpp;
+char	*tmp3;
+char	*tmp4;
 char	*outfile, *ermfile;
 char *Bprefix(char *);
 char *copy(char *, int);
@@ -118,6 +124,10 @@ void dexit(int);
 void idexit(int);
 char *gettmp(void);
 void *ccmalloc(int size);
+#ifdef WIN32
+char *win32pathsubst(char *);
+char *win32commandline(char *, char *[]);
+#endif
 char	*av[MAXAV];
 char	*clist[MAXFIL];
 char    *olist[MAXFIL];
@@ -131,7 +141,6 @@ char	*mlist[100];
 char	*flist[100];
 char	*wlist[100];
 char	*idirafter;
-char    *progname;
 int	nm;
 int	nf;
 int	nw;
@@ -169,15 +178,8 @@ char	*as = ASSEMBLER;
 char	*ld = LINKER;
 char	*Bflag;
 
-enum {
-    MODE_LCC,
-    MODE_PCC,
-    MODE_SMALLC,
-    MODE_SMALLERC,
-} mode;
-
 /* common cpp predefines */
-char *cppadd[] = { "-D__LCC__", "-D__unix__", "-D__BSD__", "-D__RETROBSD__", NULL };
+char *cppadd[] = { "-D__unix__", "-D__BSD__", "-D__RETROBSD__", NULL };
 
 #ifdef __mips__
 #   define	CPPMDADD { "-D__mips__", NULL, }
@@ -229,7 +231,7 @@ char *libclibs_profile[] = LIBCLIBS_PROFILE;
 char *libclibs_profile[] = { "-lc_p", NULL };
 #endif
 #ifndef STARTLABEL
-#define STARTLABEL "_start"
+#define STARTLABEL "__start"
 #endif
 char *incdir = STDINC;
 char *libdir = LIBDIR;
@@ -358,7 +360,7 @@ strlcat(char *dst, const char *src, size_t siz)
 void
 usage()
 {
-	printf("Usage: %s [options] file...\n", progname);
+	printf("Usage: cc [options] file...\n");
 	printf("Options:\n");
 	printf("  -h               Display this information\n");
 	printf("  --version        Display compiler version information\n");
@@ -369,29 +371,24 @@ usage()
 	printf("  -o <file>        Place the output into <file>\n");
 	printf("  -O, -O0          Enable, disable optimization\n");
 	printf("  -g               Create debug output\n");
-	printf("  -v               Display the programs invoked by the compiler\n");
-        if (mode == MODE_LCC || mode == MODE_PCC) {
 	printf("  -k               Generate position-independent code\n");
+	printf("  -v               Display the programs invoked by the compiler\n");
 	printf("  -Wall            Enable gcc-compatible warnings\n");
 	printf("  -WW              Enable all warnings\n");
 	printf("  -p, -pg          Generate profiled code\n");
 	printf("  -r               Generate relocatable code\n");
-        }
 	printf("  -t               Use traditional preprocessor syntax\n");
 	printf("  -C <option>      Pass preprocessor option\n");
 	printf("  -Dname=val       Define preprocessor symbol\n");
 	printf("  -Uname           Undefine preprocessor symbol\n");
 	printf("  -Ipath           Add a directory to preprocessor path\n");
 	printf("  -x <language>    Specify the language of the following input files\n");
-	printf("                   Permissible languages include: c assembler-with-cpp\n");
-        if (mode == MODE_LCC || mode == MODE_PCC) {
 	printf("  -B <directory>   Add <directory> to the compiler's search paths\n");
 	printf("  -m<option>       Target-dependent options\n");
 	printf("  -f<option>       GCC-compatible flags: -fPI -fpicC -fsigned-char\n");
 	printf("                   -fno-signed-char -funsigned-char -fno-unsigned-char\n");
 	printf("                   -fstack-protector -fstack-protector-all\n");
 	printf("                   -fno-stack-protector -fno-stack-protector-all\n");
-        }
 	printf("  -isystem dir     Add a system include directory\n");
 	printf("  -include dir     Add an include directory\n");
 	printf("  -idirafter dir   Set a last include directory\n");
@@ -404,6 +401,7 @@ usage()
 	printf("  -Wc,<options>    Pass comma-separated <options> on to the compiler\n");
 	printf("  -M               Output a list of dependencies\n");
 	printf("  -X               Leave temporary files\n");
+	printf("                   Permissible languages include: c assembler-with-cpp\n");
 	//printf("  -d               Debug mode ???\n");
         exit(0);
 }
@@ -430,37 +428,19 @@ main(int argc, char *argv[])
         pcclibdir = PCCLIBDIR;
 #endif
 
-        progname = strrchr (argv[0], '/');
-        progname = progname ? progname+1 : argv[0];
-
-        /*
-         * Select a compiler mode.
-         */
-        if (strcmp ("pcc", progname) == 0) {
-                /* PCC: portable C compiler. */
-                mode = MODE_PCC;
-                cppadd[0] = "-D__PCC__";
-                pass0 = LIBEXECDIR "/ccom";
-
-        } else if (strcmp ("scc", progname) == 0) {
-                /* SmallC. */
-                mode = MODE_SMALLC;
-                cppadd[0] = "-D__SMALLC__";
-                pass0 = LIBEXECDIR "/smallc";
-                incdir = STDINC "/smallc";
-
-        } else if (strcmp ("lcc", progname) == 0) {
-                /* LCC: retargetable C compiler. */
-                mode = MODE_LCC;
-                cppadd[0] = "-D__LCC__";
-                pass0 = LIBEXECDIR "/lccom";
-        } else {
-                /* Smaller C. */
-                mode = MODE_SMALLERC;
-                cppadd[0] = "-D__SMALLER_C__";
-                pass0 = LIBEXECDIR "/smlrc";
-        }
-
+#ifdef WIN32
+	/* have to prefix path early.  -B may override */
+	incdir = win32pathsubst(incdir);
+	if (altincdir)
+                altincdir = win32pathsubst(altincdir);
+	libdir = win32pathsubst(libdir);
+	if (pccincdir)
+                pccincdir = win32pathsubst(pccincdir);
+	if (pcclibdir)
+                pcclibdir = win32pathsubst(pcclibdir);
+	passp = win32pathsubst(passp);
+	pass0 = win32pathsubst(pass0);
+#endif
         if (argc == 1)
                 usage();
 	i = nc = nl = nas = ncpp = nxo = 0;
@@ -739,6 +719,11 @@ main(int argc, char *argv[])
 				break;
 
 			case 'd':
+#ifdef os_darwin
+				if (strcmp(argv[i], "-dynamiclib") == 0) {
+					shared = 1;
+				} else
+#endif
 				if (strcmp(argv[i], "-d") == 0) {
 					dflag++;
 					strlcpy(alist, argv[i], sizeof (alist));
@@ -750,13 +735,16 @@ main(int argc, char *argv[])
 				break;
 
 			case 's':
+#ifndef os_darwin
 				if (strcmp(argv[i], "-shared") == 0) {
 					shared = 1;
+#ifndef os_win32
 					nostdlib = 1;
-
-				} else if (strcmp(argv[i], "-static") == 0) {
+#endif
+				} else
+#endif
+				if (strcmp(argv[i], "-static") == 0) {
 					Bstatic = 1;
-
 				} else if (strncmp(argv[i], "-std", 4) == 0) {
 					/* ignore gcc -std= */;
 				} else
@@ -805,8 +793,8 @@ main(int argc, char *argv[])
 		goto nocom;
 	if (pflag==0) {
 		if (!sflag)
-			tmp_as = gettmp();
-		tmp_cpp = gettmp();
+			tmp3 = gettmp();
+		tmp4 = gettmp();
 	}
 	if (Bflag) {
                 if (altincdir)
@@ -832,7 +820,7 @@ main(int argc, char *argv[])
 		if (nc>1 && !Eflag)
 			printf("%s:\n", clist[i]);
 		onlyas = 0;
-		assource = tmp_as;
+		assource = tmp3;
 		if (getsuf(clist[i])=='S')
 			ascpp = 1;
 		if (getsuf(clist[i])=='i') {
@@ -846,21 +834,21 @@ main(int argc, char *argv[])
 			goto assemble;
 		}
 		if (pflag)
-			tmp_cpp = setsuf(clist[i], 'i');
+			tmp4 = setsuf(clist[i], 'i');
 		na = 0;
 		av[na++] = "cpp";
 		if (vflag)
 			av[na++] = "-v";
-                if (mode == MODE_PCC) {
-                        av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
-                        av[na++] = "-D__PCC_MINOR__=" MKS(PCC_MINOR);
-                        av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
-                }
+		av[na++] = "-D__PCC__=" MKS(PCC_MAJOR);
+		av[na++] = "-D__PCC_MINOR__=" MKS(PCC_MINOR);
+		av[na++] = "-D__PCC_MINORMINOR__=" MKS(PCC_MINORMINOR);
+#ifndef os_win32
 #ifdef GCC_COMPAT
-                av[na++] = "-D__GNUC__=4";
-                av[na++] = "-D__GNUC_MINOR__=3";
-                av[na++] = "-D__GNUC_PATCHLEVEL__=1";
-                av[na++] = "-D__GNUC_STDC_INLINE__=1";
+		av[na++] = "-D__GNUC__=4";
+		av[na++] = "-D__GNUC_MINOR__=3";
+		av[na++] = "-D__GNUC_PATCHLEVEL__=1";
+		av[na++] = "-D__GNUC_STDC_INLINE__=1";
+#endif
 #endif
 		if (ascpp)
 			av[na++] = "-D__ASSEMBLER__";
@@ -921,9 +909,9 @@ main(int argc, char *argv[])
 		}
 		av[na++] = clist[i];
 		if (!Eflag && !Mflag)
-                        av[na++] = tmp_cpp;
+			av[na++] = tmp4;
 		if ((Eflag || Mflag) && outfile)
-			ermfile = av[na++] = outfile;
+			 ermfile = av[na++] = outfile;
 		av[na++]=0;
 		if (callsys(passp, av)) {
 			exfail++;
@@ -932,7 +920,7 @@ main(int argc, char *argv[])
 		if (Eflag || Mflag)
 			continue;
 		if (onlyas) {
-			assource = tmp_cpp;
+			assource = tmp4;
 			goto assemble;
 		}
 
@@ -962,14 +950,27 @@ main(int argc, char *argv[])
 			av[na++] = wlist[j];
 		for (j = 0; j < nf; j++)
 			av[na++] = flist[j];
+#if !defined(os_sunos) && !defined(mach_i386)
 		if (vflag)
 			av[na++] = "-v";
+#endif
 		if (pgflag)
 			av[na++] = "-p";
 		if (gflag)
 			av[na++] = "-g";
+#ifdef os_darwin
+		/* darwin always wants PIC compilation */
+		if (!Bstatic)
+			av[na++] = "-k";
+#elif defined(os_sunos) && defined(mach_i386)
+		if (kflag) {
+			av[na++] = "-K";
+			av[na++] = "pic";
+		}
+#else
 		if (kflag)
 			av[na++] = "-k";
+#endif
 		if (Oflag) {
 			av[na++] = "-xtemps";
 			av[na++] = "-xdeljumps";
@@ -982,18 +983,18 @@ main(int argc, char *argv[])
 		if (getsuf(clist[i])=='i')
 			av[na++] = clist[i];
 		else
-			av[na++] = tmp_cpp; /* created by cpp */
+			av[na++] = tmp4; /* created by cpp */
 		if (pflag || exfail) {
 			cflag++;
 			continue;
 		}
 		if (sflag) {
 			if (outfile)
-				tmp_as = outfile;
+				tmp3 = outfile;
 			else
-				tmp_as = setsuf(clist[i], 's');
+				tmp3 = setsuf(clist[i], 's');
 		}
-		ermfile = av[na++] = tmp_as;
+		ermfile = av[na++] = tmp3;
 #if 0
 		if (proflag) {
 			av[3] = "-XP";
@@ -1018,6 +1019,19 @@ main(int argc, char *argv[])
 		av[na++] = as;
 		for (j = 0; j < nas; j++)
 			av[na++] = aslist[j];
+#if defined(os_win32) && defined(USE_YASM)
+		av[na++] = "-p";
+		av[na++] = "gnu";
+		av[na++] = "-f";
+		av[na++] = "win32";
+#endif
+#if defined(os_sunos) && defined(mach_sparc64)
+		av[na++] = "-m64";
+#endif
+#if defined(os_darwin)
+		if (Bstatic)
+			av[na++] = "-static";
+#endif
 		if (vflag)
 			av[na++] = "-v";
 		if (kflag)
@@ -1036,12 +1050,10 @@ main(int argc, char *argv[])
 		if (callsys(as, av)) {
 			cflag++;
 			eflag++;
-                        if (ascpp)
-                                cunlink(tmp_cpp);
+			cunlink(tmp4);
 			continue;
 		}
-                if (ascpp)
-                        cunlink(tmp_cpp);
+		cunlink(tmp4);
 	}
 
 	if (Eflag || Mflag)
@@ -1054,31 +1066,59 @@ nocom:
 	if (cflag==0 && nc+nl != 0) {
 		j = 0;
 		av[j++] = ld;
+#ifndef MSLINKER
 		if (vflag)
 			av[j++] = "-v";
+#endif
+#if !defined(os_sunos) && !defined(os_win32) && !defined(os_darwin)
 		av[j++] = "-X";
+#endif
 		if (shared) {
+#ifdef os_darwin
+			av[j++] = "-dylib";
+#else
 			av[j++] = "-shared";
+#endif
+#ifdef os_win32
+			av[j++] = "-Bdynamic";
+#endif
+#ifndef os_sunos
 		} else {
+#ifndef os_win32
+#ifndef os_darwin
 			av[j++] = "-d";
+#endif
 			if (rflag) {
 				av[j++] = "-r";
 			} else {
 				av[j++] = "-e";
 				av[j++] = STARTLABEL;
 			}
+#endif
+#endif
 			if (Bstatic == 0) { /* Dynamic linkage */
 #ifdef DYNLINKER
 				for (i = 0; dynlinker[i]; i++)
 					av[j++] = dynlinker[i];
 #endif
 			} else {
+#ifdef os_darwin
+				av[j++] = "-static";
+#else
 				av[j++] = "-Bstatic";
+#endif
 			}
 		}
 		if (outfile) {
+#ifdef MSLINKER
+#define	OUTSTR	"/OUT:"
+			char *s = copy(OUTSTR, i = strlen(outfile));
+			strlcat(s, outfile, sizeof(OUTSTR) + i);
+			av[j++] = s;
+#else
 			av[j++] = "-o";
 			av[j++] = outfile;
+#endif
 		}
 #ifdef STARTFILES_S
 		if (shared) {
@@ -1126,8 +1166,11 @@ nocom:
 			if (j >= MAXAV)
 				error("Too many ld options");
 		}
+#if !defined(os_darwin) && !defined(os_sunos)
+		/* darwin assembler doesn't want -g */
 		if (gflag)
 			av[j++] = "-g";
+#endif
 #if 0
 		if (gflag)
 			av[j++] = "-lg";
@@ -1135,13 +1178,22 @@ nocom:
 		if (pthreads)
 			av[j++] = "-lpthread";
 		if (!nostdlib) {
+#ifdef MSLINKER
+#define	DL	"/LIBPATH:"
+#else
 #define	DL	"-L"
+#endif
 			char *s;
                         if (pcclibdir) {
                                 s = copy(DL, i = strlen(pcclibdir));
                                 strlcat(s, pcclibdir, sizeof(DL) + i);
                                 av[j++] = s;
                         }
+#ifdef os_win32
+			s = copy(DL, i = strlen(libdir));
+			strlcat(s, libdir, sizeof(DL) + i);
+			av[j++] = s;
+#endif
 			if (pgflag) {
 				for (i = 0; libclibs_profile[i]; i++)
 					av[j++] = Bprefix(libclibs_profile[i]);
@@ -1203,8 +1255,8 @@ dexit(int eval)
 {
 	if (!pflag && !Xflag) {
 		if (sflag==0)
-			cunlink(tmp_as);
-		cunlink(tmp_cpp);
+			cunlink(tmp3);
+		cunlink(tmp4);
 	}
 	if (exfail || eflag)
 		cunlink(ermfile);
@@ -1257,9 +1309,24 @@ Bprefix(char *s)
 	char *str;
 	int i;
 
+#ifdef WIN32
+
+	/*  put here to save sprinkling it ~everywhere  */
+	s =  win32pathsubst(s);
+
+	if (Bflag == NULL)
+		return s;
+	suffix = strrchr(s, '/');
+	if (suffix == NULL)
+		suffix = strrchr(s, '\\');
+
+#else
+
 	if (Bflag == NULL || s[0] != '/')
 		return s;
 	suffix = strrchr(s, '/');
+
+#endif
 
 	if (suffix == NULL)
 		suffix = s;
@@ -1314,6 +1381,51 @@ setsuf(char *s, char ch)
 	p[2] = '\0';
 	return(s);
 }
+
+#ifdef WIN32
+#define MAX_CMDLINE_LENGTH 32768
+int
+callsys(char *f, char *v[])
+{
+	char *cmd;
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+	DWORD exitCode;
+	BOOL ok;
+
+	cmd = win32commandline(f, v);
+	if (vflag)
+		printf("%s\n", cmd);
+
+	ZeroMemory(&si, sizeof(STARTUPINFO));
+	si.cb = sizeof(STARTUPINFO);
+	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+
+	ok = CreateProcess(NULL,  // the executable program
+		cmd,   // the command line arguments
+		NULL,       // ignored
+		NULL,       // ignored
+		TRUE,       // inherit handles
+		HIGH_PRIORITY_CLASS,
+		NULL,       // ignored
+		NULL,       // ignored
+		&si,
+		&pi);
+
+	if (!ok) {
+		fprintf(stderr, "Can't find %s\n", f);
+		return 100;
+	}
+
+	WaitForSingleObject(pi.hProcess, INFINITE);
+	GetExitCodeProcess(pi.hProcess, &exitCode);
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+
+	return (exitCode != 0);
+}
+
+#else
 
 int
 callsys(char *f, char *v[])
@@ -1374,6 +1486,7 @@ callsys(char *f, char *v[])
 
 	return 0;
 }
+#endif
 
 /*
  * Make a copy of string as, mallocing extra bytes in the string.
@@ -1397,6 +1510,31 @@ cunlink(char *f)
 	return (unlink(f));
 }
 
+#ifdef WIN32
+char *
+gettmp(void)
+{
+#define BUFFSIZE 1000
+	DWORD pathSize;
+	char pathBuffer[BUFFSIZE];
+	char tempFilename[MAX_PATH];
+	UINT uniqueNum;
+
+	pathSize = GetTempPath(BUFFSIZE, pathBuffer);
+	if (pathSize < BUFFSIZE)
+		pathBuffer[pathSize] = 0;
+	else
+		pathBuffer[0] = 0;
+	uniqueNum = GetTempFileName(pathBuffer, "ctm", 0, tempFilename);
+	if (uniqueNum == 0) {
+		fprintf(stderr, "%s:\n", pathBuffer);
+		exit(8);
+	}
+	return copy(tempFilename, 0);
+}
+
+#else
+
 char *
 gettmp(void)
 {
@@ -1410,6 +1548,7 @@ gettmp(void)
 	close(fd);
 	return sfn;
 }
+#endif
 
 void *
 ccmalloc(int size)
@@ -1420,3 +1559,76 @@ ccmalloc(int size)
 		error("malloc failed");
 	return rv;
 }
+
+#ifdef WIN32
+
+char *
+win32pathsubst(char *s)
+{
+	char env[1024];
+	char *rv;
+	int len;
+
+	len = ExpandEnvironmentStrings(s, env, sizeof(env));
+	if (len <= 0)
+		return s;
+
+	while (env[len-1] == '/' || env[len-1] == '\\' || env[len-1] == '\0')
+		env[--len] = 0;
+
+	rv = ccmalloc(len+1);
+	strlcpy(rv, env, len+1);
+
+	return rv;
+}
+
+char *
+win32commandline(char *f, char *args[])
+{
+	char *cmd;
+	char *p;
+	int len;
+	int i, j, k;
+
+	len = strlen(f) + 3;
+
+	for (i = 1; args[i] != NULL; i++) {
+		for (j = 0; args[i][j] != '\0'; j++) {
+			len++;
+			if (args[i][j] == '\"') {
+				for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+					len++;
+			}
+		}
+		for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+			len++;
+		len += j + 3;
+	}
+
+	p = cmd = ccmalloc(len);
+	*p++ = '\"';
+	p += strlcpy(p, f, len-1);
+	*p++ = '\"';
+	*p++ = ' ';
+
+	for (i = 1; args[i] != NULL; i++) {
+		*p++ = '\"';
+		for (j = 0; args[i][j] != '\0'; j++) {
+			if (args[i][j] == '\"') {
+				for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+					*p++ = '\\';
+				*p++ = '\\';
+			}
+			*p++ = args[i][j];
+		}
+		for (k = j-1; k >= 0 && args[i][k] == '\\'; k--)
+			*p++ = '\\';
+		*p++ = '\"';
+		*p++ = ' ';
+	}
+	p[-1] = '\0';
+
+	return cmd;
+}
+
+#endif

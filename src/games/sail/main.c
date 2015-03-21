@@ -3,10 +3,18 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#if	!defined(lint) && defined(DOSCCS)
+char copyright[] =
+"@(#) Copyright (c) 1980 Regents of the University of California.\n\
+ All rights reserved.\n";
+
+static char sccsid[] = "@(#)main.c	5.1.2 (2.11BSD) 1997/9/9";
+#endif
+
 #include "externs.h"
 
 /*ARGSUSED*/
-int
 main(argc, argv)
 	int argc;
 	register char **argv;
@@ -18,8 +26,7 @@ main(argc, argv)
 	setbuf(stdout, stdobuf);
 	(void) srand(getpid());
 	issetuid = getuid() != geteuid();
-	p = strrchr(*argv, '/');
-	if (p)
+	if (p = rindex(*argv, '/'))
 		p++;
 	else
 		p = *argv;
@@ -41,7 +48,7 @@ main(argc, argv)
 			debug++;
 			break;
 		case 'x':
-			randomize++;
+			randomize;
 			break;
 		case 'l':
 			longfmt++;
@@ -57,8 +64,7 @@ main(argc, argv)
 		game = atoi(*argv);
 	else
 		game = -1;
-        i = setjmp(restart);
-	if (i)
+	if (i = setjmp(restart))
 		mode = i;
 	switch (mode) {
 	case MODE_PLAYER:
@@ -79,24 +85,25 @@ main(argc, argv)
  * sigmask() and thus only computed 16 bit signal masks).  The signal handling
  * in 2.11BSD is now that of 4.4BSD and the macros were fixed (i.e. rewritten)
  * and made into routines to avoid the plethora of inline 'long' operations.
- */
+*/
+
 void
 blockalarm()
-{
+	{
 	sigset_t set;
 
 	sigemptyset(&set);
 	sigaddset(&set, SIGALRM);
 
 	(void)sigprocmask(SIG_BLOCK, &set, NULL);
-}
+	}
 
 void
 unblockalarm()
-{
+	{
 	sigset_t set;
 
 	sigemptyset(&set);
 	sigaddset(&set, SIGALRM);
 	(void)sigprocmask(SIG_UNBLOCK, &set, NULL);
-}
+	}

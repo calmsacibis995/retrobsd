@@ -3,15 +3,21 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
-#define	reg	register
+
+#if !defined(lint) && !defined(NOSCCS)
+static char sccsid[] = "@(#)longname.c	5.1 (Berkeley) 6/7/85";
+#endif
+
+# define	reg	register
 
 /*
- * This routine fills in "def" with the long name of the terminal.
+ *	This routine fills in "def" with the long name of the terminal.
+ *
  */
 char *
 longname(bp, def)
-        reg char	*bp, *def;
-{
+reg char	*bp, *def; {
+
 	reg char	*cp;
 
 	while (*bp && *bp != ':' && *bp != '|')

@@ -1,76 +1,74 @@
-/*
- * File stmt.c: 2.1 (83/03/20,16:02:17)
- */
-
 #include <stdio.h>
 #include "defs.h"
 #include "data.h"
 
-/**
- * statement parser
- * called whenever syntax requires a statement.  this routine
- * performs that statement and returns a number telling which one
- * @param func func is true if we require a "function_statement", which
- * must be compound, and must contain "statement_list" (even if
- * "declaration_list" is omitted)
- * @return statement type
+/*
+ *      statement parser
+ *
+ *      called whenever syntax requires a statement.  this routine
+ *      performs that statement and returns a number telling which one
+ *
+ *      'func' is true if we require a "function_statement", which
+ *      must be compound, and must contain "statement_list" (even if
+ *      "declaration_list" is omitted)
  */
-statement (int func) {
+statement (func)
+        int     func;
+{
         if ((ch () == 0) & feof (input))
                 return (0);
         lastst = 0;
         if (func)
                 if (match ("{")) {
-                        do_compound (YES);
+                        compound (YES);
                         return (lastst);
                 } else
                         error ("function requires compound statement");
         if (match ("{"))
-                do_compound (NO);
+                compound (NO);
         else
-                do_statement ();
+                stst ();
         return (lastst);
 }
 
-/**
- * declaration
+/*
+ *      declaration
  */
-statement_declare() {
+stdecl ()
+{
         if (amatch("register", 8))
-                do_local_declares(DEFAUTO);
+                doldcls(DEFAUTO);
         else if (amatch("auto", 4))
-                do_local_declares(DEFAUTO);
+                doldcls(DEFAUTO);
         else if (amatch("static", 6))
-                do_local_declares(LSTATIC);
-        else if (do_local_declares(AUTO)) ;
+                doldcls(LSTATIC);
+        else if (doldcls(AUTO)) ;
         else
                 return (NO);
         return (YES);
 }
 
-/**
- * local declarations
- * @param stclass
- * @return
- */
-do_local_declares(int stclass) {
-        int type = 0;
+doldcls(stclass)
+        int     stclass;
+{
         blanks();
-        if (type = get_type()) {
-            declare_local(type, stclass);
-        } else if (stclass == LSTATIC || stclass == DEFAUTO) {
-            declare_local(CINT, stclass);
-        } else {
-            return(0);
-        }
-        need_semicolon();
+        if (amatch("char", 4))
+                declloc(CCHAR, stclass);
+        else if (amatch("int", 3))
+                declloc(CINT, stclass);
+        else if (stclass == LSTATIC || stclass == DEFAUTO)
+                declloc(CINT, stclass);
+        else
+                return(0);
+        ns();
         return(1);
 }
 
-/**
- * non-declaration statement
+/*
+ *      non-declaration statement
  */
-do_statement () {
+stst ()
+{
         if (amatch ("if", 2)) {
                 doif ();
                 lastst = STIF;
@@ -82,22 +80,22 @@ do_statement () {
                 lastst = STSWITCH;
         } else if (amatch ("do", 2)) {
                 dodo ();
-                need_semicolon ();
+                ns ();
                 lastst = STDO;
         } else if (amatch ("for", 3)) {
                 dofor ();
                 lastst = STFOR;
         } else if (amatch ("return", 6)) {
                 doreturn ();
-                need_semicolon ();
+                ns ();
                 lastst = STRETURN;
         } else if (amatch ("break", 5)) {
                 dobreak ();
-                need_semicolon ();
+                ns ();
                 lastst = STBREAK;
         } else if (amatch ("continue", 8)) {
                 docont ();
-                need_semicolon ();
+                ns ();
                 lastst = STCONT;
         } else if (match (";"))
                 ;
@@ -110,29 +108,31 @@ do_statement () {
         } else if (match ("__asm__")) {
                 doasm ();
                 lastst = STASM;
-        } else if (match("#")) {
-                kill();
         } else if (match ("{"))
-                do_compound (NO);
+                compound (NO);
         else {
                 expression (YES);
 /*              if (match (":")) {
                         dolabel ();
                         lastst = statement (NO);
                 } else {
-*/                      need_semicolon ();
+*/                      ns ();
                         lastst = STEXP;
 /*              }
 */      }
 }
 
-/**
- * compound statement
- * allow any number of statements to fall between "{" and "}"
- * 'func' is true if we are in a "function_statement", which
- * must contain "statement_list"
+/*
+ *      compound statement
+ *
+ *      allow any number of statements to fall between "{" and "}"
+ *
+ *      'func' is true if we are in a "function_statement", which
+ *      must contain "statement_list"
  */
-do_compound(int func) {
+compound (func)
+        int     func;
+{
         int     decls;
 
         decls = YES;
@@ -141,178 +141,184 @@ do_compound(int func) {
                 if (feof (input))
                         return;
                 if (decls) {
-                        if (!statement_declare ())
+                        if (!stdecl ())
                                 decls = NO;
                 } else
-                        do_statement ();
+                        stst ();
         }
         ncmp--;
 }
 
-/**
- * "if" statement
+/*
+ *      "if" statement
  */
-doif() {
+doif ()
+{
         int     fstkp, flab1, flab2;
-        int     flev;
+        char    *flev;
 
-        flev = local_table_index;
+        flev = locptr;
         fstkp = stkp;
         flab1 = getlabel ();
         test (flab1, FALSE);
         statement (NO);
-        stkp = gen_modify_stack (fstkp);
-        local_table_index = flev;
+        stkp = modstk (fstkp);
+        locptr = flev;
         if (!amatch ("else", 4)) {
-                generate_label (flab1);
+                gnlabel (flab1);
                 return;
         }
-        gen_jump (flab2 = getlabel ());
-        generate_label (flab1);
+        jump (flab2 = getlabel ());
+        gnlabel (flab1);
         statement (NO);
-        stkp = gen_modify_stack (fstkp);
-        local_table_index = flev;
-        generate_label (flab2);
+        stkp = modstk (fstkp);
+        locptr = flev;
+        gnlabel (flab2);
 }
 
-/**
- * "while" statement
+/*
+ *      "while" statement
  */
-dowhile() {
-        loop_t loop;
+dowhile ()
+{
+        int     ws[7];
 
-        loop.symbol_idx = local_table_index;
-        loop.stack_pointer = stkp;
-        loop.type = WSWHILE;
-        loop.test_label = getlabel ();
-        loop.exit_label = getlabel ();
-        addloop (&loop);
-        generate_label (loop.test_label);
-        test (loop.exit_label, FALSE);
+        ws[WSSYM] = CAST_INT locptr;
+        ws[WSSP] = stkp;
+        ws[WSTYP] = WSWHILE;
+        ws[WSTEST] = getlabel ();
+        ws[WSEXIT] = getlabel ();
+        addwhile (ws);
+        gnlabel (ws[WSTEST]);
+        test (ws[WSEXIT], FALSE);
         statement (NO);
-        gen_jump (loop.test_label);
-        generate_label (loop.exit_label);
-        local_table_index = loop.symbol_idx;
-        stkp = gen_modify_stack (loop.stack_pointer);
-        delloop ();
+        jump (ws[WSTEST]);
+        gnlabel (ws[WSEXIT]);
+        locptr = CAST_CHAR_PTR ws[WSSYM];
+        stkp = modstk (ws[WSSP]);
+        delwhile ();
 }
 
-/**
- * "do" statement
+/*
+ *      "do" statement
  */
-dodo() {
-        loop_t loop;
+dodo ()
+{
+        int     ws[7];
 
-        loop.symbol_idx = local_table_index;
-        loop.stack_pointer = stkp;
-        loop.type = WSDO;
-        loop.body_label = getlabel ();
-        loop.test_label = getlabel ();
-        loop.exit_label = getlabel ();
-        addloop (&loop);
-        generate_label (loop.body_label);
+        ws[WSSYM] = CAST_INT locptr;
+        ws[WSSP] = stkp;
+        ws[WSTYP] = WSDO;
+        ws[WSBODY] = getlabel ();
+        ws[WSTEST] = getlabel ();
+        ws[WSEXIT] = getlabel ();
+        addwhile (ws);
+        gnlabel (ws[WSBODY]);
         statement (NO);
         if (!match ("while")) {
                 error ("missing while");
                 return;
         }
-        generate_label (loop.test_label);
-        test (loop.body_label, TRUE);
-        generate_label (loop.exit_label);
-        local_table_index = loop.symbol_idx;
-        stkp = gen_modify_stack (loop.stack_pointer);
-        delloop ();
+        gnlabel (ws[WSTEST]);
+        test (ws[WSBODY], TRUE);
+        gnlabel (ws[WSEXIT]);
+        locptr = CAST_CHAR_PTR ws[WSSYM];
+        stkp = modstk (ws[WSSP]);
+        delwhile ();
 }
 
-/**
- * "for" statement
+/*
+ *      "for" statement
  */
-dofor() {
-        loop_t loop;
-        loop_t *p;
+dofor ()
+{
+        int     ws[7],
+                *pws;
 
-        loop.symbol_idx = local_table_index;
-        loop.stack_pointer = stkp;
-        loop.type = WSFOR;
-        loop.test_label = getlabel ();
-        loop.cont_label = getlabel ();
-        loop.body_label = getlabel ();
-        loop.exit_label = getlabel ();
-        addloop (&loop);
-        p = readloop ();
+        ws[WSSYM] = CAST_INT locptr;
+        ws[WSSP] = stkp;
+        ws[WSTYP] = WSFOR;
+        ws[WSTEST] = getlabel ();
+        ws[WSINCR] = getlabel ();
+        ws[WSBODY] = getlabel ();
+        ws[WSEXIT] = getlabel ();
+        addwhile (ws);
+        pws = CAST_INT_PTR readwhile ();
         needbrack ("(");
         if (!match (";")) {
                 expression (YES);
-                need_semicolon ();
+                ns ();
         }
-        generate_label (p->test_label);
+        gnlabel (pws[WSTEST]);
         if (!match (";")) {
                 expression (YES);
-                gen_test_jump (p->body_label, TRUE);
-                gen_jump (p->exit_label);
-                need_semicolon ();
+                testjump (pws[WSBODY], TRUE);
+                jump (pws[WSEXIT]);
+                ns ();
         } else
-                p->test_label = p->body_label;
-        generate_label (p->cont_label);
+                pws[WSTEST] = pws[WSBODY];
+        gnlabel (pws[WSINCR]);
         if (!match (")")) {
                 expression (YES);
                 needbrack (")");
-                gen_jump (p->test_label);
+                jump (pws[WSTEST]);
         } else
-                p->cont_label = p->test_label;
-        generate_label (p->body_label);
+                pws[WSINCR] = pws[WSTEST];
+        gnlabel (pws[WSBODY]);
         statement (NO);
-        gen_jump (p->cont_label);
-        generate_label (p->exit_label);
-        local_table_index = p->symbol_idx;
-        stkp = gen_modify_stack (p->stack_pointer);
-        delloop ();
+        jump (pws[WSINCR]);
+        gnlabel (pws[WSEXIT]);
+        locptr = CAST_CHAR_PTR pws[WSSYM];
+        stkp = modstk (pws[WSSP]);
+        delwhile ();
 }
 
-/**
- * "switch" statement
+/*
+ *      "switch" statement
  */
-doswitch() {
-        loop_t loop;
-        loop_t *ptr;
+doswitch ()
+{
+        int     ws[7];
+        int     *ptr;
 
-        loop.symbol_idx = local_table_index;
-        loop.stack_pointer = stkp;
-        loop.type = WSSWITCH;
-        loop.test_label = swstp;
-        loop.body_label = getlabel ();
-        loop.cont_label = loop.exit_label = getlabel ();
-        addloop (&loop);
-        gen_immediate_a ();
-        print_label (loop.body_label);
-        newline ();
-        gen_push ();
+        ws[WSSYM] = CAST_INT locptr;
+        ws[WSSP] = stkp;
+        ws[WSTYP] = WSSWITCH;
+        ws[WSCASEP] = swstp;
+        ws[WSTAB] = getlabel ();
+        ws[WSDEF] = ws[WSEXIT] = getlabel ();
+        addwhile (ws);
+        immed ();
+        printlabel (ws[WSTAB]);
+        nl ();
+        gpush ();
         needbrack ("(");
         expression (YES);
         needbrack (")");
-        stkp = stkp + INTSIZE;  // '?case' will adjust the stack
-        gen_jump_case ();
+        stkp = stkp + intsize();  /* '?case' will adjust the stack */
+        gjcase ();
         statement (NO);
-        ptr = readswitch ();
-        gen_jump (ptr->exit_label);
+        ptr = CAST_INT_PTR readswitch ();
+        jump (ptr[WSEXIT]);
         dumpsw (ptr);
-        generate_label (ptr->exit_label);
-        local_table_index = ptr->symbol_idx;
-        stkp = gen_modify_stack (ptr->stack_pointer);
-        swstp = ptr->test_label;
-        delloop ();
+        gnlabel (ptr[WSEXIT]);
+        locptr = CAST_CHAR_PTR ptr[WSSYM];
+        stkp = modstk (ptr[WSSP]);
+        swstp = ptr[WSCASEP];
+        delwhile ();
 }
 
-/**
- * "case" label
+/*
+ *      "case" label
  */
-docase() {
+docase ()
+{
         int     val;
 
         val = 0;
         if (readswitch ()) {
                 if (!number (&val))
-                        if (!quoted_char (&val))
+                        if (!pstr (&val))
                                 error ("bad case label");
                 addcase (val);
                 if (!match (":"))
@@ -321,86 +327,95 @@ docase() {
                 error ("no active switch");
 }
 
-/**
- * "default" label
+/*
+ *      "default" label
  */
-dodefault() {
-        loop_t *ptr;
-        int        lab;
+dodefault ()
+{
+        int     *ptr,
+                lab;
 
-        if (ptr = readswitch ()) {
-                ptr->cont_label = lab = getlabel ();
-                generate_label (lab);
+        ptr = CAST_INT_PTR readswitch ();
+        if (ptr) {
+                ptr[WSDEF] = lab = getlabel ();
+                gnlabel (lab);
                 if (!match (":"))
                         error ("missing colon");
         } else
                 error ("no active switch");
 }
 
-/**
- * "return" statement
+/*
+ *      "return" statement
  */
-doreturn() {
+doreturn ()
+{
         if (endst () == 0)
                 expression (YES);
-        gen_jump(fexitlab);
+        jump(fexitlab);
 }
 
-/**
- * "break" statement
+/*
+ *      "break" statement
  */
-dobreak() {
-        loop_t *ptr;
+dobreak ()
+{
+        int     *ptr;
 
-        if ((ptr = readloop ()) == 0)
+        ptr = CAST_INT_PTR readwhile ();
+        if (ptr == 0)
                 return;
-        gen_modify_stack (ptr->stack_pointer);
-        gen_jump (ptr->exit_label);
+        modstk (ptr[WSSP]);
+        jump (ptr[WSEXIT]);
 }
 
-/**
- * "continue" statement
+/*
+ *      "continue" statement
  */
-docont() {
-        loop_t *ptr;
+docont ()
+{
+        int     *ptr;
 
-        if ((ptr = findloop ()) == 0)
+        ptr = CAST_INT_PTR findwhile ();
+        if (ptr == 0)
                 return;
-        gen_modify_stack (ptr->stack_pointer);
-        if (ptr->type == WSFOR)
-                gen_jump (ptr->cont_label);
+        modstk (ptr[WSSP]);
+        if (ptr[WSTYP] == WSFOR)
+                jump (ptr[WSINCR]);
         else
-                gen_jump (ptr->test_label);
+                jump (ptr[WSTEST]);
 }
 
-/**
- * dump switch table
+/*
+ *      dump switch table
  */
-dumpsw(loop_t *loop) {
+dumpsw (ws)
+        int     ws[];
+{
         int     i,j;
 
-        data_segment_gdata ();
-        generate_label (loop->body_label);
-        if (loop->test_label != swstp) {
-                j = loop->test_label;
+        gdata ();
+        gnlabel (ws[WSTAB]);
+        if (ws[WSCASEP] != swstp) {
+                j = ws[WSCASEP];
                 while (j < swstp) {
-                        gen_def_word ();
+                        defword ();
                         i = 4;
                         while (i--) {
-                                output_number (swstcase[j]);
-                                output_byte (',');
-                                print_label (swstlab[j++]);
+                                onum (swstcase[j]);
+                                outbyte (',');
+                                printlabel (swstlab[j++]);
                                 if ((i == 0) | (j >= swstp)) {
-                                        newline ();
+                                        nl ();
                                         break;
                                 }
-                                output_byte (',');
+                                outbyte (',');
                         }
                 }
         }
-        gen_def_word ();
-        print_label (loop->cont_label);
-        output_string (",0");
-        newline ();
-        code_segment_gtext ();
+        defword ();
+        printlabel (ws[WSDEF]);
+        outstr (",0");
+        nl ();
+        gtext ();
 }

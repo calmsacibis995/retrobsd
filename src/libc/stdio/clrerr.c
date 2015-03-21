@@ -1,7 +1,6 @@
 #include <stdio.h>
 #undef	clearerr
 
-void
 clearerr(iop)
 	register FILE *iop;
 {

@@ -9,7 +9,7 @@ include $(TOPSRC)/target.mk
 # Programs that live in subdirectories, and have makefiles of their own.
 #
 SUBDIR		= startup-$(MACHINE) libc libm libutil libtermlib libcurses \
-                  libvmf libwiznet share cmd games man
+                  libvmf libwiznet share cmd games
 
 all:		$(SUBDIR)
 
@@ -21,7 +21,7 @@ FRC:
 install:        elf32-mips.ld
 		-for i in $(SUBDIR); do \
 			$(MAKE) -C $$i DESTDIR=$(DESTDIR) all install; done
-#		cp -p elf32-mips.ld $(DESTDIR)/lib/elf32-mips.ld
+		cp -p elf32-mips.ld $(DESTDIR)/lib/elf32-mips.ld
 
 clean:
 		rm -f a.out core *.s *.o *.a *~

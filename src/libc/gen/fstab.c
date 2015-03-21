@@ -75,11 +75,9 @@ fstabscan()
 				_fs_fstab.fs_vfstype =
 				    strcmp(_fs_fstab.fs_type, FSTAB_SW) ?
 				    "ufs" : "swap";
-                                bp = strsep(&cp, colon);
-				if (bp) {
+				if (bp = strsep(&cp, colon)) {
 					_fs_fstab.fs_freq = atoi(bp);
-					bp = strsep(&cp, colon);
-					if (bp) {
+					if (bp = strsep(&cp, colon)) {
 						_fs_fstab.fs_passno = atoi(bp);
 						return(1);
 					}
@@ -144,11 +142,9 @@ bad:		/* no way to distinguish between EOF and syntax error */
 struct fstab *
 getfsent()
 {
-	if (! _fs_fp && ! setfsent())
-		return 0;
-	if (! fstabscan())
-		return 0;
-	return &_fs_fstab;
+	if (!_fs_fp && !setfsent() || !fstabscan())
+		return((struct fstab *)NULL);
+	return(&_fs_fstab);
 }
 
 struct fstab *
@@ -173,15 +169,13 @@ getfsfile(name)
 	return((struct fstab *)NULL);
 }
 
-int
 setfsent()
 {
 	if (_fs_fp) {
 		rewind(_fs_fp);
 		return(1);
 	}
-	_fs_fp = fopen(_PATH_FSTAB, "r");
-	if (_fs_fp)
+	if (_fs_fp = fopen(_PATH_FSTAB, "r"))
 		return(1);
 	error(errno);
 	return(0);

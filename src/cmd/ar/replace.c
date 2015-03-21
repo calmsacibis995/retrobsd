@@ -34,28 +34,20 @@
  * SUCH DAMAGE.
  */
 #ifdef CROSS
-#   include <sys/types.h>
-#   include <sys/select.h>
-#   include <sys/stat.h>
-#   include <sys/fcntl.h>
-#   include <stdio.h>
-#   include <fcntl.h>
-#   include <stdint.h>
-#   include <string.h>
-#   include <unistd.h>
-#   include <errno.h>
+#   include </usr/include/stdio.h>
+#   include </usr/include/errno.h>
 #else
-#   include <sys/param.h>
-#   include <sys/stat.h>
-#   include <sys/dir.h>
-#   include <sys/file.h>
 #   include <stdio.h>
-#   include <string.h>
-#   include <unistd.h>
 #   include <errno.h>
-#   include <fcntl.h>
 #endif
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/dir.h>
+#include <sys/file.h>
 #include <ar.h>
+#include <string.h>
+#include <unistd.h>
 #include "archive.h"
 #include "extern.h"
 
@@ -160,8 +152,7 @@ useold:			SETCF(afd, archive, curfd, tname, RPAD|WPAD);
 append:	while ((file = *argv++) != 0) {
 		if (options & AR_V)
 			(void)printf("a - %s\n", file);
-                sfd = open(file, O_RDONLY);
-		if (sfd < 0) {
+		if ((sfd = open(file, O_RDONLY)) < 0) {
 			err = 1;
 			(void)fprintf(stderr, "ar: %s: %s.\n",
 			    file, strerror(errno));
@@ -175,18 +166,18 @@ append:	while ((file = *argv++) != 0) {
 		(void)close(sfd);
 	}
 
-	(void)lseek(afd, (off_t)SARMAG, SEEK_SET);
+	(void)lseek(afd, (off_t)SARMAG, L_SET);
 
 	SETCF(tfd1, tname, afd, archive, NOPAD);
 	if (tfd1 != -1) {
-		tsize = size = lseek(tfd1, (off_t)0, SEEK_CUR);
-		(void)lseek(tfd1, (off_t)0, SEEK_SET);
+		tsize = size = lseek(tfd1, (off_t)0, L_INCR);
+		(void)lseek(tfd1, (off_t)0, L_SET);
 		copy_ar(&cf, size);
 	} else
 		tsize = 0;
 
-	tsize += size = lseek(tfd2, (off_t)0, SEEK_CUR);
-	(void)lseek(tfd2, (off_t)0, SEEK_SET);
+	tsize += size = lseek(tfd2, (off_t)0, L_INCR);
+	(void)lseek(tfd2, (off_t)0, L_SET);
 	cf.rfd = tfd2;
 	copy_ar(&cf, size);
 

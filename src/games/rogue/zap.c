@@ -9,66 +9,95 @@
 #include <string.h>
 #include "rogue.h"
 
-char wizard = 0;
+boolean wizard = 0;
 
-static void
-wdrain_life(monster)
-        object *monster;
+extern boolean being_held, score_only, detect_monster;
+extern short cur_room;
+
+zapp()
 {
-	int hp;
-	object *lmon, *nm;
+	short wch;
+	boolean first_miss = 1;
+	object *wand;
+	short dir, d, row, col;
+	object *monster;
 
-	hp = rogue.hp_current / 3;
-	rogue.hp_current = (rogue.hp_current + 1) / 2;
-
-	if (cur_room >= 0) {
-		lmon = level_monsters.next_monster;
-		while (lmon) {
-			nm = lmon->next_monster;
-			if (get_room_number(lmon->row, lmon->col) == cur_room) {
-				wake_up(lmon);
-				(void) mon_damage(lmon, hp);
-			}
-			lmon = nm;
+	while (!is_direction(dir = rgetchar(), &d)) {
+		sound_bell();
+		if (first_miss) {
+			message("direction? ", 0);
+			first_miss = 0;
 		}
+	}
+	check_message();
+	if (dir == CANCEL) {
+		return;
+	}
+	if ((wch = pack_letter("zap with what?", WAND)) == CANCEL) {
+		return;
+	}
+	check_message();
+
+	if (!(wand = get_letter_object(wch))) {
+		message("no such item.", 0);
+		return;
+	}
+	if (wand->what_is != WAND) {
+		message("you can't zap with that", 0);
+		return;
+	}
+	if (wand->class <= 0) {
+		message("nothing happens", 0);
 	} else {
-		if (monster) {
-			wake_up(monster);
-			(void) mon_damage(monster, hp);
+		wand->class--;
+		row = rogue.row; col = rogue.col;
+		if ((wand->which_kind == COLD) || (wand->which_kind == FIRE)) {
+			bounce((short) wand->which_kind, d, row, col, 0);
+		} else {
+			monster = get_zapped_monster(d, &row, &col);
+			if (wand->which_kind == DRAIN_LIFE) {
+				wdrain_life(monster);
+			} else if (monster) {
+				wake_up(monster);
+				s_con_mon(monster);
+				zap_monster(monster, wand->which_kind);
+				relight();
+			}
 		}
 	}
-	print_stats(STAT_HP);
-	relight();
+	(void) reg_move();
 }
 
-static void
-tele_away(monster)
-        object *monster;
+object *
+get_zapped_monster(dir, row, col)
+short dir;
+short *row, *col;
 {
-	int row, col;
+	short orow, ocol;
 
-	if (monster->m_flags & HOLDS) {
-		being_held = 0;
-	}
-	gr_row_col(&row, &col, (FLOOR | TUNNEL | STAIRS | OBJECT));
-	mvaddch(monster->row, monster->col, monster->trail_char);
-	dungeon[monster->row][monster->col] &= ~MONSTER;
-	monster->row = row; monster->col = col;
-	dungeon[row][col] |= MONSTER;
-	monster->trail_char = mvinch(row, col);
-	if (detect_monster || rogue_can_see(row, col)) {
-		mvaddch(row, col, gmc(monster));
+	for (;;) {
+		orow = *row; ocol = *col;
+		get_dir_rc(dir, row, col, 0);
+		if (((*row == orow) && (*col == ocol)) ||
+		   (dungeon[*row][*col] & (HORWALL | VERTWALL)) ||
+		   (dungeon[*row][*col] == NOTHING)) {
+			return(0);
+		}
+		if (dungeon[*row][*col] & MONSTER) {
+			if (!imitating(*row, *col)) {
+				return(object_at(&level_monsters, *row, *col));
+			}
+		}
 	}
 }
 
-static void
 zap_monster(monster, kind)
-        object *monster;
-        unsigned kind;
+object *monster;
+unsigned short kind;
 {
-	int row, col;
+	short row, col;
 	object *nm;
-	int tc;
+	short tc;
 
 	row = monster->row;
 	col = monster->col;
@@ -129,85 +158,25 @@ zap_monster(monster, kind)
 	}
 }
 
-static object *
-get_zapped_monster(dir, row, col)
-        int dir;
-        int *row, *col;
+tele_away(monster)
+object *monster;
 {
-	int orow, ocol;
+	short row, col;
 
-	for (;;) {
-		orow = *row; ocol = *col;
-		get_dir_rc(dir, row, col, 0);
-		if (((*row == orow) && (*col == ocol)) ||
-		   (dungeon[*row][*col] & (HORWALL | VERTWALL)) ||
-		   (dungeon[*row][*col] == NOTHING)) {
-			return(0);
-		}
-		if (dungeon[*row][*col] & MONSTER) {
-			if (!imitating(*row, *col)) {
-				return(object_at(&level_monsters, *row, *col));
-			}
-		}
+	if (monster->m_flags & HOLDS) {
+		being_held = 0;
+	}
+	gr_row_col(&row, &col, (FLOOR | TUNNEL | STAIRS | OBJECT));
+	mvaddch(monster->row, monster->col, monster->trail_char);
+	dungeon[monster->row][monster->col] &= ~MONSTER;
+	monster->row = row; monster->col = col;
+	dungeon[row][col] |= MONSTER;
+	monster->trail_char = mvinch(row, col);
+	if (detect_monster || rogue_can_see(row, col)) {
+		mvaddch(row, col, gmc(monster));
 	}
 }
 
-void
-zapp()
-{
-	int wch;
-	boolean first_miss = 1;
-	object *wand;
-	int dir, d, row, col;
-	object *monster;
-
-	while (!is_direction(dir = rgetchar(), &d)) {
-		sound_bell();
-		if (first_miss) {
-			message("direction? ", 0);
-			first_miss = 0;
-		}
-	}
-	check_message();
-	if (dir == CANCEL) {
-		return;
-	}
-	if ((wch = pack_letter("zap with what?", WAND)) == CANCEL) {
-		return;
-	}
-	check_message();
-
-	if (!(wand = get_letter_object(wch))) {
-		message("no such item.", 0);
-		return;
-	}
-	if (wand->what_is != WAND) {
-		message("you can't zap with that", 0);
-		return;
-	}
-	if (wand->class <= 0) {
-		message("nothing happens", 0);
-	} else {
-		wand->class--;
-		row = rogue.row; col = rogue.col;
-		if ((wand->which_kind == COLD) || (wand->which_kind == FIRE)) {
-			bounce((int) wand->which_kind, d, row, col, 0);
-		} else {
-			monster = get_zapped_monster(d, &row, &col);
-			if (wand->which_kind == DRAIN_LIFE) {
-				wdrain_life(monster);
-			} else if (monster) {
-				wake_up(monster);
-				s_con_mon(monster);
-				zap_monster(monster, wand->which_kind);
-				relight();
-			}
-		}
-	}
-	(void) reg_move();
-}
-
-void
 wizardize()
 {
 	char buf[100];
@@ -230,14 +199,42 @@ wizardize()
 	}
 }
 
-void
-bounce(ball, dir, row, col, r)
-        int ball, dir, row, col, r;
+wdrain_life(monster)
+object *monster;
 {
-	int orow, ocol;
+	short hp;
+	object *lmon, *nm;
+
+	hp = rogue.hp_current / 3;
+	rogue.hp_current = (rogue.hp_current + 1) / 2;
+
+	if (cur_room >= 0) {
+		lmon = level_monsters.next_monster;
+		while (lmon) {
+			nm = lmon->next_monster;
+			if (get_room_number(lmon->row, lmon->col) == cur_room) {
+				wake_up(lmon);
+				(void) mon_damage(lmon, hp);
+			}
+			lmon = nm;
+		}
+	} else {
+		if (monster) {
+			wake_up(monster);
+			(void) mon_damage(monster, hp);
+		}
+	}
+	print_stats(STAT_HP);
+	relight();
+}
+
+bounce(ball, dir, row, col, r)
+short ball, dir, row, col, r;
+{
+	short orow, ocol;
 	char buf[DCOLS], *s;
-	int i, ch, new_dir = -1, damage;
-	static int btime;
+	short i, ch, new_dir = -1, damage;
+	static short btime;
 
 	if (++r == 1) {
 		btime = get_rand(3, 6);
@@ -344,7 +341,7 @@ bounce(ball, dir, row, col, r)
 			message(buf, 0);
 		}
 	} else {
-		int nrow, ncol;
+		short nrow, ncol;
 
 ND:		for (i = 0; i < 10; i++) {
 			dir = get_rand(0, DIRS-1);

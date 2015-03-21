@@ -9,7 +9,7 @@ vpath %.c $(M):$(S)
 vpath %.S $(M):$(S)
 
 # Kernel options.
-DEFS		+= -I. -I$(H) -DKERNEL -DUCB_METER -DPIC32MX7
+DEFS		+= -I. -I$(H) -DKERNEL -DUCB_METER -DPIC32MX7 
 DEFS		+= -DGLOBAL_DEBUG
 
 # CPU frequency 80 MHz.
@@ -23,9 +23,9 @@ DEFS		+= -DBUS_KHZ=80000
 # Console on UART1 with hardware handshaking
 DEFS            += -DCONSOLE_UART1 #-DCONSOLE_RTSCTS
 # SD/MMC card driver on SPI1
-DEFS            += -DSD0_PORT=1 -DSD0_MHZ=20
+DEFS            += -DSD_PORT=SPI1CON -DSD_MHZ=20
 # /CS0 at pin B1
-DEFS            += -DSD0_CS_PORT=TRISD -DSD0_CS_PIN=9
+DEFS            += -DSD_CS0_PORT=TRISD -DSD_CS0_PIN=9
 # LEDs at pins A0, A1, A2, A3
 DEFS            += -DLED_DISK_PORT=TRISA   -DLED_DISK_PIN=14
 DEFS            += -DLED_KERNEL_PORT=TRISB -DLED_KERNEL_PIN=8
@@ -62,7 +62,7 @@ include ../gcc-config.mk
 
 CC		= $(GCCPREFIX)gcc -EL -g -mips32r2
 CC		+= -nostdinc -fno-builtin -Werror -Wall -fno-dwarf2-cfi-asm
-LDFLAGS         += -nostdlib -T ../cfg/bare.ld -Wl,-Map=unix.map
+LDFLAGS         += -nostdlib -T bare-metal.ld -Wl,-Map=unix.map
 SIZE		= $(GCCPREFIX)size
 OBJDUMP		= $(GCCPREFIX)objdump
 OBJCOPY		= $(GCCPREFIX)objcopy
@@ -81,21 +81,18 @@ KERNOBJ		+= init_main.o init_sysent.o kern_clock.o \
 		   kern_subr.o kern_synch.o kern_sysctl.o kern_time.o \
 		   subr_log.o subr_prf.o subr_rmap.o \
 		   sys_generic.o sys_inode.o syscalls.o \
-		   sys_pipe.o sys_process.o tty.o exec_conf.o exec_subr.o \
+		   sys_pipe.o sys_process.o tty.o tty_conf.o \
 		   tty_subr.o tty_tty.o ufs_alloc.o ufs_bio.o \
 		   ufs_bmap.o ufs_dsort.o ufs_fio.o \
 		   ufs_inode.o ufs_mount.o ufs_namei.o ufs_subr.o \
 		   ufs_syscalls.o ufs_syscalls2.o vfs_vnops.o \
-		   vm_sched.o vm_swap.o vm_swp.o kern_glob.o swap.o spi_bus.o
+		   vm_sched.o vm_swap.o vm_swp.o kern_glob.o
 
 # Drivers.
-KERNOBJ		+= rd_sd.o rdisk.o
+KERNOBJ		+= sd.o
 
 # Configuration-dependent files.
 KERNOBJ		+= vers.o devcfg.o
-
-# Include any local specific configuration overrides
--include Makefile.local
 
 # This makefile does the work including the right files and options for the drivers
 include ../drivers.mk
@@ -108,7 +105,7 @@ clean:
 		mklog assym.h vers.c genassym sys machine
 
 cleanest: clean
-		rm -f unix.hex
+	rm -f unix.hex
 
 .deps:
 		mkdir .deps
@@ -119,7 +116,7 @@ sys:
 machine:
 		ln -s .. $@
 
-unix.elf:	$(KERNOBJ) ../cfg/bare.ld
+unix.elf:	$(KERNOBJ) bare-metal.ld
 		$(CC) $(LDFLAGS) $(KERNOBJ) -o $@
 		chmod -x $@
 		$(OBJDUMP) -d -S $@ > unix.dis

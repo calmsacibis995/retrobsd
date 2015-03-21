@@ -31,17 +31,17 @@
 #include "adc.h"
 #include "debug.h"
 
-const struct devspec adcdevs[] = {
-    { 0, "adc0" }, { 1, "adc1" }, { 2, "adc2" }, { 3, "adc3" },
-    { 4, "adc4" }, { 5, "adc5" }, { 6, "adc6" }, { 7, "adc7" },
-    { 8, "adc8" }, { 9, "adc9" }, { 10, "adc10" }, { 11, "adc11" },
-    { 12, "adc12" }, { 13, "adc13" }, { 14, "adc14" }, { 15, "adc15" },
-    { 0, 0 }
-};
-
 extern int uwritec(struct uio *);
 
-unsigned short adcactive = 0;
+
+int nactive = 0;
+
+struct adc_info {
+    int last_reading;
+    unsigned char active;
+};
+
+struct adc_info adc[ADCMAX+1];
 
 int adc_open(dev_t dev, int flag, int mode)
 {
@@ -51,20 +51,21 @@ int adc_open(dev_t dev, int flag, int mode)
     if(channel>ADCMAX)
         return ENODEV;
 
-    DEBUG1("adc%2: opened\n",channel);
+    DEBUG("adc%2: opened\n",channel);
 
     AD1PCFG &= ~(1<<channel);
-    if(adcactive==0)
+    adc[channel].active = 1;
+    if(nactive==0)
     {
         // Enable and configure the ADC here
         AD1CSSL = 0xFFFF;
         AD1CON2 = 0b0000010000111100;
-        AD1CON3 = 0b0000111100001111;
+        AD1CON3 = 0b0000011100000111;
         AD1CON1 = 0b1000000011100110;
-        // IPC(6) = 0x04040404;
+	IPC(6) = 0b00000100000000000000000000000000;
+        IECSET(1) = 1<<(PIC32_IRQ_AD1-32);
     }
-
-    adcactive |= (1<<channel);
+    nactive++;
     return 0;
 }
 
@@ -77,8 +78,9 @@ int adc_close(dev_t dev, int flag, int mode)
         return ENODEV;
 
     AD1PCFG |= (1<<channel);
-    adcactive &= ~(1<<channel);
-    if(adcactive==0)
+    adc[channel].active = 0;
+    nactive--;
+    if(nactive==0)
     {
         // Switch off the ADC here.
         AD1CSSL = 0x0000;
@@ -93,17 +95,16 @@ int adc_close(dev_t dev, int flag, int mode)
 int adc_read(dev_t dev, struct uio *uio, int flag)
 {
     int channel;
-    char temp[6];
+    char temp[10];
     int c;
-    unsigned int lr;
+    int lr;
     int tv;
 
     channel = minor(dev);
     if(channel>ADCMAX)
         return ENODEV;
 
-    lr = *(&ADC1BUF0+(channel<<2));
-
+    lr = adc[channel].last_reading;
     c=0;
     if(lr >= 1000)
     {
@@ -132,13 +133,29 @@ int adc_read(dev_t dev, struct uio *uio, int flag)
     return 0;
 }
 
+// Trigger an ADC conversion
 int adc_write(dev_t dev, struct uio *uio, int flag)
 {
-    return EINVAL;
+    int channel;
+    char c;
+
+    channel = minor(dev);
+    if(channel>ADCMAX)
+        return ENODEV;
+
+    c = uwritec(uio);
+    while(uio->uio_iov->iov_len>0)
+    {
+        c = uwritec(uio);
+    }
+    return 0;
 }
 
 int adc_ioctl(dev_t dev, register u_int cmd, caddr_t addr, int flag)
 {
+    int unit;
+    unit = minor(dev);
+
     switch(cmd)
     {
         default:
@@ -146,4 +163,27 @@ int adc_ioctl(dev_t dev, register u_int cmd, caddr_t addr, int flag)
     }
 
     return 0;
+}
+
+void adc_intr()
+{
+//    AD1CON1 &= ~(1<<1);
+
+    adc[0].last_reading = ADC1BUF0;
+    adc[1].last_reading = ADC1BUF1;
+    adc[2].last_reading = ADC1BUF2;
+    adc[3].last_reading = ADC1BUF3;
+    adc[4].last_reading = ADC1BUF4;
+    adc[5].last_reading = ADC1BUF5;
+    adc[6].last_reading = ADC1BUF6;
+    adc[7].last_reading = ADC1BUF7;
+    adc[8].last_reading = ADC1BUF8;
+    adc[9].last_reading = ADC1BUF9;
+    adc[10].last_reading = ADC1BUFA;
+    adc[11].last_reading = ADC1BUFB;
+    adc[12].last_reading = ADC1BUFC;
+    adc[13].last_reading = ADC1BUFD;
+    adc[14].last_reading = ADC1BUFE;
+    adc[15].last_reading = ADC1BUFF;
+    IFSCLR(1) = 1<<(PIC32_IRQ_AD1-32);
 }

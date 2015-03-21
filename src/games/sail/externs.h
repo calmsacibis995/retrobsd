@@ -5,13 +5,11 @@
  *
  *	@(#)externs.h	5.1 (Berkeley) 5/29/85
  */
+
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <signal.h>
 #include <ctype.h>
 #include <setjmp.h>
-#include <unistd.h>
 #include "machdep.h"
 
 	/* program mode */
@@ -52,8 +50,8 @@ char issetuid;				/* running setuid */
 #define cleansnag(a, b, c)	Cleansnag(a, b, c, 3)
 
 #define sterncolour(sp)	((sp)->file->stern+'0'-((sp)->file->captured?10:0))
-#define sternrow(sp)	((sp)->file->row + dr[(int)(sp)->file->dir])
-#define sterncol(sp)	((sp)->file->col + dc[(int)(sp)->file->dir])
+#define sternrow(sp)	((sp)->file->row + dr[(sp)->file->dir])
+#define sterncol(sp)	((sp)->file->col + dc[(sp)->file->dir])
 
 #define capship(sp)	((sp)->file->captured?(sp)->file->captured:(sp))
 
@@ -203,7 +201,7 @@ struct scenario {
 	char *name;			/* 14 */
 	struct ship ship[NSHIP];	/* 16 */
 };
-extern struct scenario scene[];
+struct scenario scene[];
 int nscene;
 
 struct shipspecs {
@@ -227,12 +225,12 @@ struct shipspecs {
 	char rig4;
 	short pts;
 };
-extern struct shipspecs specs[];
+struct shipspecs specs[];
 
 struct scenario *cc;		/* the current scenario */
 struct ship *ls;		/* &cc->ship[cc->vessels] */
 
-#define SHIP(s)		(&cc->ship[(int)s])
+#define SHIP(s)		(&cc->ship[s])
 #define foreachship(sp)	for ((sp) = cc->ship; (sp) < ls; (sp)++)
 
 struct windeffects {
@@ -252,15 +250,15 @@ char HDTrake[9][10];
 char QUAL[9][5];
 char MT[9][3];
 
-extern char *countryname[];
-extern char *classname[];
-extern char *directionname[];
-extern char *qualname[];
-extern char loadname[];
+char *countryname[];
+char *classname[];
+char *directionname[];
+char *qualname[];
+char loadname[];
 
-extern char rangeofshot[];
+char rangeofshot[];
 
-extern char dr[], dc[];
+char dr[], dc[];
 
 int winddir;
 int windspeed;
@@ -276,76 +274,10 @@ double arctan();
 char *saywhat();
 struct ship *closestenemy();
 
-int pl_main(void);
-int dr_main(void);
-int lo_main(void);
-int sync_exists(int game);
-int sync_open(void);
-int Sync(void);
-int sgetch(char *p, struct ship *ship, int flag);
-int range(struct ship *from, struct ship *to);
-int gunsbear(struct ship *from, struct ship *to);
-int portside(struct ship *from, struct ship *on, int quick);
-int colours(struct ship *sp);
-int maxturns(struct ship *ship, char *af);
-int maxmove(struct ship *ship, int dir, int fs);
-int meleeing(struct ship *from, struct ship *to);
-int boarding(struct ship *from, int isdefense);
-int next(void);
-int toughmelee(struct ship *ship, struct ship *to, int isdefense, int count);
-int mensent(struct ship *from, struct ship *to, int crew[3],
-            struct ship **captured, int *pc, int isdefense);
-
-void logmsg(struct ship *s);
-void leave(int conditions);
-void sync_close(int remove);
-void Write(int type, struct ship *ship, int isstr, int a, int b, int c, int d);
-void initscreen(void);
-void draw_board(void);
-void newturn(int sig);
-void Signal(char *fmt, struct ship *ship, int a, int b, int c, int d);
-void play(void);
-void makesignal(struct ship *from, char *fmt, struct ship *ship, int a, int b, int c);
-void cleanupscreen(void);
-void acceptmove(void);
-void acceptsignal(void);
-void grapungrap(void);
-void unfoulplayer(void);
-void acceptboard(void);
-void acceptcombat(void);
-void loadplayer(void);
-void changesail(void);
-void repair(void);
-void unboard(struct ship *ship, struct ship *to, int isdefense);
-void centerview(void);
-void blockalarm(void);
-void unblockalarm(void);
-void draw_screen(void);
-void eyeball(struct ship *ship);
-void draw_view(void);
-void upview(void);
-void downview(void);
-void leftview(void);
-void rightview(void);
-void lookout(void);
-void draw_turn(void);
-void table(int rig, int shot, int hittable, struct ship *on, struct ship *from, int roll);
-void draw_stat(void);
-void Cleansnag(struct ship *from, struct ship *to, int all, int flag);
-void sgetstr(char *pr, char *buf, int n);
-void draw_slot(void);
-void unfoul(void);
-void checkup(void);
-void prizecheck(void);
-void moveall(void);
-void thinkofgrapples(void);
-void boardcomp(void);
-void compcombat(void);
-void resolve(void);
-void reload(void);
-void checksails(void);
-void sendbp(struct ship *from, struct ship *to, int sections, int isdefense);
-void subtract(struct ship *from, int totalfrom, int crewfrom[3], struct ship *fromcap, int pcfrom);
-void grap(struct ship *from, struct ship *to);
-void ungrap(struct ship *from, struct ship *to);
-void closeon(struct ship *from, struct ship *to, char command[], int ta, int ma, int af);
+char *calloc();
+char *rindex();
+char *strcpy();
+char *strcat();
+char *strncpy();
+char *getenv();
+char *gets();

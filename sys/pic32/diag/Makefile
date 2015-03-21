@@ -18,7 +18,7 @@ DEFS		+= -DBUS_KHZ=80000
 # Ethernet/USB Starter Kit with I/O Expansion board
 # =================================================
 #
-#LDSCRIPT        = ../cfg/bootloader.ld
+#LDSCRIPT        = ../strater-kit/using-bootloader.ld
 
 # Console on USB
 # For Windows, use the driver: http://www.schmalzhaus.com/UBW32/FW/UBW32inf.zip
@@ -27,8 +27,8 @@ DEFS  		+= -DUSB_NUM_STRING_DESCRIPTORS=3 -DUSB_MAX_EP_NUMBER=3
 
 # SD/MMC card driver on SPI1
 # /CS0 at pin B1
-#DEFS            += -DSD0_PORT=1 -DSD0_MHZ=10
-#DEFS            += -DSD0_CS_PORT=TRISB -DSD0_CS_PIN=1
+#DEFS            += -DSD_PORT=SPI1CON -DSD_MHZ=10
+#DEFS            += -DSD_CS0_PORT=TRISB -DSD_CS0_PIN=1
 
 # LEDs at pins D0 (red), D1 (yellow), D2 (green)
 #DEFS            += -DLED_TTY_PORT=TRISD    -DLED_TTY_PIN=0
@@ -39,14 +39,13 @@ DEFS  		+= -DUSB_NUM_STRING_DESCRIPTORS=3 -DUSB_MAX_EP_NUMBER=3
 # UBW32 board
 # ===========
 #
-LDSCRIPT        = ../cfg/bootloader-ubw32.ld
+LDSCRIPT        = ../ubw32/using-bootloader.ld
 
 # SD/MMC card driver on SPI1
 # /CS0 at pin A9 (and optional /CS1 at pin A10)
-DEFS            += -DSD0_PORT=1
-DEFS            += -DSD0_CS_PORT=TRISA -DSD0_CS_PIN=9
-DEFS            += -DSD1_PORT=1
-DEFS            += -DSD1_CS_PORT=TRISA -DSD1_CS_PIN=10
+DEFS            += -DSD_PORT=SPI1CON
+DEFS            += -DSD_CS0_PORT=TRISA -DSD_CS0_PIN=9
+DEFS            += -DSD_CS1_PORT=TRISA -DSD_CS1_PIN=10
 
 # LEDs at pins E0, E1, E2, E3
 DEFS            += -DLED_AUX_PORT=TRISE    -DLED_AUX_PIN=0    -DLED_AUX_INVERT
@@ -96,10 +95,7 @@ KERNOBJ		+= usb_console.o
 KERNOBJ		+= main.o subr_prf.o
 
 # Drivers.
-KERNOBJ		+= rdisk.o rd_sd.o spi_bus.o
-
-# Include any local specific configuration overrides
--include Makefile.local
+KERNOBJ		+= sd.o
 
 # This makefile does the work including the right files and options for the drivers
 include ../drivers.mk

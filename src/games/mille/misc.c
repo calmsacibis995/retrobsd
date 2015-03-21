@@ -1,16 +1,14 @@
-#include "mille.h"
+#include	"mille.h"
 #ifndef	unctrl
-#   include "unctrl.h"
+#include	"unctrl.h"
 #endif
 
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/file.h>
+# include	<sys/file.h>
 
-#ifdef	attron
-#   include <term.h>
-#   define _tty	cur_term->Nttyb
-#endif
+# ifdef	attron
+#	include	<term.h>
+#	define	_tty	cur_term->Nttyb
+# endif	attron
 
 /*
  * @(#)misc.c	1.2 (Berkeley) 3/28/83
@@ -19,7 +17,6 @@
 #define	NUMSAFE	4
 
 /* VARARGS1 */
-int
 error(str, arg)
 char	*str;
 {
@@ -35,7 +32,7 @@ char	*str;
 CARD
 getcard()
 {
-	int	c, c1;
+	reg int		c, c1;
 
 	for (;;) {
 		while ((c = readch()) == '\n' || c == '\r' || c == ' ')
@@ -72,19 +69,17 @@ getcard()
 					clrtoeol();
 					refresh();
 					goto cont;
-				} else {
-					if (write(0, "", 1) != 1)
-					        /*ignore*/;
-                                }
+				}
+				else
+					write(0, "", 1);
 			return c;
 		}
 cont:		;
 	}
 }
 
-int
 check_ext(forcomp)
-bool	forcomp; {
+reg bool	forcomp; {
 
 
 	if (End == 700)
@@ -103,8 +98,8 @@ done:
 			}
 		}
 		else {
-			PLAY	*pp, *op;
-			int	i, safe, miles;
+			reg PLAY	*pp, *op;
+			reg int		i, safe, miles;
 
 			pp = &Player[COMP];
 			op = &Player[PLAYER];
@@ -124,7 +119,7 @@ done:
 				goto extend;
 			for (miles = 0, i = 0; i < HAND_SZ; i++)
 				if ((safe = pp->hand[i]) <= C_200)
-					miles += Value[safe];
+					miles += Value[safe]; 
 			if (miles + (Topcard - Deck) * 3 > 1000)
 				goto extend;
 			goto done;
@@ -137,11 +132,10 @@ done:
  *	Get a yes or no answer to the given question.  Saves are
  * also allowed.  Return TRUE if the answer was yes, FALSE if no.
  */
-int
 getyn(promptno)
 register int	promptno; {
 
-	char	c;
+	reg char	c;
 
 	Saved = FALSE;
 	for (;;) {
@@ -174,24 +168,11 @@ register int	promptno; {
 	}
 }
 
-static void
-flush_input()
-{
-# ifdef	TIOCFLUSH
-	static int	ioctl_args = FREAD;
-
-	(void) ioctl(fileno(stdin), TIOCFLUSH, &ioctl_args);
-# else
-	fflush(stdin);
-# endif
-}
-
 /*
  *	Check to see if more games are desired.  If not, and game
  * came from a saved file, make sure that they don't want to restore
  * it.  Exit appropriately.
  */
-void
 check_more() {
 
 	flush_input();
@@ -220,10 +201,9 @@ check_more() {
 	die();
 }
 
-int
 readch()
 {
-	int		cnt;
+	reg int		cnt;
 	static char	c;
 
 	for (cnt = 0; read(0, &c, 1) <= 0; cnt++)
@@ -232,21 +212,13 @@ readch()
 	return c;
 }
 
-#ifdef CROSS
-/*
- * define unctrl codes for each character
- *
- */
-char *_unctrl[] = {     /* unctrl codes for ttys                */
-        "^@", "^A", "^B", "^C", "^D", "^E", "^F", "^G", "^H", "^I", "^J", "^K",
-        "^L", "^M", "^N", "^O", "^P", "^Q", "^R", "^S", "^T", "^U", "^V", "^W",
-        "^X", "^Y", "^Z", "^[", "^\\", "^]", "^~", "^_",
-        " ", "!", "\"", "#", "$",  "%", "&", "'", "(", ")", "*", "+", ",", "-",
-        ".", "/", "0",  "1", "2",  "3", "4", "5", "6", "7", "8", "9", ":", ";",
-        "<", "=", ">",  "?", "@",  "A", "B", "C", "D", "E", "F", "G", "H", "I",
-        "J", "K", "L",  "M", "N",  "O", "P", "Q", "R", "S", "T", "U", "V", "W",
-        "X", "Y", "Z",  "[", "\\", "]", "^", "_", "`", "a", "b", "c", "d", "e",
-        "f", "g", "h",  "i", "j",  "k", "l", "m", "n", "o", "p", "q", "r", "s",
-        "t", "u", "v",  "w", "x",  "y", "z", "{", "|", "}", "~", "^?"
-};
-#endif
+flush_input()
+{
+# ifdef	TIOCFLUSH
+	static int	ioctl_args = FREAD;
+
+	(void) ioctl(fileno(stdin), TIOCFLUSH, &ioctl_args);
+# else
+	fflush(stdin);
+# endif
+}

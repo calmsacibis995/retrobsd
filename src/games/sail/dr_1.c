@@ -3,15 +3,19 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)dr_1.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "driver.h"
 
-void
 unfoul()
 {
 	register struct ship *sp;
 	struct ship *to;
 	register int nat;
-	register int i;
+	register i;
 
 	foreachship(sp) {
 		if (sp->file->captain[0])
@@ -28,7 +32,6 @@ unfoul()
 	}
 }
 
-void
 boardcomp()
 {
 	int crew[3];
@@ -93,10 +96,9 @@ boardcomp()
 	}
 }
 
-int
 fightitout(from, to, key)
-        struct ship *from, *to;
-        int key;
+struct ship *from, *to;
+int key;
 {
 	struct ship *fromcap, *tocap;
 	int crewfrom[3], crewto[3], menfrom, mento;
@@ -127,7 +129,7 @@ fightitout(from, to, key)
 	fromstrength = menfrom * fromcap->specs->qual;
 	strengthto = mento * tocap->specs->qual;
 	for (count = 0;
-	     ((fromstrength < strengthto * 3 && strengthto < fromstrength * 3)
+	     (fromstrength < strengthto * 3 && strengthto < fromstrength * 3
 	      || fromstrength == -1) && count < 4;
 	     count++) {
 		index = fromstrength/10;
@@ -149,7 +151,7 @@ fightitout(from, to, key)
 		unboard(to, from, 0);
 		subtract(from, totalfrom, crewfrom, fromcap, pcfrom);
 		subtract(to, totalto, crewto, tocap, pcto);
-		makesignal(from, "boarders from %s repelled", to, 0, 0, 0);
+		makesignal(from, "boarders from %s repelled", to);
 		(void) sprintf(message, "killed in melee: %d.  %s: %d",
 			totalto, from->shipname, totalfrom);
 		Write(W_SIGNAL, to, 1, (int) message, 0, 0, 0);
@@ -195,7 +197,6 @@ fightitout(from, to, key)
 	return 0;
 }
 
-void
 resolve()
 {
 	int thwart;
@@ -226,10 +227,9 @@ resolve()
 	}
 }
 
-void
 compcombat()
 {
-	register int n;
+	register n;
 	register struct ship *sp;
 	struct ship *closest;
 	int crew[3], men = 0, target, temp;
@@ -319,12 +319,11 @@ compcombat()
 				hit++;
 			hit += QUAL[index][capship(sp)->specs->qual - 1];
 			for (n = 0; n < 3 && sp->file->captured == 0; n++)
-				if (!crew[n]) {
+				if (!crew[n])
 					if (index <= 5)
 						hit--;
 					else
 						hit -= 2;
-                                }
 			if (ready & R_INITIAL) {
 				if (!r)
 					sp->file->readyL &= ~R_INITIAL;
@@ -335,12 +334,11 @@ compcombat()
 				else
 					hit += 2;
 			}
-			if (sp->file->captured != 0) {
+			if (sp->file->captured != 0)
 				if (index <= 1)
 					hit--;
 				else
 					hit -= 2;
-                        }
 			hit += AMMO[index][load - 1];
 			temp = sp->specs->class;
 			if ((temp >= 5 || temp == 1) && windspeed == 5)
@@ -358,18 +356,16 @@ compcombat()
 	}
 }
 
-int
 next()
 {
-	if (++turn % 55 == 0) {
+	if (++turn % 55 == 0)
 		if (alive)
 			alive = 0;
 		else
 			people = 0;
-        }
 	if (people <= 0 || windspeed == 7) {
 		register struct ship *s;
-		struct ship *bestship = 0;
+		struct ship *bestship;
 		float net, best = 0.0;
 		foreachship(s) {
 			if (*s->file->captain)
@@ -390,7 +386,7 @@ next()
 				sizeof bestship->file->captain);
 			bestship->file->captain
 				[sizeof bestship->file->captain - 1] = 0;
-			logmsg(bestship);
+			log(bestship);
 		}
 		return -1;
 	}

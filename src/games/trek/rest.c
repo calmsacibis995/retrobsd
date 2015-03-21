@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)rest.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 # include	"getpar.h"
 
@@ -19,7 +24,7 @@
 **	In events() you will be given an opportunity to cancel the
 **	rest period if anything momentous happens.
 */
-void
+
 rest()
 {
 	double			t;

@@ -7,9 +7,6 @@
 #include "sys/time.h"
 #include "stdio.h"
 #include "string.h"
-#include "unistd.h"
-#include "fcntl.h"
-#include "alloca.h"
 #include "tzfile.h"
 #include "paths.h"
 
@@ -102,7 +99,7 @@ char *	codep;
 	return result;
 }
 
-static int
+static
 tzload(name)
 register char *	name;
 {
@@ -114,15 +111,14 @@ register char *	name;
 	{
 		register char *	p;
 		register int	doaccess;
-                char          * fullname;
+		char		fullname[MAXPATHLEN];
 
 		doaccess = name[0] == '/';
 		if (!doaccess) {
 			if ((p = _PATH_ZONEINFO) == 0)
 				return -1;
-			if ((strlen(p) + strlen(name) + 1) >= MAXPATHLEN)
+			if ((strlen(p) + strlen(name) + 1) >= sizeof fullname)
 				return -1;
-                        fullname = alloca(MAXPATHLEN);
 			(void) strcpy(fullname, p);
 			(void) strcat(fullname, "/");
 			(void) strcat(fullname, name);
@@ -142,10 +138,9 @@ register char *	name;
 	{
 		register char *			p;
 		register struct tzhead *	tzhp;
-		char *				buf;
+		char				buf[sizeof s];
 
-		buf = alloca(sizeof s);
-		i = read(fid, buf, sizeof s);
+		i = read(fid, buf, sizeof buf);
 		if (close(fid) != 0 || i < sizeof *tzhp)
 			return -1;
 		tzhp = (struct tzhead *) buf;
@@ -221,11 +216,12 @@ register char *	name;
 	return 0;
 }
 
-static int
+static
 tzsetkernel()
 {
 	struct timeval	tv;
 	struct timezone	tz;
+	char	*tztab();
 
 	if (gettimeofday(&tv, &tz))
 		return -1;
@@ -241,7 +237,7 @@ tzsetkernel()
 	return 0;
 }
 
-static void
+static
 tzsetgmt()
 {
 	s.timecnt = 0;
@@ -324,8 +320,8 @@ time_t *	clock;
 }
 
 static int	mon_lengths[2][MONS_PER_YEAR] = {
-	{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },
-	{ 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 },
+	31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31,
+	31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
 };
 
 static int	year_lengths[2] = {

@@ -68,7 +68,9 @@ int cnopen (dev, flag, mode)
     if ((tp->t_state & TS_XCLUDE) && u.u_uid != 0)
         return (EBUSY);
 
-    return ttyopen (dev, tp);
+    if (! linesw[tp->t_line].l_open)
+        return (ENODEV);
+    return (*linesw[tp->t_line].l_open) (dev, tp);
 }
 
 int cnclose (dev, flag, mode)
@@ -76,6 +78,8 @@ int cnclose (dev, flag, mode)
 {
     register struct tty *tp = &cnttys[0];
 
+    if (linesw[tp->t_line].l_close)
+        (*linesw[tp->t_line].l_close) (tp, flag);
     ttyclose (tp);
     return 0;
 }
@@ -87,7 +91,9 @@ int cnread (dev, uio, flag)
 {
     register struct tty *tp = &cnttys[0];
 
-    return ttread (tp, uio, flag);
+    if (! linesw[tp->t_line].l_read)
+        return (ENODEV);
+    return (*linesw[tp->t_line].l_read) (tp, uio, flag);
 }
 
 int cnwrite (dev, uio, flag)
@@ -97,7 +103,9 @@ int cnwrite (dev, uio, flag)
 {
     register struct tty *tp = &cnttys[0];
 
-    return ttwrite (tp, uio, flag);
+    if (! linesw[tp->t_line].l_write)
+        return (ENODEV);
+    return (*linesw[tp->t_line].l_write) (tp, uio, flag);
 }
 
 int cnioctl (dev, cmd, addr, flag)
@@ -108,6 +116,11 @@ int cnioctl (dev, cmd, addr, flag)
     register struct tty *tp = &cnttys[0];
     register int error;
 
+    if (linesw[tp->t_line].l_ioctl) {
+        error = (*linesw[tp->t_line].l_ioctl) (tp, cmd, addr, flag);
+        if (error >= 0)
+            return error;
+    }
     error = ttioctl (tp, cmd, addr, flag);
     if (error < 0)
             error = ENOTTY;
@@ -219,7 +232,8 @@ static void cn_rx (int c)
 
     if ((tp->t_state & TS_ISOPEN) == 0)
         return;
-    ttyinput (c, tp);
+    if (linesw[tp->t_line].l_rint)
+        (*linesw[tp->t_line].l_rint) (c, tp);
 }
 
 /*
@@ -246,7 +260,8 @@ void cnintr (int chan)
 
         if (tp->t_state & TS_BUSY) {
             tp->t_state &= ~TS_BUSY;
-            ttstart (tp);
+            if (linesw[tp->t_line].l_start)
+                    (*linesw[tp->t_line].l_start) (tp);
         }
     }
 
@@ -332,7 +347,7 @@ const unsigned char usb_config1_descriptor[] =
     1,                                  // Index value of this configuration
     0,                                  // Configuration string index
     _DEFAULT | _SELF,                   // Attributes, see usb_device.h
-    150,                                // Max power consumption (2X mA)
+    50,                                 // Max power consumption (2X mA)
 
     /* Interface Descriptor */
     9,                                  // sizeof(USB_INTF_DSC)

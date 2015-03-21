@@ -9,7 +9,7 @@
 #include "rogue.h"
 
 object level_monsters;
-char mon_disappeared;
+boolean mon_disappeared;
 
 char *m_names[] = {
 	"aquator",
@@ -73,44 +73,18 @@ object mon_tab[MONSTERS] = {
 	{(ASLEEP|WAKENS|WANDERS),"1d7",21,'Z',8,5,14,69,0,0,0,0,0}
 };
 
-static void
-aim_monster(monster)
-        object *monster;
-{
-	int i, rn, d, r;
+extern short cur_level;
+extern short cur_room, party_room;
+extern short blind, halluc, haste_self;
+extern boolean detect_monster, see_invisible, r_see_invisible;
+extern short stealthy;
 
-	rn = get_room_number(monster->row, monster->col);
-	r = get_rand(0, 12);
-
-	for (i = 0; i < 4; i++) {
-		d = (r + i) % 4;
-		if (rooms[rn].doors[d].oth_room != NO_ROOM) {
-			monster->trow = rooms[rn].doors[d].door_row;
-			monster->tcol = rooms[rn].doors[d].door_col;
-			break;
-		}
-	}
-}
-
-static void
-put_m_at(row, col, monster)
-        int row, col;
-        object *monster;
-{
-	monster->row = row;
-	monster->col = col;
-	dungeon[row][col] |= MONSTER;
-	monster->trail_char = mvinch(row, col);
-	(void) add_to_pack(monster, &level_monsters, 0);
-	aim_monster(monster);
-}
-
-void
 put_mons()
 {
-	int i, n;
+	short i;
+	short n;
 	object *monster;
-	int row, col;
+	short row, col;
 
 	n = get_rand(4, 6);
 
@@ -126,8 +100,8 @@ put_mons()
 
 object *
 gr_monster(monster, mn)
-        register object *monster;
-        register int mn;
+register object *monster;
+register mn;
 {
 	if (!monster) {
 		monster = alloc_object();
@@ -151,50 +125,6 @@ gr_monster(monster, mn)
 	return(monster);
 }
 
-static int
-mtry(monster, row, col)
-        register object *monster;
-        register int row, col;
-{
-	if (mon_can_go(monster, row, col)) {
-		move_mon_to(monster, row, col);
-		return(1);
-	}
-	return(0);
-}
-
-static int
-move_confused(monster)
-        object *monster;
-{
-	int i, row, col;
-
-	if (!(monster->m_flags & ASLEEP)) {
-		if (--monster->moves_confused <= 0) {
-			monster->m_flags &= (~CONFUSED);
-		}
-		if (monster->m_flags & STATIONARY) {
-			return(coin_toss() ? 1 : 0);
-		} else if (rand_percent(15)) {
-			return(1);
-		}
-		row = monster->row;
-		col = monster->col;
-
-		for (i = 0; i < 9; i++) {
-			rand_around(i, &row, &col);
-			if ((row == rogue.row) && (col == rogue.col)) {
-				return(0);
-			}
-			if (mtry(monster, row, col)) {
-				return(1);
-			}
-		}
-	}
-	return(0);
-}
-
-void
 mv_mons()
 {
 	register object *monster, *next_monster;
@@ -240,28 +170,11 @@ NM:		monster = next_monster;
 	}
 }
 
-static int
-no_room_for_monster(rn)
-        int rn;
-{
-	int i, j;
-
-	for (i = rooms[rn].top_row+1; i < rooms[rn].bottom_row; i++) {
-		for (j = rooms[rn].left_col+1; j < rooms[rn].right_col; j++) {
-			if (!(dungeon[i][j] & MONSTER)) {
-				return(0);
-			}
-		}
-	}
-	return(1);
-}
-
-void
 party_monsters(rn, n)
-        int rn, n;
+int rn, n;
 {
-	int i, j;
-	int row, col;
+	short i, j;
+	short row, col;
 	object *monster;
 	boolean found;
 
@@ -297,14 +210,12 @@ party_monsters(rn, n)
 	}
 }
 
-int
 gmc_row_col(row, col)
-        register int row, col;
+register row, col;
 {
 	register object *monster;
 
-	monster = object_at(&level_monsters, row, col);
-	if (monster) {
+	if (monster = object_at(&level_monsters, row, col)) {
 		if ((!(detect_monster || see_invisible || r_see_invisible) &&
 			(monster->m_flags & INVISIBLE)) || blind) {
 			return(monster->trail_char);
@@ -318,9 +229,8 @@ gmc_row_col(row, col)
 	}
 }
 
-int
 gmc(monster)
-        object *monster;
+object *monster;
 {
 	if ((!(detect_monster || see_invisible || r_see_invisible) &&
 		(monster->m_flags & INVISIBLE))
@@ -333,52 +243,11 @@ gmc(monster)
 	return(monster->m_char);
 }
 
-static int
-rogue_is_around(row, col)
-        register int row, col;
-{
-	int rdif, cdif, retval;
-
-	rdif = row - rogue.row;
-	cdif = col - rogue.col;
-
-	retval = (rdif >= -1) && (rdif <= 1) && (cdif >= -1) && (cdif <= 1);
-	return(retval);
-}
-
-static int
-flit(monster)
-        object *monster;
-{
-	int i, row, col;
-
-	if (!rand_percent(FLIT_PERCENT + ((monster->m_flags & FLIES) ? 20 : 0))) {
-		return(0);
-	}
-	if (rand_percent(10)) {
-		return(1);
-	}
-	row = monster->row;
-	col = monster->col;
-
-	for (i = 0; i < 9; i++) {
-		rand_around(i, &row, &col);
-		if ((row == rogue.row) && (col == rogue.col)) {
-			continue;
-		}
-		if (mtry(monster, row, col)) {
-			return(1);
-		}
-	}
-	return(1);
-}
-
-void
 mv_1_monster(monster, row, col)
-        register object *monster;
-        int row, col;
+register object *monster;
+short row, col;
 {
-	int i, n;
+	short i, n;
 	boolean tried[6];
 
 	if (monster->m_flags & ASLEEP) {
@@ -513,13 +382,23 @@ O:
 	}
 }
 
-void
-move_mon_to(monster, row, col)
-        register object *monster;
-        register int row, col;
+mtry(monster, row, col)
+register object *monster;
+register short row, col;
 {
-	int c;
-	register int mrow, mcol;
+	if (mon_can_go(monster, row, col)) {
+		move_mon_to(monster, row, col);
+		return(1);
+	}
+	return(0);
+}
+
+move_mon_to(monster, row, col)
+register object *monster;
+register short row, col;
+{
+	short c;
+	register mrow, mcol;
 
 	mrow = monster->row;
 	mcol = monster->col;
@@ -564,13 +443,12 @@ move_mon_to(monster, row, col)
 	}
 }
 
-int
 mon_can_go(monster, row, col)
-        register object *monster;
-        register int row, col;
+register object *monster;
+register short row, col;
 {
 	object *obj;
-	int dr, dc;
+	short dr, dc;
 
 	dr = monster->row - row;	/* check if move distance > 1 */
 	if ((dr >= 2) || (dr <= -2)) {
@@ -606,23 +484,21 @@ mon_can_go(monster, row, col)
 	return(1);
 }
 
-void
 wake_up(monster)
-        object *monster;
+object *monster;
 {
 	if (!(monster->m_flags & NAPPING)) {
 		monster->m_flags &= (~(ASLEEP | IMITATES | WAKENS));
 	}
 }
 
-void
 wake_room(rn, entering, row, col)
-        int rn;
-        boolean entering;
-        int row, col;
+short rn;
+boolean entering;
+short row, col;
 {
 	object *monster;
-	int wake_percent;
+	short wake_percent;
 	boolean in_room;
 
 	wake_percent = (rn == party_room) ? PARTY_WAKE_PERCENT : WAKE_PERCENT;
@@ -654,9 +530,9 @@ wake_room(rn, entering, row, col)
 
 char *
 mon_name(monster)
-        object *monster;
+object *monster;
 {
-	int ch;
+	short ch;
 
 	if (blind || ((monster->m_flags & INVISIBLE) &&
 		!(detect_monster || see_invisible || r_see_invisible))) {
@@ -670,11 +546,22 @@ mon_name(monster)
 	return(m_names[ch]);
 }
 
-void
+rogue_is_around(row, col)
+register row, col;
+{
+	short rdif, cdif, retval;
+
+	rdif = row - rogue.row;
+	cdif = col - rogue.col;
+
+	retval = (rdif >= -1) && (rdif <= 1) && (cdif >= -1) && (cdif <= 1);
+	return(retval);
+}
+
 wanderer()
 {
 	object *monster;
-	int row, col, i;
+	short row, col, i;
 	boolean found = 0;
 
 	for (i = 0; ((i < 15) && (!found)); i++) {
@@ -701,7 +588,6 @@ wanderer()
 	}
 }
 
-void
 show_monsters()
 {
 	object *monster;
@@ -723,11 +609,10 @@ show_monsters()
 	}
 }
 
-void
 create_monster()
 {
-	int row, col;
-	int i;
+	short row, col;
+	short i;
 	boolean found = 0;
 	object *monster;
 
@@ -759,11 +644,40 @@ create_monster()
 	}
 }
 
-int
-rogue_can_see(row, col)
-        register int row, col;
+put_m_at(row, col, monster)
+short row, col;
+object *monster;
 {
-	register int retval;
+	monster->row = row;
+	monster->col = col;
+	dungeon[row][col] |= MONSTER;
+	monster->trail_char = mvinch(row, col);
+	(void) add_to_pack(monster, &level_monsters, 0);
+	aim_monster(monster);
+}
+
+aim_monster(monster)
+object *monster;
+{
+	short i, rn, d, r;
+
+	rn = get_room_number(monster->row, monster->col);
+	r = get_rand(0, 12);
+
+	for (i = 0; i < 4; i++) {
+		d = (r + i) % 4;
+		if (rooms[rn].doors[d].oth_room != NO_ROOM) {
+			monster->trow = rooms[rn].doors[d].door_row;
+			monster->tcol = rooms[rn].doors[d].door_col;
+			break;
+		}
+	}
+}
+
+rogue_can_see(row, col)
+register row, col;
+{
+	register retval;
 
 	retval = !blind &&
 			(((get_room_number(row, col) == cur_room) &&
@@ -773,10 +687,65 @@ rogue_can_see(row, col)
 	return(retval);
 }
 
-int
+move_confused(monster)
+object *monster;
+{
+	short i, row, col;
+
+	if (!(monster->m_flags & ASLEEP)) {
+		if (--monster->moves_confused <= 0) {
+			monster->m_flags &= (~CONFUSED);
+		}
+		if (monster->m_flags & STATIONARY) {
+			return(coin_toss() ? 1 : 0);
+		} else if (rand_percent(15)) {
+			return(1);
+		}
+		row = monster->row;
+		col = monster->col;
+
+		for (i = 0; i < 9; i++) {
+			rand_around(i, &row, &col);
+			if ((row == rogue.row) && (col == rogue.col)) {
+				return(0);
+			}
+			if (mtry(monster, row, col)) {
+				return(1);
+			}
+		}
+	}
+	return(0);
+}
+
+flit(monster)
+object *monster;
+{
+	short i, row, col;
+
+	if (!rand_percent(FLIT_PERCENT + ((monster->m_flags & FLIES) ? 20 : 0))) {
+		return(0);
+	}
+	if (rand_percent(10)) {
+		return(1);
+	}
+	row = monster->row;
+	col = monster->col;
+
+	for (i = 0; i < 9; i++) {
+		rand_around(i, &row, &col);
+		if ((row == rogue.row) && (col == rogue.col)) {
+			continue;
+		}
+		if (mtry(monster, row, col)) {
+			return(1);
+		}
+	}
+	return(1);
+}
+
 gr_obj_char()
 {
-	int r;
+	short r;
 	char *rs = "%!?]=/):*";
 
 	r = get_rand(0, 8);
@@ -784,7 +753,21 @@ gr_obj_char()
 	return(rs[r]);
 }
 
-void
+no_room_for_monster(rn)
+int rn;
+{
+	short i, j;
+
+	for (i = rooms[rn].top_row+1; i < rooms[rn].bottom_row; i++) {
+		for (j = rooms[rn].left_col+1; j < rooms[rn].right_col; j++) {
+			if (!(dungeon[i][j] & MONSTER)) {
+				return(0);
+			}
+		}
+	}
+	return(1);
+}
+
 aggravate()
 {
 	object *monster;
@@ -805,9 +788,9 @@ aggravate()
 
 boolean
 mon_sees(monster, row, col)
-        object *monster;
+object *monster;
 {
-	int rn, rdif, cdif, retval;
+	short rn, rdif, cdif, retval;
 
 	rn = get_room_number(row, col);
 
@@ -823,7 +806,6 @@ mon_sees(monster, row, col)
 	return(retval);
 }
 
-void
 mv_aquatars()
 {
 	object *monster;

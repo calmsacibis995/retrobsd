@@ -49,11 +49,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys/wait.h>
 #include <sys/file.h>
 #include <sys/stat.h>
 #include <pwd.h>
-#include <fcntl.h>
 
 #ifdef UNIX_BSD4_2
 #include <sys/time.h>
@@ -79,7 +77,7 @@
  * input without waiting for the user to read the message.  Not such a
  * big deal.
  */
-void
+
 md_slurp()
 {
 	long ln = 0;
@@ -117,9 +115,9 @@ md_slurp()
  * This routine is not strictly necessary and may be stubbed.  This may
  * cause certain command characters to be unavailable.
  */
-void
+
 md_control_keybord(mode)
-        boolean mode;
+boolean mode;
 {
 	static boolean called_before = 0;
 #ifdef UNIX_BSD4_2
@@ -159,7 +157,7 @@ md_control_keybord(mode)
 		tc_temp.t_startc = tc_temp.t_stopc = -1;
 #endif
 #ifdef UNIX_SYSV
-		_tty.c_cc[VSWTC] = 0;
+		_tty.c_cc[VSWTCH] = CNSWTCH;
 #endif
 	}
 #ifdef UNIX_BSD4_2
@@ -186,7 +184,7 @@ md_control_keybord(mode)
  * mean that the game cannot be interrupted properly with keyboard
  * input, this is not usually critical.
  */
-void
+
 md_heed_signals()
 {
 	signal(SIGINT, onintr);
@@ -205,7 +203,7 @@ md_heed_signals()
  * critical sections of code, which could cause score file, or saved-game
  * file, corruption.
  */
-void
+
 md_ignore_signals()
 {
 	signal(SIGQUIT, SIG_IGN);
@@ -221,9 +219,10 @@ md_ignore_signals()
  *
  * This function is used to identify saved-game files.
  */
+
 int
 md_get_file_id(fname)
-        char *fname;
+char *fname;
 {
 	struct stat sbuf;
 
@@ -240,9 +239,10 @@ md_get_file_id(fname)
  * This function is not strictly necessary.  On systems without hard links
  * this routine can be stubbed by just returning 1.
  */
+
 int
 md_link_count(fname)
-        char *fname;
+char *fname;
 {
 	struct stat sbuf;
 
@@ -263,9 +263,9 @@ md_link_count(fname)
  * If you cannot provide good time values, then users may be able to copy
  * saved-game files and play them.
  */
-void
+
 md_gct(rt_buf)
-        struct rogue_time *rt_buf;
+struct rogue_time *rt_buf;
 {
 	struct tm *t, *localtime();
 	long seconds;
@@ -296,10 +296,10 @@ md_gct(rt_buf)
  * You may also do this if you wish to be able to restore games from
  * saved-games that have been modified.
  */
-void
+
 md_gfmt(fname, rt_buf)
-        char *fname;
-        struct rogue_time *rt_buf;
+char *fname;
+struct rogue_time *rt_buf;
 {
 	struct stat sbuf;
 	long seconds;
@@ -327,9 +327,10 @@ md_gfmt(fname, rt_buf)
  * by simply returning 1.  In this case, saved-game files will not be
  * deleted and can be replayed.
  */
+
 boolean
 md_df(fname)
-        char *fname;
+char *fname;
 {
 	if (unlink(fname)) {
 		return(0);
@@ -345,6 +346,7 @@ md_df(fname)
  * A dummy string may be returned if you are unable to implement this
  * function, but then the score file would only have one name in it.
  */
+
 char *
 md_gln()
 {
@@ -363,9 +365,9 @@ md_gln()
  * This routine is not particularly necessary at all.  It is used for
  * delaying execution, which is useful to this program at some times.
  */
-void
+
 md_sleep(nsecs)
-        int nsecs;
+int nsecs;
 {
 	(void) sleep(nsecs);
 }
@@ -381,7 +383,7 @@ md_sleep(nsecs)
  *     themselves.  This is used ONLY if the program is compiled with
  *     CURSES defined (-DCURSES).  Even in this case, the program need
  *     not find a string for TERMCAP.  If it does not, it will use the
- *     default termcap file;
+ *     default termcap file as returned by md_gdtcf();
  *   TERM
  *     The name of the users's terminal.  This is used ONLY if the program
  *     is compiled with CURSES defined (-DCURSES).  In this case, the string
@@ -406,9 +408,10 @@ md_sleep(nsecs)
  * get by with simply always returning zero.  Returning zero indicates
  * that their is no defined value for the given string.
  */
+
 char *
 md_getenv(name)
-        char *name;
+char *name;
 {
 	char *value;
 	char *getenv();
@@ -425,9 +428,10 @@ md_getenv(name)
  * particular system or the program will not run at all.  Return zero
  * when no more memory can be allocated.
  */
+
 char *
 md_malloc(n)
-        int n;
+int n;
 {
 	char *t;
 
@@ -452,7 +456,7 @@ md_malloc(n)
  * but this means your games will ALWAYS start the same way, and will play
  * exactly the same way given the same input.
  */
-int
+
 md_gseed()
 {
 	return(getpid());
@@ -464,9 +468,9 @@ md_gseed()
  * This function must be implemented or the program will continue to
  * hang when it should quit.
  */
-void
+
 md_exit(status)
-        int status;
+int status;
 {
 	exit(status);
 }
@@ -484,15 +488,15 @@ md_exit(status)
  * When the parameter 'l' is non-zero (true), a lock is requested.  Otherwise
  * the lock is released by removing the lock file.
  */
-void
+
 md_lock(l)
-        boolean l;
+boolean l;
 {
-	int tries;
+	short tries;
 	char *lock_file = LOCK_FILE;
 
 	if (l) {
-		for (tries = 0; tries < 3; tries++) {
+		for (tries = 0; tries < 5; tries++) {
 			if (md_get_file_id(lock_file) == -1) {
 				if (creat(lock_file, 0444) != -1) {
 					break;
@@ -502,7 +506,7 @@ md_lock(l)
 			} else {
 				message("waiting to lock score file", 0);
 			}
-			sleep(1);
+			sleep(2);
 		}
 	} else {
 		(void) unlink(lock_file);
@@ -517,20 +521,20 @@ md_lock(l)
  * is run with the user's REAL user id, and not the effective user id.
  * The effective user id is restored after the shell completes.
  */
-void
-md_shell(shell)
-        char *shell;
-{
-	int w;
 
-	if (fork() == 0) {
+md_shell(shell)
+char *shell;
+{
+	long w[2];
+
+	if (!fork()) {
 		int uid;
 
 		uid = getuid();
 		setuid(uid);
 		execl(shell, shell, (char*)0);
 	}
-	wait(&w);
+	wait(w);
 }
 
 /* If you have a viable curses/termlib library, then use it and don't bother
@@ -568,9 +572,9 @@ md_shell(shell)
  * restore the terminal to an initial saved state.
  *
  */
-void
+
 md_cbreak_no_echo_nonl(on)
-        boolean on;
+boolean on;
 {
 #ifdef UNIX_BSD4_2
 	static struct sgttyb tty_buf;
@@ -605,6 +609,26 @@ md_cbreak_no_echo_nonl(on)
 #endif
 }
 
+/* md_gdtcf(): (Get Default Termcap File)
+ *
+ * This function is called ONLY when the program is compiled with CURSES
+ * defined.  If you use your system's curses/termlib library, this function
+ * won't be called.  On most UNIX systems, "/etc/termcap" suffices.
+ *
+ * If their is no such termcap file, then return 0, but in that case, you
+ * must have a TERMCAP file returned from md_getenv("TERMCAP").  The latter
+ * will override the value returned from md_gdtcf().  If the program is
+ * compiled with CURSES defined, and md_gdtcf() returns 0, and
+ * md_getenv("TERMCAP") returns 0, the program will have no terminal
+ * capability information and will quit.
+ */
+
+char *
+md_gdtcf()
+{
+	return("/etc/termcap");
+}
+
 /* md_tstp():
  *
  * This function puts the game to sleep and returns to the shell.  This
@@ -613,7 +637,7 @@ md_cbreak_no_echo_nonl(on)
  * in the code when compiled with CURSES defined.
  *
  */
-void
+
 md_tstp()
 {
 #ifdef UNIX_BSD4_2

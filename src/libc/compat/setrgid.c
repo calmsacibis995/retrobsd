@@ -36,5 +36,6 @@ int
 setrgid(rgid)
 	int rgid;
 {
+
 	return (setregid(rgid, -1));
 }

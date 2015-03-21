@@ -3,6 +3,11 @@
  * All rights reserved.  Redistribution permitted subject to
  * the terms of the Berkeley Software License Agreement.
  */
+
+#if !defined(lint) && !defined(pdp11)
+static char sccsid[] = "@(#)dayobjs.c	1.3 4/24/85";
+#endif
+
 #include "externs.h"
 
 struct objs dayobjs[] = {
@@ -102,5 +107,5 @@ struct objs dayobjs[] = {
 	{ 130,	BRACELET },
 	{ 93,	GIRL },
 	{ 268,	LAMPON },
-	{ 0 },
+	0
 };

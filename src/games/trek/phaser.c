@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)phaser.c	5.1 (Berkeley) 1/29/86";
+#endif not lint
+
 # include	"trek.h"
 # include	"getpar.h"
 
@@ -41,9 +46,9 @@
 
 struct cvntab	Matab[] =
 {
-	{ "m",		"anual",		(void (*)())1,		0 },
-	{ "a",		"utomatic",		0,			0 },
-	{ 0 },
+	"m",		"anual",		(int (*)())1,		0,
+	"a",		"utomatic",		0,		0,
+	0
 };
 
 struct banks
@@ -53,7 +58,8 @@ struct banks
 	double	spread;
 };
 
-void
+
+
 phaser()
 {
 	register int		i;
@@ -70,18 +76,12 @@ phaser()
 	struct banks		bank[NBANKS];
 	struct cvntab		*ptr;
 
-	if (Ship.cond == DOCKED) {
-	        printf("Phasers cannot fire through starbase shields\n");
-		return;
-        }
-	if (damaged(PHASER)) {
-	        out(PHASER);
-		return;
-        }
-	if (Ship.shldup) {
-	        printf("Sulu: Captain, we cannot fire through shields.\n");
-		return;
-        }
+	if (Ship.cond == DOCKED)
+		return(printf("Phasers cannot fire through starbase shields\n"));
+	if (damaged(PHASER))
+		return (out(PHASER));
+	if (Ship.shldup)
+		return (printf("Sulu: Captain, we cannot fire through shields.\n"));
 	if (Ship.cloaked)
 	{
 		printf("Sulu: Captain, surely you must realize that we cannot fire\n");
@@ -95,13 +95,13 @@ phaser()
 	{
 		if (damaged(COMPUTER))
 		{
-			printf("%s", Device[COMPUTER].name);
+			printf(Device[COMPUTER].name);
 			manual++;
 		}
 		else
 			if (damaged(SRSCAN))
 			{
-				printf("%s", Device[SRSCAN].name);
+				printf(Device[SRSCAN].name);
 				manual++;
 			}
 		if (manual)
@@ -165,10 +165,8 @@ phaser()
 	else
 	{
 		/* automatic distribution of power */
-		if (Etc.nkling <= 0) {
-		        printf("Sulu: But there are no Klingons in this quadrant\n");
-			return;
-                }
+		if (Etc.nkling <= 0)
+			return (printf("Sulu: But there are no Klingons in this quadrant\n"));
 		printf("Phasers locked on target.  ");
 		while (flag)
 		{

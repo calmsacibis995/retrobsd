@@ -34,27 +34,19 @@
  * SUCH DAMAGE.
  */
 #ifdef CROSS
-#   include <stdio.h>
-#   include <time.h>
-#   include <unistd.h>
-#   include <sys/types.h>
-#   include <sys/select.h>
-#   include <sys/stat.h>
-#   include <fcntl.h>
-#   include <stdint.h>
-#   include <string.h>
-#   include <errno.h>
+#   include </usr/include/stdio.h>
+#   include </usr/include/errno.h>
 #else
-#   include <sys/param.h>
-#   include <sys/stat.h>
-#   include <sys/dir.h>
-#   include <sys/file.h>
 #   include <stdio.h>
-#   include <string.h>
-#   include <unistd.h>
 #   include <errno.h>
-#   include <fcntl.h>
 #endif
+#include <sys/param.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/dir.h>
+#include <sys/file.h>
 #include "archive.h"
 #include "extern.h"
 

@@ -9,6 +9,9 @@
 #include <string.h>
 #include "curses.ext"
 
+static makech(reg WINDOW *win, short wy);
+static domvcur(int oy, int ox, int ny, int nx);
+
 #ifdef DEBUG
 #   define STATIC
 #else
@@ -21,31 +24,122 @@ STATIC bool	curwin;
 
 WINDOW	*_win = NULL;
 
-/*
- * perform a mvcur, leaving standout mode if necessary
- */
-STATIC void
-domvcur(oy, ox, ny, nx)
-        int	oy, ox, ny, nx;
+int wrefresh(win)
+        reg WINDOW	*win;
 {
-	if (curscr->_flags & _STANDOUT && !MS) {
-		_puts(SE);
-		curscr->_flags &= ~_STANDOUT;
+	reg short	wy;
+	reg int		retval;
+	reg WINDOW	*orig;
+
+	/*
+	 * make sure were in visual state
+	 */
+	if (_endwin) {
+		_puts(VS);
+		_puts(TI);
+		_endwin = FALSE;
 	}
-	mvcur(oy, ox, ny, nx);
+
+	/*
+	 * initialize loop parameters
+	 */
+
+	ly = curscr->_cury;
+	lx = curscr->_curx;
+	wy = 0;
+	_win = win;
+	curwin = (win == curscr);
+
+	if (win->_clear || curscr->_clear || curwin) {
+		if ((win->_flags & _FULLWIN) || curscr->_clear) {
+			_puts(CL);
+			ly = 0;
+			lx = 0;
+			if (!curwin) {
+				curscr->_clear = FALSE;
+				curscr->_cury = 0;
+				curscr->_curx = 0;
+				werase(curscr);
+			}
+			touchwin(win);
+		}
+		win->_clear = FALSE;
+	}
+	if (!CA) {
+		if (win->_curx != 0)
+			_putchar('\n');
+		if (!curwin)
+			werase(curscr);
+	}
+# ifdef DEBUG
+	fprintf(outf, "REFRESH(%0.2o): curwin = %d\n", win, curwin);
+	fprintf(outf, "REFRESH:\n\tfirstch\tlastch\n");
+# endif
+	for (wy = 0; wy < win->_maxy; wy++) {
+# ifdef DEBUG
+		fprintf(outf, "%d\t%d\t%d\n", wy, win->_firstch[wy],
+			win->_lastch[wy]);
+# endif
+		if (win->_firstch[wy] != _NOCHANGE)
+			if (makech(win, wy) == ERR)
+				return ERR;
+			else {
+				if (win->_firstch[wy] >= win->_ch_off)
+					win->_firstch[wy] = win->_maxx +
+							    win->_ch_off;
+				if (win->_lastch[wy] < win->_maxx +
+						       win->_ch_off)
+					win->_lastch[wy] = win->_ch_off;
+				if (win->_lastch[wy] < win->_firstch[wy])
+					win->_firstch[wy] = _NOCHANGE;
+			}
+# ifdef DEBUG
+		fprintf(outf, "\t%d\t%d\n", win->_firstch[wy],
+			win->_lastch[wy]);
+# endif
+	}
+
+	if (win == curscr)
+		domvcur(ly, lx, win->_cury, win->_curx);
+	else {
+		if (win->_leave) {
+			curscr->_cury = ly;
+			curscr->_curx = lx;
+			ly -= win->_begy;
+			lx -= win->_begx;
+			if (ly >= 0 && ly < win->_maxy && lx >= 0 &&
+			    lx < win->_maxx) {
+				win->_cury = ly;
+				win->_curx = lx;
+			}
+			else
+				win->_cury = win->_curx = 0;
+		}
+		else {
+			domvcur(ly, lx, win->_cury + win->_begy,
+				win->_curx + win->_begx);
+			curscr->_cury = win->_cury + win->_begy;
+			curscr->_curx = win->_curx + win->_begx;
+		}
+	}
+	retval = OK;
+ret:
+	_win = NULL;
+	fflush(stdout);
+	return retval;
 }
 
 /*
  * make a change on the screen
  */
-STATIC int
+STATIC
 makech(win, wy)
 reg WINDOW	*win;
 short		wy;
 {
 	reg char	*nsp, *csp, *ce;
 	reg short	wx, lch, y;
-	reg int		nlsp = 0, clsp;	/* last space in lines		*/
+	reg int		nlsp, clsp;	/* last space in lines		*/
 
 	wx = win->_firstch[wy] - win->_ch_off;
 	if (wx >= win->_maxx)
@@ -125,7 +219,7 @@ short		wy;
 					}
 				}
 				wx++;
-				if (wx >= win->_maxx && wy == win->_maxy - 1) {
+				if (wx >= win->_maxx && wy == win->_maxy - 1)
 					if (win->_scroll) {
 					    if ((curscr->_flags&_STANDOUT) &&
 					        (win->_flags & _ENDLINE))
@@ -147,7 +241,6 @@ short		wy;
 					    lx = --wx;
 					    return ERR;
 					}
-                                }
 				if (!curwin)
 					_putchar((*csp++ = *nsp) & 0177);
 				else
@@ -197,106 +290,16 @@ short		wy;
 	return OK;
 }
 
-int wrefresh(win)
-        reg WINDOW	*win;
-{
-	reg short	wy;
-	reg int		retval;
+/*
+ * perform a mvcur, leaving standout mode if necessary
+ */
+STATIC
+domvcur(oy, ox, ny, nx)
+int	oy, ox, ny, nx; {
 
-	/*
-	 * make sure were in visual state
-	 */
-	if (_endwin) {
-		_puts(VS);
-		_puts(TI);
-		_endwin = FALSE;
+	if (curscr->_flags & _STANDOUT && !MS) {
+		_puts(SE);
+		curscr->_flags &= ~_STANDOUT;
 	}
-
-	/*
-	 * initialize loop parameters
-	 */
-
-	ly = curscr->_cury;
-	lx = curscr->_curx;
-	wy = 0;
-	_win = win;
-	curwin = (win == curscr);
-
-	if (win->_clear || curscr->_clear || curwin) {
-		if ((win->_flags & _FULLWIN) || curscr->_clear) {
-			_puts(CL);
-			ly = 0;
-			lx = 0;
-			if (!curwin) {
-				curscr->_clear = FALSE;
-				curscr->_cury = 0;
-				curscr->_curx = 0;
-				werase(curscr);
-			}
-			touchwin(win);
-		}
-		win->_clear = FALSE;
-	}
-	if (!CA) {
-		if (win->_curx != 0)
-			_putchar('\n');
-		if (!curwin)
-			werase(curscr);
-	}
-# ifdef DEBUG
-	fprintf(outf, "REFRESH(%0.2o): curwin = %d\n", win, curwin);
-	fprintf(outf, "REFRESH:\n\tfirstch\tlastch\n");
-# endif
-	for (wy = 0; wy < win->_maxy; wy++) {
-# ifdef DEBUG
-		fprintf(outf, "%d\t%d\t%d\n", wy, win->_firstch[wy],
-			win->_lastch[wy]);
-# endif
-		if (win->_firstch[wy] != _NOCHANGE) {
-			if (makech(win, wy) == ERR)
-				return ERR;
-			else {
-				if (win->_firstch[wy] >= win->_ch_off)
-					win->_firstch[wy] = win->_maxx +
-							    win->_ch_off;
-				if (win->_lastch[wy] < win->_maxx +
-						       win->_ch_off)
-					win->_lastch[wy] = win->_ch_off;
-				if (win->_lastch[wy] < win->_firstch[wy])
-					win->_firstch[wy] = _NOCHANGE;
-			}
-                }
-# ifdef DEBUG
-		fprintf(outf, "\t%d\t%d\n", win->_firstch[wy],
-			win->_lastch[wy]);
-# endif
-	}
-
-	if (win == curscr)
-		domvcur(ly, lx, win->_cury, win->_curx);
-	else {
-		if (win->_leave) {
-			curscr->_cury = ly;
-			curscr->_curx = lx;
-			ly -= win->_begy;
-			lx -= win->_begx;
-			if (ly >= 0 && ly < win->_maxy && lx >= 0 &&
-			    lx < win->_maxx) {
-				win->_cury = ly;
-				win->_curx = lx;
-			}
-			else
-				win->_cury = win->_curx = 0;
-		}
-		else {
-			domvcur(ly, lx, win->_cury + win->_begy,
-				win->_curx + win->_begx);
-			curscr->_cury = win->_cury + win->_begy;
-			curscr->_curx = win->_curx + win->_begx;
-		}
-	}
-	retval = OK;
-	_win = NULL;
-	fflush(stdout);
-	return retval;
+	mvcur(oy, ox, ny, nx);
 }

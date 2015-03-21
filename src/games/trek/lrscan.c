@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)lrscan.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -16,7 +21,7 @@
 **	It also updates the "scanned" field of the quadrants it scans,
 **	for future use by the "chart" option of the computer.
 */
-void
+
 lrscan()
 {
 	register int			i, j;
@@ -71,4 +76,5 @@ lrscan()
 		}
 	}
 	printf("\n  -------------------\n");
+	return;
 }

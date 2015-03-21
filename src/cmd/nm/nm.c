@@ -2,32 +2,21 @@
  * nm - print name list. string table version
  */
 #ifdef CROSS
-#   include <stdint.h>
-#   include <sys/types.h>
-#   include <stdio.h>
-#   include <string.h>
-#   include <stdlib.h>
-#   include <errno.h>
-#   include <ctype.h>
+#   include </usr/include/stdio.h>
 #else
-#   include <sys/types.h>
-#   include <sys/dir.h>
-#   include <sys/file.h>
 #   include <stdio.h>
-#   include <stdlib.h>
-#   include <string.h>
-#   include <strings.h>
-#   include <errno.h>
-#   include <ctype.h>
 #endif
+#include <sys/types.h>
+#include <sys/dir.h>
 #include <ar.h>
+#include <stdlib.h>
+#include <ctype.h>
 #include <a.out.h>
+#include <sys/file.h>
+#include <string.h>
+#include <strings.h>
 
-#ifdef CROSS
-#   include "../ar/archive.h"
-#else
-#   include "archive.h"
-#endif
+#include "archive.h"
 
 CHDR	chdr;
 
@@ -39,6 +28,7 @@ union {
         struct	exec mag_exp;
 } mag_un;
 
+off_t	off;
 int	narg, errs;
 
 void error(n, s)
@@ -125,15 +115,15 @@ int get_arobj(fp)
 	return(1);
 }
 
-off_t nextel(af, off)
+int nextel(af)
         FILE *af;
-        off_t off;
 {
-	fseek(af, off, SEEK_SET);
+	fseek(af, off, L_SET);
 	if (get_arobj(af) < 0)
-		return 0;
-	off += sizeof (struct ar_hdr) + chdr.size + (chdr.lname & 1);
-	return off;
+		return(0);
+	off += sizeof (struct ar_hdr) + chdr.size +
+		(chdr.size + (chdr.lname & 1));
+	return(1);
 }
 
 unsigned int fgetword (f)
@@ -223,14 +213,8 @@ void psyms(symp, nsyms)
 		case N_BSS:
 			c = 'b';
 			break;
-		case N_STRNG:
-			c = 's';
-			break;
-		case N_COMM:
-			c = 'c';
-			break;
-		case N_FN:
-			c = 'f';
+		case N_REG:
+			c = 'r';
 			break;
 		default:
 			c = '?';
@@ -243,15 +227,13 @@ void psyms(symp, nsyms)
 				printf("%s:", *xargv);
 			printf("%s:", archive ? chdr.name : *xargv);
 		}
-		if (symp[n].n_type & N_WEAK)
-			c = 'w';
-		if (symp[n].n_type & N_EXT)
+		if (symp[n].n_type&N_EXT)
 			c = toupper(c);
 		if (! uflg) {
 			if (c=='u' || c=='U')
-				printf("        ");
+				printf("      ");
 			else
-				printf("%08x", symp[n].n_value);
+				printf(N_FORMAT, symp[n].n_value);
 			printf(" %c ", c);
 		}
 		printf("%s\n", symp[n].n_name);
@@ -260,7 +242,6 @@ void psyms(symp, nsyms)
 
 void namelist()
 {
-	off_t   off;
 	char	ibuf[BUFSIZ];
 	register FILE	*fi;
 
@@ -273,11 +254,7 @@ void namelist()
 	setbuf(fi, ibuf);
 
 	off = 0;
-	if (fread((char *)&mag_un, 1, sizeof(mag_un), fi) != sizeof(mag_un)) {
-		error(0, "read error");
-		goto out;
-	}
-
+	fread((char *)&mag_un, 1, sizeof(mag_un), fi);
 	if (strncmp(mag_un.mag_armag, ARMAG, SARMAG)==0) {
 		archive++;
 		off = SARMAG;
@@ -289,7 +266,7 @@ void namelist()
 	rewind(fi);
 
 	if (archive) {
-		off = nextel(fi, off);
+		nextel(fi);
 		if (narg > 1)
 			printf("\n%s:\n", *xargv);
 	}
@@ -300,14 +277,12 @@ void namelist()
 		struct nlist *symp = NULL;
 
 		curpos = ftell(fi);
-		if (fread((char *)&mag_un.mag_exp, 1,
-                    sizeof(struct exec), fi) != sizeof(struct exec))
-			continue;
+		fread((char *)&mag_un.mag_exp, 1, sizeof(struct exec), fi);
 		if (N_BADMAG(mag_un.mag_exp))
 			continue;
 
 		o = N_SYMOFF(mag_un.mag_exp);
-		fseek(fi, curpos + o, SEEK_SET);
+		fseek(fi, curpos + o, L_SET);
 		n = mag_un.mag_exp.a_syms;
 		if (n == 0) {
 			error(0, "no name list");
@@ -330,7 +305,7 @@ void namelist()
 			i++;
 		}
 
-		fseek(fi, curpos + o, SEEK_SET);
+		fseek(fi, curpos + o, L_SET);
 		symp = (struct nlist *)malloc((i+1) * sizeof (struct nlist));
 		if (symp == 0)
 			error(1, "out of memory");
@@ -368,7 +343,7 @@ void namelist()
 			free((char *)symp);
                         symp = NULL;
                 }
-	} while(archive && (off = nextel(fi, off)) != 0);
+	} while(archive && nextel(fi));
 out:
 	fclose(fi);
 }
@@ -399,21 +374,10 @@ int main(argc, argv)
 		case 'o':
 			oflg++;
 			continue;
-		case 'h':
-usage:                  fprintf (stderr, "Usage:\n");
-                        fprintf (stderr, "  nm [-gunrpo] file...\n");
-                        fprintf (stderr, "Options:\n");
-                        fprintf (stderr, "  -g      Display only external symbols\n");
-                        fprintf (stderr, "  -u      Display only undefined symbols\n");
-                        fprintf (stderr, "  -n      Sort symbols numerically by address\n");
-                        fprintf (stderr, "  -r      Reverse the order of the sort\n");
-                        fprintf (stderr, "  -p      Do not sort the symbols\n");
-                        fprintf (stderr, "  -o      Precede each symbol by the file name\n");
-                        return(1);
 		default:
 			fprintf(stderr, "nm: invalid argument -%c\n",
 			    *argv[0]);
-                        goto usage;
+			exit(2);
 		}
 		argc--;
 	}
@@ -427,5 +391,5 @@ usage:                  fprintf (stderr, "Usage:\n");
 		++xargv;
 		namelist();
 	}
-	return(errs);
+	exit(errs);
 }

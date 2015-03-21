@@ -3,34 +3,12 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)compkl.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
-
-/*
-**  sort klingons
-**
-**	bubble sort on ascending distance
-*/
-void
-sortkl()
-{
-	struct kling		t;
-	register int		f, i, m;
-
-	m = Etc.nkling - 1;
-	f = 1;
-	while (f)
-	{
-		f = 0;
-		for (i = 0; i < m; i++)
-			if (Etc.klingon[i].dist > Etc.klingon[i+1].dist)
-			{
-				bmove(&Etc.klingon[i], &t, sizeof t);
-				bmove(&Etc.klingon[i+1], &Etc.klingon[i], sizeof t);
-				bmove(&t, &Etc.klingon[i+1], sizeof t);
-				f = 1;
-			}
-	}
-}
 
 /*
 **  compute klingon distances
@@ -42,9 +20,9 @@ sortkl()
 **	This routine is used every time the Enterprise or the Klingons
 **	move.
 */
-void
+
 compkldist(f)
-        int	f;		/* set if new quadrant */
+int	f;		/* set if new quadrant */
 {
 	register int		i, dx, dy;
 	double			d;
@@ -76,4 +54,32 @@ compkldist(f)
 
 	/* leave them sorted */
 	sortkl();
+}
+
+
+/*
+**  sort klingons
+**
+**	bubble sort on ascending distance
+*/
+
+sortkl()
+{
+	struct kling		t;
+	register int		f, i, m;
+
+	m = Etc.nkling - 1;
+	f = 1;
+	while (f)
+	{
+		f = 0;
+		for (i = 0; i < m; i++)
+			if (Etc.klingon[i].dist > Etc.klingon[i+1].dist)
+			{
+				bmove(&Etc.klingon[i], &t, sizeof t);
+				bmove(&Etc.klingon[i+1], &Etc.klingon[i], sizeof t);
+				bmove(&t, &Etc.klingon[i+1], sizeof t);
+				f = 1;
+			}
+	}
 }

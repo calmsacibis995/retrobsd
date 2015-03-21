@@ -28,34 +28,22 @@
 #define	MAXSLP 		20
 
 /*
- * Clock ticks per second. The HZ value must be an integer factor of 1000.
+ * Clock ticks per second.
  */
-#ifndef HZ
-#define	HZ		200
-#endif
+#define	HZ		20
 
 /*
  * System parameter formulae.
  */
-#ifndef NBUF
 #define	NBUF		10			/* number of i/o buffers */
-#endif
 #define	MAXUSERS	1			/* number of user logins */
-#ifndef NPROC
 #define	NPROC		10			/* number of processes */
-#endif
-#ifndef NINODE
 #define NINODE		24
-#endif
-#ifndef NFILE
 #define NFILE		24
-#endif
 #define NNAMECACHE	(NINODE * 11/10)
 #define NCALL		(16 + 2 * MAXUSERS)
 #define NCLIST		32                      /* number or CBSIZE blocks */
-#ifndef SMAPSIZ
 #define SMAPSIZ		NPROC                   /* size of swap allocation map */
-#endif
 
 /*
  * Disk blocks.
@@ -77,9 +65,7 @@
 #define KERNEL_FLASH_SIZE	(192*1024)
 
 #ifdef KERNEL_EXECUTABLE_RAM
-extern void _keram_start(), _keram_end();
-#define KERAM_SIZE ((unsigned)((char*)&_keram_end-(char*)&_keram_start))
-#define KERNEL_DATA_SIZE	(32*1024-KERAM_SIZE)
+#define KERNEL_DATA_SIZE	(30*1024)
 #else
 #define KERNEL_DATA_SIZE	(32*1024)
 #endif
@@ -92,7 +78,7 @@ extern void _keram_start(), _keram_end();
 #define KERNEL_DATA_END		(KERNEL_DATA_START + KERNEL_DATA_SIZE)
 
 #ifdef KERNEL_EXECUTABLE_RAM
-#define USER_DATA_START		(0x7f000000 + KERNEL_DATA_SIZE+KERAM_SIZE)
+#define USER_DATA_START		(0x7f000000 + KERNEL_DATA_SIZE+2048)
 #else
 #define USER_DATA_START		(0x7f000000 + KERNEL_DATA_SIZE)
 #endif
@@ -153,15 +139,11 @@ void clkstart (void);
 
 /*
  * Control LEDs, installed on the board.
- */ 
-#define LED_MISC4       0x80
-#define LED_MISC3       0x40
-#define LED_MISC2       0x20
-#define LED_MISC1       0x10
-#define LED_TTY         0x08
-#define LED_SWAP        0x04
-#define LED_DISK        0x02
-#define LED_KERNEL      0x01
+ */
+#define LED_TTY         8
+#define LED_AUX         4
+#define LED_DISK        2
+#define LED_KERNEL      1
 
 void led_control (int mask, int on);
 

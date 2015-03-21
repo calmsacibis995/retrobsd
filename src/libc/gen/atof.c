@@ -11,11 +11,11 @@ double
 atof(p)
 register char *p;
 {
-	register int c;
+	register c;
 	double fl, flexp, exp5;
 	double big = 72057594037927936.;  /*2^56*/
 	int nd;
-	register int eexp, exp, neg, negexp, bexp;
+	register eexp, exp, neg, negexp, bexp;
 
 	neg = 1;
 	while((c = *p++) == ' ')

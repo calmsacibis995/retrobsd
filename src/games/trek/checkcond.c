@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)checkcond.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -29,9 +34,11 @@
 **	We then set the condition code, based on the energy level
 **	and battle conditions.
 */
-void
+
 checkcond()
 {
+	register int		i, j;
+
 	/* see if we are still alive and well */
 	if (Ship.reserves < 0.0)
 		lose(L_NOLIFE);
@@ -66,4 +73,5 @@ checkcond()
 		return;
 	}
 	Ship.cond = GREEN;
+	return;
 }

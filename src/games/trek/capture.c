@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)capture.c	5.1 (Berkeley) 5/30/85";
+#endif not lint
+
 # include	"trek.h"
 
 /*
@@ -18,7 +23,7 @@
 **	is a function of that Klingon's remaining power, our power,
 **	etc.
 */
-void
+
 capture()
 {
 	register int		i;
@@ -32,10 +37,8 @@ capture()
 		printf("Ship-ship communications out when cloaked\n");
 		return;
 	}
-	if (damaged(SSRADIO)) {
-	        out(SSRADIO);
-		return;
-        }
+	if (damaged(SSRADIO))
+		return (out(SSRADIO));
 	/* find out if there are any at all */
 	if (Etc.nkling <= 0)
 	{

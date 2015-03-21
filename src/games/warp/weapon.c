@@ -3,13 +3,13 @@
 /* $Log:	weapon.c,v $
  * Revision 7.0.1.2  86/10/20  14:36:33  lwall
  * Picked some lint.
- *
+ * 
  * Revision 7.0.1.1  86/10/16  10:54:42  lwall
  * Added Damage.  Fixed random bugs.
- *
+ * 
  * Revision 7.0  86/10/08  15:18:08  lwall
  * Split into separate files.  Added amoebas and pirates.
- *
+ * 
  */
 
 #include "EXTERN.h"
@@ -34,11 +34,11 @@ weapon_init()
 
 void
 fire_torp(from, ydir, xdir)
-register OBJECT *from;
-register int ydir;
-register int xdir;
+Reg1 OBJECT *from;
+Reg3 int ydir;
+Reg4 int xdir;
 {
-    register OBJECT *to;
+    Reg2 OBJECT *to;
 
     if (from->type == Enemy ||
        (from == ent && etorp > 0) ||
@@ -102,17 +102,17 @@ register int xdir;
 
 void
 attack(attackee)
-register OBJECT *attackee;
+Reg7 OBJECT *attackee;
 {
-    register int dx;
-    register int dy;
-    register int curx;
-    register int cury;
-    register int prob;
-    register OBJECT *obj;
-    register bool torps;
-    register bool webnear = FALSE;
-    register bool thru_stars;
+    Reg1 int dx;
+    Reg2 int dy;
+    Reg3 int curx;
+    Reg4 int cury;
+    Reg5 int prob;
+    Reg6 OBJECT *obj;
+    Reg8 bool torps;
+    Reg9 bool webnear = FALSE;
+    Reg10 bool thru_stars;
     int nukey;
     int nukex;
     int nukedist;
@@ -166,7 +166,7 @@ register OBJECT *attackee;
 				    case 3: {
 					int newspeed =
 					    rand_mod(prob<5&&smarts>70?4:3)-1;
-
+					
 					obj->vely = -dy * newspeed;
 					obj->velx = -dx * newspeed;
 					if (newspeed >= 0 &&
@@ -421,7 +421,7 @@ register OBJECT *attackee;
 			else {
 			    if (thru_stars)
 				goto bombout;
-			}
+			}	
 		    }
 bombout:            ; /* end of loop */
 		}
@@ -439,14 +439,14 @@ bombout:            ; /* end of loop */
 
 void
 fire_phaser(obj, dy, dx)
-register OBJECT *obj;
-register int dy;
-register int dx;
+Reg7 OBJECT *obj;
+Reg5 int dy;
+Reg6 int dx;
 {
-    register int y;
-    register int x;
-    register int skipping;
-    register int size=5000;
+    Reg1 int y;
+    Reg2 int x;
+    Reg3 int skipping;
+    Reg4 int size=5000;
     int decr = 50, oldy, oldx;
     static char curchar[] = "@* ";
 
@@ -603,16 +603,16 @@ register int dx;
 
 int
 tract(obj, dy, dx, to_or_fro)
-register OBJECT *obj;
-register int dy;
-register int dx;
+Reg7 OBJECT *obj;
+Reg4 int dy;
+Reg5 int dx;
 int to_or_fro;
 {
-    register int y;
-    register int x;
-    register int size=10;
+    Reg1 int y;
+    Reg2 int x;
+    Reg3 int size=10;
     static char ch;
-    register OBJECT *tractee;
+    Reg6 OBJECT *tractee;
 
     if (!dy)
 	ch = '|';

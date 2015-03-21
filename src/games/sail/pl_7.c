@@ -3,6 +3,11 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#ifndef lint
+static char sccsid[] = "@(#)pl_7.c	5.1 (Berkeley) 5/29/85";
+#endif not lint
+
 #include "player.h"
 
 /*
@@ -14,18 +19,6 @@ static char *sc_prompt;
 static char *sc_buf;
 static int sc_line;
 
-#ifdef SIGTSTP
-void
-susp(int sig)
-{
-	blockalarm();
-	//tstp();
-	signal(SIGTSTP, susp);
-	unblockalarm();
-}
-#endif
-
-void
 initscreen()
 {
 	/* initscr() already done in SCREENTEST() */
@@ -41,14 +34,14 @@ initscreen()
 	(void) leaveok(turn_w, 1);
 #ifdef SIGTSTP
 	{
-		signal(SIGTSTP, susp);
+		int susp();
+		(void) signal(SIGTSTP, susp);
 	}
 #endif
 	noecho();
 	crmode();
 }
 
-void
 cleanupscreen()
 {
 	/* alarm already turned off */
@@ -60,40 +53,22 @@ cleanupscreen()
 	}
 }
 
-static void
-adjustview()
-{
-	if (dont_adjust)
-		return;
-	if (mf->row < viewrow + VIEW_Y/4)
-		viewrow = mf->row - (VIEW_Y - VIEW_Y/4);
-	else if (mf->row > viewrow + (VIEW_Y - VIEW_Y/4))
-		viewrow = mf->row - VIEW_Y/4;
-	if (mf->col < viewcol + VIEW_X/8)
-		viewcol = mf->col - (VIEW_X - VIEW_X/8);
-	else if (mf->col > viewcol + (VIEW_X - VIEW_X/8))
-		viewcol = mf->col - VIEW_X/8;
-}
-
-void
-newturn(int sig)
+newturn()
 {
 	repaired = loaded = fired = changed = 0;
 	movebuf[0] = '\0';
 
 	(void) alarm(0);
-	if (mf->readyL & R_LOADING) {
+	if (mf->readyL & R_LOADING)
 		if (mf->readyL & R_DOUBLE)
 			mf->readyL = R_LOADING;
 		else
 			mf->readyL = R_LOADED;
-        }
-	if (mf->readyR & R_LOADING) {
+	if (mf->readyR & R_LOADING)
 		if (mf->readyR & R_DOUBLE)
 			mf->readyR = R_LOADING;
 		else
 			mf->readyR = R_LOADED;
-        }
 	if (!hasdriver)
 		Write(W_DDEAD, SHIP(0), 0, 0, 0, 0, 0);
 
@@ -125,25 +100,15 @@ newturn(int sig)
 	adjustview();
 	draw_screen();
 
-	signal(SIGALRM, newturn);
+	(void) signal(SIGALRM, newturn);
 	(void) alarm(7);
 }
 
-static void
-Scroll()
-{
-	if (++sc_line >= SCROLL_Y)
-		sc_line = 0;
-	(void) wmove(scroll_w, sc_line, 0);
-	(void) wclrtoeol(scroll_w);
-}
-
 /*VARARGS2*/
-void
 Signal(fmt, ship, a, b, c, d)
-        char *fmt;
-        register struct ship *ship;
-        int a, b, c, d;
+char *fmt;
+register struct ship *ship;
+int a, b, c, d;
 {
 	if (!done_curses)
 		return;
@@ -157,10 +122,17 @@ Signal(fmt, ship, a, b, c, d)
 	Scroll();
 }
 
-void
+Scroll()
+{
+	if (++sc_line >= SCROLL_Y)
+		sc_line = 0;
+	(void) wmove(scroll_w, sc_line, 0);
+	(void) wclrtoeol(scroll_w);
+}
+
 prompt(p, ship)
-        register char *p;
-        struct ship *ship;
+register char *p;
+struct ship *ship;
 {
 	static char buf[60];
 
@@ -173,22 +145,20 @@ prompt(p, ship)
 	(void) waddstr(scroll_w, p);
 }
 
-void
 endprompt(flag)
-        int flag;
+char flag;
 {
 	sc_hasprompt = 0;
 	if (flag)
 		Scroll();
 }
 
-int
 sgetch(p, ship, flag)
-        char *p;
-        struct ship *ship;
-        int flag;
+char *p;
+struct ship *ship;
+char flag;
 {
-	register int c;
+	register c;
 
 	prompt(p, ship);
 	blockalarm();
@@ -202,13 +172,12 @@ sgetch(p, ship, flag)
 	return c;
 }
 
-void
 sgetstr(pr, buf, n)
-        char *pr;
-        register char *buf;
-        register int n;
+char *pr;
+register char *buf;
+register n;
 {
-	register int c;
+	register c;
 	register char *p = buf;
 
 	prompt(pr, (struct ship *)0);
@@ -236,12 +205,11 @@ sgetstr(pr, buf, n)
 				*p++ = c;
 				(void) waddch(scroll_w, c);
 			} else
-				(void) putchar('\7');
+				(void) putchar(CTRL(g));
 		}
 	}
 }
 
-void
 draw_screen()
 {
 	draw_view();
@@ -251,7 +219,6 @@ draw_screen()
 	(void) wrefresh(scroll_w);		/* move the cursor */
 }
 
-void
 draw_view()
 {
 	register struct ship *sp;
@@ -275,7 +242,6 @@ draw_view()
 	(void) wrefresh(view_w);
 }
 
-void
 draw_turn()
 {
 	(void) wmove(turn_w, 0, 0);
@@ -283,7 +249,6 @@ draw_turn()
 	(void) wrefresh(turn_w);
 }
 
-void
 draw_stat()
 {
 	(void) wmove(stat_w, STAT_1, 0);
@@ -309,8 +274,8 @@ draw_stat()
 
 	(void) wmove(stat_w, STAT_3, 0);
 	(void) wprintw(stat_w, "Load  %c%c %c%c\n",
-		loadname[(int)mf->loadL], readyname((int)mf->readyL),
-		loadname[(int)mf->loadR], readyname((int)mf->readyR));
+		loadname[mf->loadL], readyname(mf->readyL),
+		loadname[mf->loadR], readyname(mf->readyR));
 	(void) wprintw(stat_w, "Hull %2d\n", mc->hull);
 	(void) wprintw(stat_w, "Crew %2d %2d %2d\n",
 		mc->crew1, mc->crew2, mc->crew3);
@@ -324,7 +289,6 @@ draw_stat()
 	(void) wrefresh(stat_w);
 }
 
-void
 draw_slot()
 {
 	if (!boarding(ms, 0)) {
@@ -388,7 +352,6 @@ draw_slot()
 	(void) wrefresh(slot_w);
 }
 
-void
 draw_board()
 {
 	register int n;
@@ -428,7 +391,7 @@ draw_board()
 	(void) move(LINE_T, LINE_L);
 	(void) printw("Class %d %s (%d guns) '%s' (%c%c)",
 		mc->class,
-		classname[(int)mc->class],
+		classname[mc->class],
 		mc->guns,
 		ms->shipname,
 		colours(ms),
@@ -436,33 +399,52 @@ draw_board()
 	(void) refresh();
 }
 
-void
 centerview()
 {
 	viewrow = mf->row - VIEW_Y / 2;
 	viewcol = mf->col - VIEW_X / 2;
 }
 
-void
 upview()
 {
 	viewrow -= VIEW_Y / 3;
 }
 
-void
 downview()
 {
 	viewrow += VIEW_Y / 3;
 }
 
-void
 leftview()
 {
 	viewcol -= VIEW_X / 5;
 }
 
-void
 rightview()
 {
 	viewcol += VIEW_X / 5;
 }
+
+adjustview()
+{
+	if (dont_adjust)
+		return;
+	if (mf->row < viewrow + VIEW_Y/4)
+		viewrow = mf->row - (VIEW_Y - VIEW_Y/4);
+	else if (mf->row > viewrow + (VIEW_Y - VIEW_Y/4))
+		viewrow = mf->row - VIEW_Y/4;
+	if (mf->col < viewcol + VIEW_X/8)
+		viewcol = mf->col - (VIEW_X - VIEW_X/8);
+	else if (mf->col > viewcol + (VIEW_X - VIEW_X/8))
+		viewcol = mf->col - VIEW_X/8;
+}
+
+#ifdef SIGTSTP
+susp()
+{
+	blockalarm();
+	tstp();
+	(void) signal(SIGTSTP, susp);
+	unblockalarm();
+}
+#endif

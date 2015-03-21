@@ -29,14 +29,13 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-        .set    reorder
 	.type	strlen, @function
 strlen:	.globl  strlen
 
-	addiu	$v1, $a0, 1
+	addu	$v1, $a0, 1
 1:
 	lb	$v0, 0($a0)		# get byte from string
-	addiu	$a0, $a0, 1		# increment pointer
+	addu	$a0, $a0, 1		# increment pointer
 	bne	$v0, $zero, 1b		# continue if not end
 	subu	$v0, $a0, $v1		# compute length - 1 for '\0' char
 	j	$ra

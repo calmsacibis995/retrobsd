@@ -6,7 +6,7 @@
  *    3.)  This code is not to be traded, sold, or used for personal
  *         gain or profit.
  */
-#define boolean int
+#define boolean char
 
 #define NOTHING		((unsigned short)     0)
 #define OBJECT		((unsigned short)    01)
@@ -147,14 +147,14 @@
 
 #define GOLD_PERCENT 46
 
-#define SCORE_FILE "/games/lib/rogue.scores"
-#define LOCK_FILE  "/games/lib/rogue.lock"
+#define SCORE_FILE "/usr/games/lib/rogue.scores"
+#define LOCK_FILE  "/usr/games/lib/rogue.lock"
 
 #define MAX_OPT_LEN 40
 
 struct id {
 	short value;
-	char title[35];
+	char *title;
 	char *real;
 	unsigned short id_status;
 };
@@ -386,6 +386,40 @@ extern object level_monsters;
 
 #define MIN_ROW 1
 
+/* external routine declarations.
+ */
+char *mon_name();
+char *get_ench_color();
+char *name_of();
+char *md_gln();
+char *md_getenv();
+char *md_malloc();
+boolean is_direction();
+boolean mon_sees();
+boolean mask_pack();
+boolean mask_room();
+boolean is_digit();
+boolean check_hunger();
+boolean reg_move();
+boolean md_df();
+boolean has_been_touched();
+object *add_to_pack();
+object *alloc_object();
+object *get_letter_object();
+object *gr_monster();
+object *get_thrown_at_monster();
+object *get_zapped_monster();
+object *check_duplicate();
+object *gr_object();
+object *object_at();
+object *pick_up();
+struct id *get_id_table();
+unsigned short gr_what_is();
+long rrandom();
+long lget_number();
+long xxx();
+void byebye(int), onintr(int), error_save(int);
+
 struct rogue_time {
 	short year;	/* >= 1987 */
 	short month;	/* 1 - 12 */
@@ -407,24 +441,10 @@ extern int LINES, COLS;
 extern WINDOW *curscr;
 extern char *CL;
 
-void initscr(void);
-void endwin(void);
-void noecho(void);
-void crmode(void);
-void nonl(void);
-void refresh(void);
-void wrefresh(WINDOW *scr);
-void clear(void);
-void clrtoeol(void);
-void tstp(void);
-void standout(void);
-void standend(void);
-void addstr(char *str);
-void addch(int ch);
-void move(int row, int col);
-void mvaddch(int row, int col, int ch);
-void mvaddstr(int row, int col, char *str);
-int mvinch(int row, int col);
+char *md_gdtcf();
+
+//int sprintf(char *str, const char *format, ...);
+//int printf(const char *format, ...);
 
 #else
 #include <curses.h>
@@ -435,262 +455,3 @@ int mvinch(int row, int col);
 #else
 #   include <stdio.h>
 #endif
-
-extern char ask_quit;
-extern char being_held;
-extern char cant_int;
-extern char con_mon;
-extern char detect_monster;
-extern char did_int;
-extern char interrupted;
-extern char jump;
-extern char maintain_armor;
-extern char mon_disappeared;
-extern char msg_cleared;
-extern char no_skull;
-extern char passgo;
-extern char r_see_invisible;
-extern char r_teleport;
-extern char save_is_interactive;
-extern char score_only;
-extern char see_invisible;
-extern char sustain_strength;
-extern char trap_door;
-extern char wizard;
-extern char *byebye_string;
-extern char *curse_message;
-extern char *error_file;
-extern char *fruit;
-extern char *m_names[];
-extern char *more;
-extern char *new_level_message;
-extern char *nick_name;
-extern char *press_space;
-extern char *save_file;
-extern char *you_can_move_again;
-extern char hit_message[];
-extern char hunger_str[];
-extern char login_name[];
-extern long level_points[];
-extern char is_wood[];
-extern short add_strength;
-extern short auto_search;
-extern short bear_trap;
-extern short blind;
-extern short confused;
-extern short cur_level;
-extern short cur_room;
-extern short e_rings;
-extern short extra_hp;
-extern short foods;
-extern short halluc;
-extern short haste_self;
-extern short less_hp;
-extern short levitate;
-extern short max_level;
-extern short m_moves;
-extern short party_room;
-extern short regeneration;
-extern short ring_exp;
-extern short r_rings;
-extern short stealthy;
-
-void rand_around(int i, int *r, int *c);
-void place_at(object *obj, int row, int col);
-void message(char *msg, boolean intrpt);
-void sound_bell(void);
-void check_message(void);
-void unwield(object *obj);
-void mv_aquatars(void);
-void unwear(object *obj);
-void print_stats(int stat_mask);
-void un_put_on(object *ring);
-void wake_up(object *monster);
-void check_gold_seeker(object *monster);
-void s_con_mon(object *monster);
-void vanish(object *obj, int rm, object *pack);
-void get_dir_rc(int dir, int *row, int *col, int allow_off_screen);
-void rogue_damage(int d, object *monster, int other);
-void mv_1_monster(object *monster, int row, int col);
-void move_mon_to(object *monster, int row, int col);
-void do_wear(object *obj);
-void do_wield(object *obj);
-void do_put_on(object *ring, boolean on_left);
-void inv_rings(void);
-void ring_stats(boolean pr);
-void rust(object *monster);
-void tele(void);
-void unhallucinate(void);
-void unblind(void);
-void relight(void);
-void take_a_nap(void);
-void cnfs(void);
-void unconfuse(void);
-void special_hit(object *monster);
-void killed_by(object *monster, int other);
-void cough_up(object *monster);
-void add_exp(int e, boolean promotion);
-void take_from_pack(object *obj, object *pack);
-void free_object(object *obj);
-void put_amulet(void);
-void md_cbreak_no_echo_nonl(boolean on);
-void md_tstp(void);
-void md_slurp(void);
-void start_window(void);
-void stop_window(void);
-void gr_row_col(int *row, int *col, unsigned mask);
-void light_up_room(int rn);
-void light_passage(int row, int col);
-void wake_room(int rn, boolean entering, int row, int col);
-void win(void);
-void clean_up(char *estr);
-void multiple_move_rogue(int dirch);
-void get_food(object *obj, boolean force_ration);
-void put_scores(object *monster, int other);
-void xxxx(char *buf, int n);
-void md_heed_signals(void);
-void srrandom(int x);
-void restore(char *fname);
-void mix_colors(void);
-void get_wand_and_ring_materials(void);
-void make_scroll_titles(void);
-void md_exit(int status);
-void md_control_keybord(boolean mode);
-void md_ignore_signals(void);
-void quit(boolean from_intrpt);
-void save_into_file(char *sfile);
-void get_desc(object *obj, char *desc);
-void wait_for_ack(void);
-void make_level(void);
-void clear_level(void);
-void put_objects(void);
-void put_stairs(void);
-void add_traps(void);
-void put_mons(void);
-void put_player(int nr);
-void play_level(void);
-void free_stuff(object *objlist);
-void mon_hit(object *monster);
-void dr_course(object *monster, boolean entering, int row, int col);
-void rogue_hit(object *monster, boolean force_hit);
-void darken_room(int rn);
-void trap_player(int row, int col);
-void mv_mons(void);
-void wanderer(void);
-void hallucinate(void);
-void search(int n, boolean is_auto);
-void party_monsters(int rn, int n);
-void gr_ring(object *ring, boolean assign_wk);
-void inventory(object *pack, unsigned mask);
-void rest(int count);
-void fight(boolean to_the_death);
-void eat(void);
-void quaff(void);
-void read_scroll(void);
-void move_onto(void);
-void kick_into_pack(void);
-void drop(void);
-void put_on_ring(void);
-void remove_ring(void);
-void remessage(int c);
-void wizardize(void);
-void inv_armor_weapon(boolean is_weapon);
-void id_trap(void);
-void id_type(void);
-void id_com(void);
-void do_shell(void);
-void edit_opts(void);
-void single_inv(int ichar);
-void take_off(void);
-void wear(void);
-void wield(void);
-void call_it(void);
-void zapp(void);
-void throw(void);
-void draw_magic_map(void);
-void show_traps(void);
-void show_objects(void);
-void show_average_hp(void);
-void c_object_for_wizard(void);
-void show_monsters(void);
-void save_game(void);
-void md_shell(char *shell);
-void md_gct(struct rogue_time *rt_buf);
-void md_gfmt(char *fname, struct rogue_time *rt_buf);
-void md_lock(boolean l);
-void bounce(int ball, int dir, int row, int col, int r);
-void create_monster(void);
-void aggravate(void);
-void md_sleep(int nsecs);
-void onintr(int sig);
-void byebye(int sig);
-void error_save(int sig);
-
-int rogue_can_see(int row, int col);
-int get_dungeon_char(int row, int col);
-int rgetchar(void);
-int pack_letter(char *prompt, unsigned mask);
-int get_hit_chance(object *weapon);
-int get_weapon_damage(object *weapon);
-int rand_percent(int percentage);
-int get_rand(int x, int y);
-int mon_damage(object *monster, int damage);
-int get_mask_char(unsigned mask);
-int imitating(int row, int col);
-int get_damage(char *ds, boolean r);
-int get_armor_class(object *obj);
-int check_imitator(object *monster);
-int get_number(char *s);
-int can_move(int row1, int col1, int row2, int col2);
-int one_move_rogue(int dirch, int pickup);
-int is_all_connected(void);
-int coin_toss(void);
-int has_amulet(void);
-int get_room_number(int row, int col);
-int hp_raise(void);
-int md_gseed(void);
-int is_vowel(int ch);
-int init(int argc, char **argv);
-int gr_obj_char(void);
-int mon_can_go(object *monster, int row, int col);
-int m_confuse(object *monster);
-int flame_broil(object *monster);
-int seek_gold(object *monster);
-int is_passable(int row, int col);
-int gr_room(void);
-int party_objects(int rn);
-int pack_count(object *new_obj);
-int r_index(char *str, int ch, boolean last);
-int get_input_line(char *prompt, char *insert, char *buf, char *if_cancelled,
-                   boolean add_blank, boolean do_echo);
-int drop_check(void);
-int check_up(void);
-int gmc_row_col(int row, int col);
-int md_get_file_id(char *fname);
-int md_link_count(char *fname);
-int gmc(object *monster);
-
-long xxx(boolean st);
-long lget_number(char *s);
-
-boolean is_direction(int c, int *d);
-boolean mon_sees(object *monster, int row, int col);
-boolean reg_move(void);
-boolean is_digit(int ch);
-boolean md_df(char *fname);
-
-char *md_getenv(char *name);
-char *md_malloc(int n);
-char *md_gln(void);
-char *mon_name(object *monster);
-char *name_of(object *obj);
-
-object *alloc_object(void);
-object *object_at(object *pack, int row, int col);
-object *add_to_pack(object *obj, object *pack, int condense);
-object *get_letter_object(int ch);
-object *gr_object(void);
-object *gr_monster(object *monster, int mn);
-object *pick_up(int row, int col, int *status);
-
-struct id *get_id_table(object *obj);

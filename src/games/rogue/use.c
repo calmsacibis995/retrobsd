@@ -13,94 +13,23 @@ short blind = 0;
 short confused = 0;
 short levitate = 0;
 short haste_self = 0;
-char see_invisible = 0;
+boolean see_invisible = 0;
 short extra_hp = 0;
-char detect_monster = 0;
-char con_mon = 0;
+boolean detect_monster = 0;
+boolean con_mon = 0;
 char *strange_feeling = "you have a strange feeling for a moment, then it passes";
 
-static void
-potion_heal(extra)
-{
-	float ratio;
-	int add;
+extern short bear_trap;
+extern char hunger_str[];
+extern short cur_room;
+extern long level_points[];
+extern boolean being_held;
+extern char *fruit, *you_can_move_again;
+extern boolean sustain_strength;
 
-	rogue.hp_current += rogue.exp;
-
-	ratio = ((float)rogue.hp_current) / rogue.hp_max;
-
-	if (ratio >= 1.00) {
-		rogue.hp_max += (extra ? 2 : 1);
-		extra_hp += (extra ? 2 : 1);
-		rogue.hp_current = rogue.hp_max;
-	} else if (ratio >= 0.90) {
-		rogue.hp_max += (extra ? 1 : 0);
-		extra_hp += (extra ? 1 : 0);
-		rogue.hp_current = rogue.hp_max;
-	} else {
-		if (ratio < 0.33) {
-			ratio = 0.33;
-		}
-		if (extra) {
-			ratio += ratio;
-		}
-		add = (int) (ratio * ((float)rogue.hp_max - rogue.hp_current));
-		rogue.hp_current += add;
-		if (rogue.hp_current > rogue.hp_max) {
-			rogue.hp_current = rogue.hp_max;
-		}
-	}
-	if (blind) {
-		unblind();
-	}
-	if (confused && extra) {
-		unconfuse();
-	} else if (confused) {
-		confused = (confused / 2) + 1;
-	}
-	if (halluc && extra) {
-		unhallucinate();
-	} else if (halluc) {
-		halluc = (halluc / 2) + 1;
-	}
-}
-
-static void
-go_blind()
-{
-	int i, j;
-
-	if (!blind) {
-		message("a cloak of darkness falls around you", 0);
-	}
-	blind += get_rand(500, 800);
-
-	if (detect_monster) {
-		object *monster;
-
-		monster = level_monsters.next_monster;
-
-		while (monster) {
-			mvaddch(monster->row, monster->col, monster->trail_char);
-			monster = monster->next_monster;
-		}
-	}
-	if (cur_room >= 0) {
-		for (i = rooms[cur_room].top_row + 1;
-			 i < rooms[cur_room].bottom_row; i++) {
-			for (j = rooms[cur_room].left_col + 1;
-				 j < rooms[cur_room].right_col; j++) {
-				mvaddch(i, j, ' ');
-			}
-		}
-	}
-	mvaddch(rogue.row, rogue.col, rogue.fchar);
-}
-
-void
 quaff()
 {
-	int ch;
+	short ch;
 	char buf[80];
 	object *obj;
 
@@ -211,95 +140,9 @@ quaff()
 	vanish(obj, 1, &rogue.pack);
 }
 
-static void
-idntfy()
-{
-	int ch;
-	object *obj;
-	struct id *id_table;
-	char desc[DCOLS];
-AGAIN:
-	ch = pack_letter("what would you like to identify?", ALL_OBJECTS);
-
-	if (ch == CANCEL) {
-		return;
-	}
-	if (!(obj = get_letter_object(ch))) {
-		message("no such item, try again", 0);
-		message("", 0);
-		check_message();
-		goto AGAIN;
-	}
-	obj->identified = 1;
-	if (obj->what_is & (SCROL | POTION | WEAPON | ARMOR | WAND | RING)) {
-		id_table = get_id_table(obj);
-		id_table[obj->which_kind].id_status = IDENTIFIED;
-	}
-	get_desc(obj, desc);
-	message(desc, 0);
-}
-
-void
-hold_monster()
-{
-	int i, j;
-	int mcount = 0;
-	object *monster;
-	int row, col;
-
-	for (i = -2; i <= 2; i++) {
-		for (j = -2; j <= 2; j++) {
-			row = rogue.row + i;
-			col = rogue.col + j;
-			if ((row < MIN_ROW) || (row > (DROWS-2)) || (col < 0) ||
-				 (col > (DCOLS-1))) {
-				continue;
-			}
-			if (dungeon[row][col] & MONSTER) {
-				monster = object_at(&level_monsters, row, col);
-				monster->m_flags |= ASLEEP;
-				monster->m_flags &= (~WAKENS);
-				mcount++;
-			}
-		}
-	}
-	if (mcount == 0) {
-		message("you feel a strange sense of loss", 0);
-	} else if (mcount == 1) {
-		message("the monster freezes", 0);
-	} else {
-		message("the monsters around you freeze", 0);
-	}
-}
-
-static void
-uncurse_all()
-{
-	object *obj;
-
-	obj = rogue.pack.next_object;
-
-	while (obj) {
-		obj->is_cursed = 0;
-		obj = obj->next_object;
-	}
-}
-
-static char *
-get_ench_color()
-{
-	if (halluc) {
-		return(id_potions[get_rand(0, POTIONS-1)].title);
-	} else if (con_mon) {
-		return("red ");
-	}
-	return("blue ");
-}
-
-void
 read_scroll()
 {
-	int ch;
+	short ch;
 	object *obj;
 	char msg[DCOLS];
 
@@ -408,11 +251,11 @@ read_scroll()
 /* vanish() does NOT handle a quiver of weapons with more than one
  *  arrow (or whatever) in the quiver.  It will only decrement the count.
  */
-void
+
 vanish(obj, rm, pack)
-        object *obj;
-        int rm;
-        object *pack;
+object *obj;
+short rm;
+object *pack;
 {
 	if (obj->quantity > 1) {
 		obj->quantity--;
@@ -432,11 +275,82 @@ vanish(obj, rm, pack)
 	}
 }
 
-void
+potion_heal(extra)
+{
+	float ratio;
+	short add;
+
+	rogue.hp_current += rogue.exp;
+
+	ratio = ((float)rogue.hp_current) / rogue.hp_max;
+
+	if (ratio >= 1.00) {
+		rogue.hp_max += (extra ? 2 : 1);
+		extra_hp += (extra ? 2 : 1);
+		rogue.hp_current = rogue.hp_max;
+	} else if (ratio >= 0.90) {
+		rogue.hp_max += (extra ? 1 : 0);
+		extra_hp += (extra ? 1 : 0);
+		rogue.hp_current = rogue.hp_max;
+	} else {
+		if (ratio < 0.33) {
+			ratio = 0.33;
+		}
+		if (extra) {
+			ratio += ratio;
+		}
+		add = (short)(ratio * ((float)rogue.hp_max - rogue.hp_current));
+		rogue.hp_current += add;
+		if (rogue.hp_current > rogue.hp_max) {
+			rogue.hp_current = rogue.hp_max;
+		}
+	}
+	if (blind) {
+		unblind();
+	}
+	if (confused && extra) {
+			unconfuse();
+	} else if (confused) {
+		confused = (confused / 2) + 1;
+	}
+	if (halluc && extra) {
+		unhallucinate();
+	} else if (halluc) {
+		halluc = (halluc / 2) + 1;
+	}
+}
+
+idntfy()
+{
+	short ch;
+	object *obj;
+	struct id *id_table;
+	char desc[DCOLS];
+AGAIN:
+	ch = pack_letter("what would you like to identify?", ALL_OBJECTS);
+
+	if (ch == CANCEL) {
+		return;
+	}
+	if (!(obj = get_letter_object(ch))) {
+		message("no such item, try again", 0);
+		message("", 0);
+		check_message();
+		goto AGAIN;
+	}
+	obj->identified = 1;
+	if (obj->what_is & (SCROL | POTION | WEAPON | ARMOR | WAND | RING)) {
+		id_table = get_id_table(obj);
+		id_table[obj->which_kind].id_status = IDENTIFIED;
+	}
+	get_desc(obj, desc);
+	message(desc, 0);
+}
+
 eat()
 {
-	int ch;
-	int moves;
+	short ch;
+	short moves;
 	object *obj;
 	char buf[70];
 
@@ -474,7 +388,38 @@ eat()
 	vanish(obj, 1, &rogue.pack);
 }
 
-void
+hold_monster()
+{
+	short i, j;
+	short mcount = 0;
+	object *monster;
+	short row, col;
+
+	for (i = -2; i <= 2; i++) {
+		for (j = -2; j <= 2; j++) {
+			row = rogue.row + i;
+			col = rogue.col + j;
+			if ((row < MIN_ROW) || (row > (DROWS-2)) || (col < 0) ||
+				 (col > (DCOLS-1))) {
+				continue;
+			}
+			if (dungeon[row][col] & MONSTER) {
+				monster = object_at(&level_monsters, row, col);
+				monster->m_flags |= ASLEEP;
+				monster->m_flags &= (~WAKENS);
+				mcount++;
+			}
+		}
+	}
+	if (mcount == 0) {
+		message("you feel a strange sense of loss", 0);
+	} else if (mcount == 1) {
+		message("the monster freezes", 0);
+	} else {
+		message("the monsters around you freeze", 0);
+	}
+}
+
 tele()
 {
 	mvaddch(rogue.row, rogue.col, get_dungeon_char(rogue.row, rogue.col));
@@ -487,11 +432,10 @@ tele()
 	bear_trap = 0;
 }
 
-void
 hallucinate()
 {
 	object *obj, *monster;
-	int ch;
+	short ch;
 
 	if (blind) return;
 
@@ -517,7 +461,6 @@ hallucinate()
 	}
 }
 
-void
 unhallucinate()
 {
 	halluc = 0;
@@ -525,7 +468,6 @@ unhallucinate()
 	message("everything looks SO boring now", 1);
 }
 
-void
 unblind()
 {
 	blind = 0;
@@ -539,7 +481,6 @@ unblind()
 	}
 }
 
-void
 relight()
 {
 	if (cur_room == PASSAGE) {
@@ -550,10 +491,9 @@ relight()
 	mvaddch(rogue.row, rogue.col, rogue.fchar);
 }
 
-void
 take_a_nap()
 {
-	int i;
+	short i;
 
 	i = get_rand(2, 5);
 	md_sleep(1);
@@ -565,13 +505,53 @@ take_a_nap()
 	message(you_can_move_again, 0);
 }
 
-void
+go_blind()
+{
+	short i, j;
+
+	if (!blind) {
+		message("a cloak of darkness falls around you", 0);
+	}
+	blind += get_rand(500, 800);
+
+	if (detect_monster) {
+		object *monster;
+
+		monster = level_monsters.next_monster;
+
+		while (monster) {
+			mvaddch(monster->row, monster->col, monster->trail_char);
+			monster = monster->next_monster;
+		}
+	}
+	if (cur_room >= 0) {
+		for (i = rooms[cur_room].top_row + 1;
+			 i < rooms[cur_room].bottom_row; i++) {
+			for (j = rooms[cur_room].left_col + 1;
+				 j < rooms[cur_room].right_col; j++) {
+				mvaddch(i, j, ' ');
+			}
+		}
+	}
+	mvaddch(rogue.row, rogue.col, rogue.fchar);
+}
+
+char *
+get_ench_color()
+{
+	if (halluc) {
+		return(id_potions[get_rand(0, POTIONS-1)].title);
+	} else if (con_mon) {
+		return("red ");
+	}
+	return("blue ");
+}
+
 cnfs()
 {
 	confused += get_rand(12, 22);
 }
 
-void
 unconfuse()
 {
 	char msg[80];
@@ -579,4 +559,16 @@ unconfuse()
 	confused = 0;
 	sprintf(msg, "you feel less %s now", (halluc ? "trippy" : "confused"));
 	message(msg, 1);
+}
+
+uncurse_all()
+{
+	object *obj;
+
+	obj = rogue.pack.next_object;
+
+	while (obj) {
+		obj->is_cursed = 0;
+		obj = obj->next_object;
+	}
 }

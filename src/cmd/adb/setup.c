@@ -1,6 +1,5 @@
 #include "defs.h"
 #include <fcntl.h>
-#include <strings.h>
 
 u_int   *uframe = UFRAME;
 char    *symfil  = "a.out";
@@ -15,15 +14,16 @@ getfile(filnam, cnt)
 {
     register int f;
 
-    if (strcmp("-", filnam) == 0)
-        return -1;
-
-    f = open(filnam, wtflag);
-    if (f < 0 && argcount > cnt) {
-        if (wtflag)
-            f = open(filnam, O_CREAT | O_TRUNC | wtflag, 644);
-        if (f < 0)
-            print("cannot open `%s'\n", filnam);
+    if (strcmp("-", filnam)) {
+        f = open(filnam, wtflag);
+        if (f < 0 && argcount > cnt) {
+            if (wtflag)
+                f = open(filnam, O_CREAT | O_TRUNC | wtflag, 644);
+            if (f < 0)
+                print("cannot open `%s'\n", filnam);
+        }
+    } else {
+        f = -1;
     }
     return f;
 }
@@ -77,9 +77,9 @@ setcor()
     datmap.ufd = fcor;
     if (read(fcor, corhdr, sizeof corhdr) == sizeof corhdr) {
         if (! kernel) {
-            txtsiz = ((struct user*)corhdr)->u_tsize;
-            datsiz = ((struct user*)corhdr)->u_dsize;
-            stksiz = ((struct user*)corhdr)->u_ssize;
+            txtsiz = ((U*)corhdr)->u_tsize;
+            datsiz = ((U*)corhdr)->u_dsize;
+            stksiz = ((U*)corhdr)->u_ssize;
             datmap.f1 = USIZE;
             datmap.b2 = USER_DATA_END - stksiz;
             datmap.e2 = USER_DATA_END;
@@ -112,14 +112,13 @@ setcor()
         }
         datbas = datmap.b1;
         if (! kernel && magic) {
-            /* User's frame pointer in user's address space. */
-            register u_int frame;
-            frame = (long) ((struct user*)corhdr)->u_frame;
-            frame -= KERNEL_DATA_END - USIZE;
-            if (frame > 0 && frame < USIZE && ! (frame & 3)) {
-                /* User's frame pointer in adb address space. */
-                uframe = (u_int*) &corhdr[frame >> 2];
-            }
+            register u_int *frame;
+            frame = (u_int*) ((U*)corhdr)->u_frame;
+            if (frame > (u_int*) (KERNEL_DATA_END - USIZE) &&
+                frame < (u_int*) KERNEL_DATA_END &&
+                ! ((unsigned)frame & 3))
+                uframe = (u_int*) &corhdr[frame -
+                                          (u_int*) (KERNEL_DATA_END - USIZE)];
         }
     } else {
         datmap.e1 = maxfile;

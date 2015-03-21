@@ -33,27 +33,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#ifdef CROSS
-#   ifdef __linux__
-#       undef O_CREAT
-#       define O_CREAT      00000100
-#       undef O_EXCL
-#       define O_EXCL       00000200
-#       undef O_NOCTTY
-#       define O_NOCTTY     00000400
-#       undef O_TRUNC
-#       define O_TRUNC      00001000
-#   endif
-#   ifndef MAXNAMLEN
-#       define MAXNAMLEN    63
-#   endif
-#   ifndef MAXPATHLEN
-#       define MAXPATHLEN   256
-#   endif
-#   ifndef _PATH_ARTMP
-#       define _PATH_ARTMP  "/tmp/ar.XXXXXX"
-#   endif
-#endif
 
 /* Ar(1) options. */
 #define	AR_A	0x0001
@@ -71,7 +50,7 @@
 #define	AR_V	0x1000
 #define	AR_X	0x2000
 
-extern unsigned options;
+extern u_int options;
 
 /* Set up file copy. */
 #define	SETCF(from, fromname, to, toname, pad) { \
@@ -91,7 +70,7 @@ typedef struct {
 #define	NOPAD	0x00			/* don't pad */
 #define	RPAD	0x01			/* pad on reads */
 #define	WPAD	0x02			/* pad on writes */
-	unsigned flags;			/* pad flags */
+	u_int flags;			/* pad flags */
 } CF;
 
 /* Header structure internal format. */
@@ -101,7 +80,7 @@ typedef struct {
 	int lname;			/* size of the long name in bytes */
 	int gid;			/* group */
 	int uid;			/* owner */
-	unsigned short mode;			/* permissions */
+	u_short mode;			/* permissions */
 	char name[MAXNAMLEN + 1];	/* name */
 } CHDR;
 
@@ -118,11 +97,3 @@ void	copy_ar();
 int	get_arobj();
 int	open_archive();
 void	put_arobj();
-
-int     delete (register char **argv);
-int     move (register char **argv);
-int     print (register char **argv);
-int     append (register char **argv);
-int     replace (register char **argv);
-int     contents (register char **argv);
-int     extract (register char **argv);

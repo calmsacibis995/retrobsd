@@ -1,5 +1,3 @@
-/*	$Id: cpy.y,v 1.18 2010/02/25 15:49:00 ragge Exp $	*/
-
 /*
  * Copyright (c) 2004 Anders Magnusson (ragge@ludd.luth.se).
  * All rights reserved.
@@ -60,7 +58,6 @@
  * IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 %{
 
 #include "cpp.h"

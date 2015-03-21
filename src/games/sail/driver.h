@@ -5,6 +5,7 @@
  *
  *	@(#)driver.h	5.1 (Berkeley) 5/29/85
  */
+
 #include "externs.h"
 
-extern int dtab[];
+int dtab[];

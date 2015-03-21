@@ -109,29 +109,37 @@ struct id id_rings[RINGS] = {
 	 {270, "                                 ", "of searching ",0},
 };
 
-static void
-plant_gold(row, col, is_maze)
-        int row, col;
-        boolean is_maze;
+extern short cur_level, max_level;
+extern short party_room;
+extern char *error_file;
+extern boolean is_wood[];
+
+put_objects()
 {
+	short i, n;
 	object *obj;
 
-	obj = alloc_object();
-	obj->row = row; obj->col = col;
-	obj->what_is = GOLD;
-	obj->quantity = get_rand((2 * cur_level), (16 * cur_level));
-	if (is_maze) {
-		obj->quantity += obj->quantity / 2;
+	if (cur_level < max_level) {
+		return;
 	}
-	dungeon[row][col] |= OBJECT;
-	(void) add_to_pack(obj, &level_objects, 0);
+	n = coin_toss() ? get_rand(2, 4) : get_rand(3, 5);
+	while (rand_percent(33)) {
+		n++;
+	}
+	if (party_room != NO_ROOM) {
+		make_party();
+	}
+	for (i = 0; i < n; i++) {
+		obj = gr_object();
+		rand_place(obj);
+	}
+	put_gold();
 }
 
-static void
 put_gold()
 {
-	int i, j;
-	int row, col;
+	short i, j;
+	short row,col;
 	boolean is_maze, is_room;
 
 	for (i = 0; i < MAXROOMS; i++) {
@@ -157,55 +165,25 @@ put_gold()
 	}
 }
 
-static void
-make_party()
+plant_gold(row, col, is_maze)
+short row, col;
+boolean is_maze;
 {
-	int n;
-
-	party_room = gr_room();
-
-	n = rand_percent(99) ? party_objects(party_room) : 11;
-	if (rand_percent(99)) {
-		party_monsters(party_room, n);
-	}
-}
-
-static void
-rand_place(obj)
-        object *obj;
-{
-	int row, col;
-
-	gr_row_col(&row, &col, (FLOOR | TUNNEL));
-	place_at(obj, row, col);
-}
-
-void
-put_objects()
-{
-	int i, n;
 	object *obj;
 
-	if (cur_level < max_level) {
-		return;
+	obj = alloc_object();
+	obj->row = row; obj->col = col;
+	obj->what_is = GOLD;
+	obj->quantity = get_rand((2 * cur_level), (16 * cur_level));
+	if (is_maze) {
+		obj->quantity += obj->quantity / 2;
 	}
-	n = coin_toss() ? get_rand(2, 4) : get_rand(3, 5);
-	while (rand_percent(33)) {
-		n++;
-	}
-	if (party_room != NO_ROOM) {
-		make_party();
-	}
-	for (i = 0; i < n; i++) {
-		obj = gr_object();
-		rand_place(obj);
-	}
-	put_gold();
+	dungeon[row][col] |= OBJECT;
+	(void) add_to_pack(obj, &level_objects, 0);
 }
 
-void
 place_at(obj, row, col)
-        object *obj;
+object *obj;
 {
 	obj->row = row;
 	obj->col = col;
@@ -215,8 +193,8 @@ place_at(obj, row, col)
 
 object *
 object_at(pack, row, col)
-        register object *pack;
-        int row, col;
+register object *pack;
+short row, col;
 {
 	object *obj = (object *) 0;
 
@@ -246,9 +224,8 @@ get_letter_object(ch)
 	return(obj);
 }
 
-void
 free_stuff(objlist)
-        object *objlist;
+object *objlist;
 {
 	object *obj;
 
@@ -262,7 +239,7 @@ free_stuff(objlist)
 
 char *
 name_of(obj)
-        object *obj;
+object *obj;
 {
 	char *retstring;
 
@@ -317,11 +294,75 @@ name_of(obj)
 	return(retstring);
 }
 
-static void
-gr_scroll(obj)
-        object *obj;
+object *
+gr_object()
 {
-	int percent;
+	object *obj;
+
+	obj = alloc_object();
+
+	if (foods < (cur_level / 3)) {
+		obj->what_is = FOOD;
+		foods++;
+	} else {
+		obj->what_is = gr_what_is();
+	}
+	switch(obj->what_is) {
+	case SCROL:
+		gr_scroll(obj);
+		break;
+	case POTION:
+		gr_potion(obj);
+		break;
+	case WEAPON:
+		gr_weapon(obj, 1);
+		break;
+	case ARMOR:
+		gr_armor(obj);
+		break;
+	case WAND:
+		gr_wand(obj);
+		break;
+	case FOOD:
+		get_food(obj, 0);
+		break;
+	case RING:
+		gr_ring(obj, 1);
+		break;
+	}
+	return(obj);
+}
+
+unsigned short
+gr_what_is()
+{
+	short percent;
+	unsigned short what_is;
+
+	percent = get_rand(1, 91);
+
+	if (percent <= 30) {
+		what_is = SCROL;
+	} else if (percent <= 60) {
+		what_is = POTION;
+	} else if (percent <= 64) {
+		what_is = WAND;
+	} else if (percent <= 74) {
+		what_is = WEAPON;
+	} else if (percent <= 83) {
+		what_is = ARMOR;
+	} else if (percent <= 88) {
+		what_is = FOOD;
+	} else {
+		what_is = RING;
+	}
+	return(what_is);
+}
+
+gr_scroll(obj)
+object *obj;
+{
+	short percent;
 
 	percent = get_rand(0, 91);
 
@@ -356,11 +397,10 @@ gr_scroll(obj)
 	}
 }
 
-static void
 gr_potion(obj)
-        object *obj;
+object *obj;
 {
-	int percent;
+	short percent;
 
 	percent = get_rand(1, 118);
 
@@ -397,14 +437,13 @@ gr_potion(obj)
 	}
 }
 
-static void
 gr_weapon(obj, assign_wk)
-        object *obj;
-        int assign_wk;
+object *obj;
+int assign_wk;
 {
-	int percent;
-	int i;
-	int blessing, increment;
+	short percent;
+	short i;
+	short blessing, increment;
 
 	obj->what_is = WEAPON;
 	if (assign_wk) {
@@ -463,12 +502,11 @@ gr_weapon(obj, assign_wk)
 	}
 }
 
-static void
 gr_armor(obj)
-        object *obj;
+object *obj;
 {
-	int percent;
-	int blessing;
+	short percent;
+	short blessing;
 
 	obj->what_is = ARMOR;
 	obj->which_kind = get_rand(0, (ARMORS - 1));
@@ -490,84 +528,17 @@ gr_armor(obj)
 	}
 }
 
-void
 gr_wand(obj)
-        object *obj;
+object *obj;
 {
 	obj->what_is = WAND;
 	obj->which_kind = get_rand(0, (WANDS - 1));
 	obj->class = get_rand(3, 7);
 }
 
-static unsigned
-gr_what_is()
-{
-	int percent;
-	unsigned what_is;
-
-	percent = get_rand(1, 91);
-
-	if (percent <= 30) {
-		what_is = SCROL;
-	} else if (percent <= 60) {
-		what_is = POTION;
-	} else if (percent <= 64) {
-		what_is = WAND;
-	} else if (percent <= 74) {
-		what_is = WEAPON;
-	} else if (percent <= 83) {
-		what_is = ARMOR;
-	} else if (percent <= 88) {
-		what_is = FOOD;
-	} else {
-		what_is = RING;
-	}
-	return(what_is);
-}
-
-object *
-gr_object()
-{
-	object *obj;
-
-	obj = alloc_object();
-
-	if (foods < (cur_level / 3)) {
-		obj->what_is = FOOD;
-		foods++;
-	} else {
-		obj->what_is = gr_what_is();
-	}
-	switch(obj->what_is) {
-	case SCROL:
-		gr_scroll(obj);
-		break;
-	case POTION:
-		gr_potion(obj);
-		break;
-	case WEAPON:
-		gr_weapon(obj, 1);
-		break;
-	case ARMOR:
-		gr_armor(obj);
-		break;
-	case WAND:
-		gr_wand(obj);
-		break;
-	case FOOD:
-		get_food(obj, 0);
-		break;
-	case RING:
-		gr_ring(obj, 1);
-		break;
-	}
-	return(obj);
-}
-
-void
 get_food(obj, force_ration)
-        object *obj;
-        boolean force_ration;
+object *obj;
+boolean force_ration;
 {
 	obj->what_is = FOOD;
 
@@ -578,18 +549,16 @@ get_food(obj, force_ration)
 	}
 }
 
-void
 put_stairs()
 {
-	int row, col;
+	short row, col;
 
 	gr_row_col(&row, &col, (FLOOR | TUNNEL));
 	dungeon[row][col] |= STAIRS;
 }
 
-int
 get_armor_class(obj)
-        object *obj;
+object *obj;
 {
 	if (obj) {
 		return(obj->class + obj->d_enchant);
@@ -618,19 +587,29 @@ alloc_object()
 	return(obj);
 }
 
-void
 free_object(obj)
-        object *obj;
+object *obj;
 {
 	obj->next_object = free_list;
 	free_list = obj;
 }
 
-void
+make_party()
+{
+	short n;
+
+	party_room = gr_room();
+
+	n = rand_percent(99) ? party_objects(party_room) : 11;
+	if (rand_percent(99)) {
+		party_monsters(party_room, n);
+	}
+}
+
 show_objects()
 {
 	object *obj;
-	int mc, rc, row, col;
+	short mc, rc, row, col;
 	object *monster;
 
 	obj = level_objects.next_object;
@@ -642,8 +621,7 @@ show_objects()
 		rc = get_mask_char(obj->what_is);
 
 		if (dungeon[row][col] & MONSTER) {
-		        monster = object_at(&level_monsters, row, col);
-			if (monster) {
+			if (monster = object_at(&level_monsters, row, col)) {
 				monster->trail_char = rc;
 			}
 		}
@@ -665,7 +643,6 @@ show_objects()
 	}
 }
 
-void
 put_amulet()
 {
 	object *obj;
@@ -675,10 +652,18 @@ put_amulet()
 	rand_place(obj);
 }
 
-void
+rand_place(obj)
+object *obj;
+{
+	short row, col;
+
+	gr_row_col(&row, &col, (FLOOR | TUNNEL));
+	place_at(obj, row, col);
+}
+
 c_object_for_wizard()
 {
-	int ch, max = 0, wk;
+	short ch, max, wk;
 	object *obj;
 	char buf[80];
 
@@ -735,7 +720,7 @@ GIL:
 		if (get_input_line("which kind?", "", buf, "", 0, 1)) {
 			wk = get_number(buf);
 			if ((wk >= 0) && (wk <= max)) {
-				obj->which_kind = (unsigned) wk;
+				obj->which_kind = (unsigned short) wk;
 				if (obj->what_is == RING) {
 					gr_ring(obj, 0);
 				}

@@ -1,5 +1,3 @@
-#include "rogue.h"
-
 static long rntb[32] = {
 	         3, 0x9a319039, 0x32d9c024, 0x9b663182, 0x5da1f342,
 	0xde3b81e0, 0xdf0a6fb5, 0xf103bc02, 0x48f340fb, 0x7449e56b,
@@ -18,9 +16,8 @@ static int rand_deg = 31;
 static int rand_sep = 3;
 static long *end_ptr = &rntb[32];
 
-void
 srrandom(x)
-        int x;
+int x;
 {
 	register int i;
 	long rrandom();
@@ -60,9 +57,8 @@ rrandom()
 	return(i);
 }
 
-int
 get_rand(x, y)
-        register int x, y;
+register int x, y;
 {
 	register int r, t;
 	long lr;
@@ -79,15 +75,14 @@ get_rand(x, y)
 	return(r);
 }
 
-int
 rand_percent(percentage)
-        register int percentage;
+register int percentage;
 {
 	return(get_rand(1, 100) <= percentage);
 }
 
-int
 coin_toss()
 {
+
 	return(((rrandom() & 01) ? 1 : 0));
 }

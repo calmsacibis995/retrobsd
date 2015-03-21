@@ -12,7 +12,8 @@
 #include <sys/types.h>
 #include <sys/file.h>
 #include <stdio.h>
-#include <unistd.h>
+
+//extern FILE *_findiop (void);
 
 FILE *
 fdopen(fd, mode)

@@ -3,13 +3,19 @@
  * All rights reserved.  The Berkeley software License Agreement
  * specifies the terms and conditions for redistribution.
  */
+
+#if	!defined(lint) && defined(DOSCCS)
+char copyright[] =
+"@(#) Copyright (c) 1980 Regents of the University of California.\n\
+ All rights reserved.\n";
+
+static char sccsid[] = "@(#)main.c	5.1.1 (2.11BSD GTE) 11/20/94";
+#endif
+
 # include	"trek.h"
-# include	"getpar.h"
 # include	<stdio.h>
 # include	<sgtty.h>
 # include	<setjmp.h>
-# include	<stdlib.h>
-# include	<time.h>
 
 # define	PRIO		00	/* default priority */
 
@@ -114,14 +120,13 @@ int	Mother	= 51 + (51 << 8);
 
 jmp_buf	env;
 
-int
 main(argc, argv)
-        int	argc;
-        char	**argv;
+int	argc;
+char	**argv;
 {
 	long			vect;
 	/* extern FILE		*f_log; */
-	/* register char	opencode; */
+	register char		opencode;
 	int			prio;
 	register int		ac;
 	register char		**av;
@@ -132,9 +137,9 @@ main(argc, argv)
 	av++;
 	time(&vect);
 	srand(vect);
-	/* opencode = 'w'; */
+	opencode = 'w';
 	prio = PRIO;
-	if (ioctl(1, TIOCGETP, &argp) == 0)
+	if (gtty(1, &argp) == 0)
 	{
 		if ((argp.sg_ispeed ) < B1200)
 			Etc.fast++;
@@ -144,7 +149,7 @@ main(argc, argv)
 		switch (av[0][1])
 		{
 		  case 'a':	/* append to log file */
-			/* opencode = 'a'; */
+			opencode = 'a';
 			break;
 
 		  case 'f':	/* set fast mode */
@@ -166,7 +171,7 @@ main(argc, argv)
 		  case 'p':	/* set priority */
 			if (getuid() != Mother)
 				goto badflag;
-			if (sscanf(&av[0][2], "%d", &prio) > 0)
+			if (scanf(-1, &av[0][2], "%d", &prio) > 0)
 				break;
 
 		  default:
@@ -179,9 +184,13 @@ main(argc, argv)
 	}
 	if (ac > 2)
 		syserr(0, "arg count");
+		/*
+	if (ac > 1)
+		f_log = fopen(av[0], opencode);
+		*/
 
 	printf("\n   * * *   S T A R   T R E K   * * *\n\nPress return to continue.\n");
-
+	
 	if (setjmp(env))
 	{
 		if ( !getynpar("Another game") )
@@ -194,5 +203,4 @@ main(argc, argv)
 	} while (getynpar("Another game"));
 
 	fflush(stdout);
-	return 0;
 }
