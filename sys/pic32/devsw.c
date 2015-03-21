@@ -14,6 +14,7 @@
 #include "clist.h"
 #include "tty.h"
 #include "systm.h"
+#include "errno.h"
 
 #ifdef GPIO_ENABLED
 #include "gpio.h"
@@ -35,6 +36,10 @@
 #include "oc.h"
 #endif
 
+#ifdef UFLASH_ENABLED
+#include "uflash.h"
+#endif
+
 #ifndef SWAPDEV
 #define swopen      nulldev
 #define swstrategy  nostrategy
@@ -49,6 +54,14 @@ nulldev ()
 {
 	return (0);
 }
+
+#ifndef UFLASH_ENABLED
+static int
+faildev ()
+{
+	return (EPERM);
+}
+#endif
 
 static int
 norw (dev, uio, flag)
@@ -175,6 +188,19 @@ const struct cdevsw	cdevsw[] = {
 #else
 {
         nulldev,        nulldev,        norw,           norw,
+        noioctl,        nulldev,        0,              seltrue,
+        nostrategy,     },
+#endif
+
+// UFLASH = 12
+#ifdef UFLASH_ENABLED
+{
+        uflash_open,    uflash_close,     uflash_read,      uflash_write,
+        uflash_ioctl,     nulldev,        0,              seltrue,
+        nostrategy,     },
+#else
+{
+        faildev,        nulldev,        norw,           norw,
         noioctl,        nulldev,        0,              seltrue,
         nostrategy,     },
 #endif

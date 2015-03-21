@@ -119,6 +119,16 @@ struct pic32_system {
 
     struct vdevice *prefetch;       /* Prefetch cache controller */
     unsigned checon;
+    
+    struct vdevice* flash_device;   /* not owner of vdevice, just a reference that is filled by syscon code */
+    unsigned        nvmcon;
+    unsigned        nvmkey;
+    unsigned        nvmaddr;
+    unsigned        nvmdata;
+    unsigned        nvmsrcaddr;
+    
+    unsigned        nvmstate;
+    
 };
 
 typedef struct pic32_system pic32_t;

@@ -2,7 +2,7 @@
 # Programs that live in subdirectories, and have makefiles of their own.
 #
 SUBDIR		= baremetal dip duinomite explorer16 max32 max32-eth maximite meb \
-                  pinguino-micro starter-kit ubw32 ubw32-uart ubw32-uart-sdramswap usbboot
+                  pinguino-micro starter-kit ubw32 ubw32-uart usbboot
 
 default:
 

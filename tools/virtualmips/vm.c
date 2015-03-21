@@ -329,6 +329,7 @@ void vm_delete_vtty (vm_instance_t * vm)
     }
 }
 
+
 /* Bind a device to a virtual machine */
 int vm_bind_device (vm_instance_t * vm, struct vdevice *dev)
 {
@@ -455,4 +456,13 @@ void vm_monitor (vm_instance_t * vm)
 {
     while (vm->status != VM_STATUS_SHUTDOWN)
         usleep (1000);
+}
+
+struct vdevice *vm_find_device( vm_instance_t * vm, char * name )
+{
+    u_int i;
+    for (i=0; i < VM_DEVICE_MAX; i++)
+      if( vm->dev_array[i] && strcmp( vm->dev_array[i]->name, name ) == 0 )
+        return vm->dev_array[i];
+    return 0;
 }

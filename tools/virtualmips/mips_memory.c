@@ -1207,9 +1207,22 @@ static mts32_entry_t *mips_mts32_slow_lookup (cpu_mips_t * cpu,
 #ifdef SIM_PIC32
         if (vaddr == 0)
             goto err_undef;
-        map.vaddr = vaddr & MIPS_MIN_PAGE_MASK;
-        map.paddr = map.vaddr & 0x1ffff;
-        map.mapped = FALSE;
+	if( vaddr >= 0x7f000000 )
+	{
+        	map.vaddr = vaddr & MIPS_MIN_PAGE_MASK;
+        	map.paddr = map.vaddr & 0x1ffff;
+        	map.mapped = FALSE;
+	}
+	else if( vaddr >= 0x7d000000 )
+	{
+        	map.vaddr = vaddr & MIPS_MIN_PAGE_MASK;
+        	map.paddr = map.vaddr & 0x1fffffff;
+        	map.mapped = FALSE;
+	}
+	else
+	{
+		goto err_undef;
+	}
 #else
         /* trigger TLB exception if no matching entry found */
         if (! mips_cp0_tlb_lookup (cpu, vaddr, &map))

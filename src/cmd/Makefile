@@ -13,10 +13,10 @@ CFLAGS          += -Werror
 SUBDIR		= adb adc-demo ar as awk basic cc chflags chpass \
                   cpp dc diff env find forth fstat glcdtest hostname \
                   id la lcc lcpp ld ls login make man med \
-                  more nm passwd picoc portio printf pwm \
+                  more nm passwd portio printf pwm \
                   ranlib re renice retroforth scm setty sl \
                   sed sh smallc stty sysctl test uname wiznet xargs \
-                  zmodem gtest
+                  zmodem gtest cron uflash_r picoc-1 lccom-1
 
 # /sbin
 SUBDIR         += chown chroot disktool fsck getty init \
@@ -36,7 +36,7 @@ STD		= basename cal cat cb chgrp chmod cmp col comm cp date dd du \
 		  echo ed fgrep file grep head hostid join kill last ln \
                   mesg mkdir mv nice od pagesize pr printenv pwd rev rm rmail rmdir \
                   size sleep sort split sum sync tail tar tee time touch tr \
-                  tsort tty uniq w wc whereis who
+                  tsort tty uniq w wc whereis who uflash
 
 # C programs that live in the current directory and need explicit make lines.
 #

@@ -134,17 +134,9 @@ startup()
 	mips_write_c0_register (C0_CAUSE, 0, CA_IV);
 
 	/* Setup memory. */
-        BMXPUPBA = 512 << 10;                   /* Kernel Flash memory size */
-
-#ifdef KERNEL_EXECUTABLE_RAM
-	extern void _keram_start(), _keram_end();
-	unsigned keram_size_k = ((char*)&_keram_end-(char*)&_keram_start)/1024;
-        BMXDKPBA = (32-keram_size_k) << 10;     /* Kernel RAM size */
-        BMXDUDBA = BMXDKPBA+(keram_size_k<<10); /* 2k executable RAM in kernel */
-#else
+        BMXPUPBA = 192 << 10;                   /* Kernel Flash memory size */
         BMXDKPBA = 32 << 10;                    /* Kernel RAM size */
-        BMXDUDBA = BMXDKPBA;            	/* Zero executable RAM in kernel */
-#endif
+        BMXDUDBA = BMXDKPBA;                    /* No executable RAM in kernel */
         BMXDUPBA = BMXDUDBA;                    /* All user RAM is executable */
 
 	/*
@@ -159,7 +151,9 @@ startup()
 	IPC(8) = IPC(9) = IPC(10) = IPC(11) =
 	IPC(12) =
 		PIC32_IPC_IP0(1) | PIC32_IPC_IP1(1) |
-		PIC32_IPC_IP2(1) | PIC32_IPC_IP3(1);
+		PIC32_IPC_IP2(1) | PIC32_IPC_IP3(1) |
+		PIC32_IPC_IS0(0) | PIC32_IPC_IS1(0) |
+		PIC32_IPC_IS2(0) | PIC32_IPC_IS3(0) ;
 
         /*
          * Setup wait states.
@@ -243,25 +237,6 @@ startup()
 		/*printf ("copy %08x from (%08x) to (%08x)\n", *src, src, dest);*/
 		*dest++ = *src++;
 	}
-
-#ifdef KERNEL_EXECUTABLE_RAM
-	/* Copy code that must run out of ram (due to timing restrictions)
-         * from flash to the executable section of kernel ram.
-         * This was added to support swap on sdram */
-
-	extern void _ramfunc_image_begin();
-	extern void _ramfunc_begin();
-	extern void _ramfunc_end();
-
-	unsigned *src1 = (unsigned*) &_ramfunc_image_begin;
-	unsigned *dest1 = (unsigned*)&_ramfunc_begin;
-	unsigned *limit1 = (unsigned*)&_ramfunc_end;
-	/*printf ("copy from (%08x) to (%08x)\n", src1, dest1);*/
-	while (dest1 < limit1) {
-		*dest1++ = *src1++;
-	}
-#endif
-
 #endif
 	/*
 	 * Setup UART registers.

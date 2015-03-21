@@ -61,6 +61,9 @@ DRIVER_GPIO         = yes
 # Basic ADC interface
 DRIVER_ADC          = no
 
+# Support userland program in flash
+DRIVER_UFLASH       = yes
+
 # Power control (power LED, and soft power-off by button)
 # requires supported PSU (ATX)
 DRIVER_POWER        = no

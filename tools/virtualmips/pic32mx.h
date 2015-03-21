@@ -894,4 +894,29 @@
 #define PIC32_PMSTAT_IBOV       0x4000  /* Input buffer overflow */
 #define PIC32_PMSTAT_IBF        0x8000  /* Input buffer full */
 
+
+#define PIC32_NVMCON          PIC32_R (0x0F400)
+#define PIC32_NVMCONCLR       PIC32_R (0x0F404)
+#define PIC32_NVMCONSET       PIC32_R (0x0F408)
+#define PIC32_NVMCONINV       PIC32_R (0x0F40C)
+#define PIC32_NVMKEY          PIC32_R (0x0F410)
+#define PIC32_NVMADDR         PIC32_R (0x0F420)
+#define PIC32_NVMADDRCLR      PIC32_R (0x0F424)
+#define PIC32_NVMADDRSET      PIC32_R (0x0F428)
+#define PIC32_NVMADDRINV      PIC32_R (0x0F42C)
+#define PIC32_NVMDATA         PIC32_R (0x0F430)
+#define PIC32_NVMSRCADDR      PIC32_R (0x0F440)
+
+#define PIC32_NVMCON_NVMOP      0x0000000F
+#define PIC32_NVMCON_NOP                 0 /* No operation */
+#define PIC32_NVMCON_WORD_PGM            1 /* Word program */
+#define PIC32_NVMCON_ROW_PGM             3 /* Row program */
+#define PIC32_NVMCON_PAGE_ERASE          4 /* Page erase */
+
+#define PIC32_NVMCON_LVDSTAT    0x00000800
+#define PIC32_NVMCON_LVDERR     0x00001000
+#define PIC32_NVMCON_WRERR      0x00002000
+#define PIC32_NVMCON_WREN       0x00004000
+#define PIC32_NVMCON_WR         0x00008000
+
 #endif /* _IO_PIC32MX_H */

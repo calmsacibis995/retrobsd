@@ -3,6 +3,11 @@ ifeq ($(DRIVER_GPIO),yes)
 	DEFS    += -DGPIO_ENABLED
 endif
 
+ifeq ($(DRIVER_UFLASH),yes)
+        KERNOBJ += uflash.o
+        DEFS    += -DUFLASH_ENABLED
+endif
+
 ifeq ($(DRIVER_POWER),yes)
         KERNOBJ += power_control.o
         POWER_LED_PORT ?= TRISG

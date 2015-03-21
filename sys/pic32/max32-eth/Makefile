@@ -47,6 +47,9 @@ DRIVER_SPI          = yes
 # Basic ADC interface
 DRIVER_ADC          = yes
 
+# Support userland program in flash
+DRIVER_UFLASH       = no
+
 # Power control (power LED, and soft power-off by button)
 # requires supported PSU (ATX)
 DRIVER_POWER        = no

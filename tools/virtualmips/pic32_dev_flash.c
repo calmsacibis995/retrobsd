@@ -22,6 +22,8 @@
 #include "mips_memory.h"
 #include "pic32.h"
 
+#define FLASH_PAGE_SIZE 4096
+
 /* flash private data */
 typedef struct flash_data {
     struct vdevice *dev;
@@ -29,6 +31,52 @@ typedef struct flash_data {
     m_uint32_t flash_size;
     m_uint8_t *flash_file_name;
 } flash_data_t;
+
+int dev_flash_flash_op( struct vdevice *dev, m_uint32_t addr, u_int op, m_uint32_t extra )
+{
+	flash_data_t *d = dev->priv_data;
+	m_uint32_t offset = addr - dev->phys_addr;
+	
+	if( offset >= d->flash_size ) {
+		fprintf(stderr, "Flash operation out-of-bounds addr=%d offset=%d\n", addr, offset );
+		return -1;
+	}
+	switch( op )
+	{
+		case PIC32_NVMCON_PAGE_ERASE:
+			{
+				if( offset != (offset & ~(FLASH_PAGE_SIZE - 1)) )
+				{
+					fprintf(stderr, "Flash operation misaligned\n" );
+					return -1;
+				}
+				
+				int i;
+				for( i = 0; i < FLASH_PAGE_SIZE; ++i )
+				{
+					*(unsigned *) (d->flash_ptr + offset + i) = ~0U;
+				}
+				return 0;
+			}
+		case PIC32_NVMCON_WORD_PGM:
+			{
+				if( offset != (offset & ~3) )
+				{
+					fprintf(stderr, "Flash operation misaligned\n" );
+					return -1;
+				}
+			    * (unsigned *) (d->flash_ptr + offset) = *(unsigned *)(d->flash_ptr + offset) & extra;
+				return 0;
+			}
+		case PIC32_NVMCON_ROW_PGM:
+			{
+				fprintf(stderr, "Flash operation unsupported\n" );
+				return -1;
+			}
+	}
+	fprintf(stderr, "Unknown Flash Operation\n" );
+	return -1;
+}
 
 void *dev_flash_access (cpu_mips_t * cpu, struct vdevice *dev,
     m_uint32_t offset, u_int op_size, u_int op_type,
@@ -79,12 +127,16 @@ static int dev_flash_load (char *flash_file_name, unsigned flash_len,
         fprintf (stderr, "%s: empty flash file.\n", flash_file_name);
         return (-1);
     }
-    *flash_data_hp = mmap (NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
-    if (*flash_data_hp == MAP_FAILED) {
+    char* tm = mmap (NULL, sb.st_size, PROT_READ, MAP_SHARED, fd, 0);
+    if (tm == MAP_FAILED) {
         fprintf (stderr, "%s: ", flash_file_name);
         perror ("mmap");
         return (-1);
     }
+    *flash_data_hp = malloc( flash_len );
+    memcpy( *flash_data_hp, tm, sb.st_size );
+    munmap( tm, sb.st_size );
+    close( fd );
     return 0;
 }
 

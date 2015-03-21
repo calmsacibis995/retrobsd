@@ -14,7 +14,6 @@
 MAX32           = pic32/max32
 UBW32           = pic32/ubw32
 UBW32UART       = pic32/ubw32-uart
-UBW32UARTSDRSW  = pic32/ubw32-uart-sdramswap
 MAXIMITE        = pic32/maximite
 EXPLORER16      = pic32/explorer16
 STARTERKIT      = pic32/starter-kit
@@ -25,7 +24,7 @@ BAREMETAL       = pic32/baremetal
 RETROONE	= pic32/retroone
 
 # Select target board
-TARGET          ?= $(UBW32UARTSDRSW)
+TARGET          ?= $(MAX32)
 
 # Filesystem and swap sizes.
 FS_KBYTES       = 16384
@@ -50,6 +49,7 @@ FSUTIL		= tools/fsutil/fsutil
 #
 BIN_FILES	:= $(wildcard bin/*)
 SBIN_FILES	:= $(wildcard sbin/*)
+UFLASH_FILES	:= $(wildcard uflash/*)
 GAMES_FILES	:= $(shell find games -type f ! -path '*/.*')
 LIB_FILES	:= $(wildcard lib/*)
 LIBEXEC_FILES	:= $(wildcard libexec/*)
@@ -62,13 +62,16 @@ SHARE_FILES	= share/re.help share/example/Makefile \
                   share/example/ashello.S share/example/chello.c \
                   share/example/blkjack.bas share/example/hilow.bas \
                   share/example/stars.bas share/example/prime.scm \
-                  share/example/fact.fth share/example/echo.S
+                  share/example/fact.fth share/example/echo.S \
+                  share/smallc/lib.c share/smallc/Makefile share/smallc/primelist.c \
+                  share/smallc/primesum.c share/smallc/sys.s share/smallc/test1.c \
+                  share/smallc/test2.c $(wildcard share/lccom/*)
 ALLFILES	= $(SBIN_FILES) $(ETC_FILES) $(BIN_FILES) $(LIB_FILES) $(LIBEXEC_FILES) \
-                  $(INC_FILES) $(SHARE_FILES) $(GAMES_FILES) \
+                  $(INC_FILES) $(SHARE_FILES) $(GAMES_FILES) $(UFLASH_FILES) \
                   var/log/messages var/log/wtmp .profile
 ALLDIRS         = sbin/ bin/ dev/ etc/ tmp/ lib/ libexec/ share/ share/example/ \
-                  share/misc/ var/ var/run/ var/log/ u/ include/ include/sys/ \
-                  games/ games/lib/
+                  share/lccom/ share/misc/ share/smallc/ var/ var/run/ var/log/ u/ include/ include/sys/ \
+                  games/ games/lib/ uflash/
 BDEVS           = dev/sd0!b0:0 dev/sd1!b0:1 dev/sw0!b1:0
 CDEVS           = dev/console!c0:0 \
                   dev/mem!c1:0 dev/kmem!c1:1 dev/null!c1:2 dev/zero!c1:3 \
@@ -82,7 +85,7 @@ CDEVS           = dev/console!c0:0 \
                   dev/confa!c7:64 dev/confb!c7:65 dev/confc!c7:66 \
                   dev/confd!c7:67 dev/confe!c7:68 dev/conff!c7:69 dev/confg!c7:70 \
                   dev/spi1!c9:0 dev/spi2!c9:1 dev/spi3!c9:2 dev/spi4!c9:3 \
-		  dev/glcd0!c10:0
+		  dev/glcd0!c10:0 dev/uflash!c12:0
 FDDEVS          = dev/fd/ dev/fd/0!c5:0 dev/fd/1!c5:1 dev/fd/2!c5:2 \
                   dev/fd/3!c5:3 dev/fd/4!c5:4 dev/fd/5!c5:5 dev/fd/6!c5:6 \
                   dev/fd/7!c5:7 dev/fd/8!c5:8 dev/fd/9!c5:9 dev/fd/10!c5:10 \
@@ -139,6 +142,7 @@ cleanall:       clean
 		rm -f share/re.help
 		rm -f share/misc/more.help
 		rm -f etc/termcap
+		rm -f uflash/*
 
 
 # TODO

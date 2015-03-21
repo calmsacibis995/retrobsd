@@ -42,10 +42,13 @@ DEFS            += -DLED_TTY_PORT=TRISA    -DLED_TTY_PIN=3
 # Include or exclude drivers
 
 # General Purpose I/O
-DRIVER_GPIO         = yes
+DRIVER_GPIO         = no
 
 # Basic ADC interface
-DRIVER_ADC          = yes
+DRIVER_ADC          = no
+
+# Support userland program in flash
+DRIVER_UFLASH       = yes
 
 # Power control (power LED, and soft power-off by button)
 # requires supported PSU (ATX)

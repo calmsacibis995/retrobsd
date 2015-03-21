@@ -58,6 +58,8 @@ enum {
     LTEXT,              /* .text */
     LEQU,               /* .equ */
     LWORD,              /* .word */
+    LBYTE,              /* .byte */
+    LSPACE,             /* .space */
 };
 
 /*
@@ -589,6 +591,7 @@ int lookacmd ()
         break;
     case 'b':
         if (! strcmp (".bss", name)) return (LBSS);
+        if (! strcmp (".byte", name)) return (LBYTE);
         break;
     case 'c':
         if (! strcmp (".comm", name)) return (LCOMM);
@@ -604,6 +607,7 @@ int lookacmd ()
         break;
     case 's':
         if (! strcmp (".short", name)) return (LSHORT);
+        if (! strcmp (".space", name)) return (LSPACE);
         if (! strcmp (".strng", name)) return (LSTRNG);
         break;
     case 't':
@@ -1411,7 +1415,7 @@ void makeascii ()
 void pass1 ()
 {
     register int clex;
-    int cval, tval, csegm;
+    int cval, tval, csegm, nbytes, c, nwords;
     register unsigned addr;
 
     segm = STEXT;
@@ -1506,7 +1510,7 @@ void pass1 ()
                     addr |= RSETINDEX (extref);
                 fputword (intval, sfile[segm]);
                 fputrel (addr, rfile[segm]);
-                count[segm] += 2;
+                count[segm] += WORDSZ; 
                 clex = getlex (&cval);
                 if (clex != ',') {
                     ungetlex (clex, cval);
@@ -1514,6 +1518,41 @@ void pass1 ()
                 }
             }
             break;
+        case LBYTE:
+	    nbytes = 0;
+            for (;;) {
+                getexpr (&cval);
+		fputc (intval, sfile[segm]);
+		nbytes++;
+                clex = getlex (&cval);
+                if (clex != ',') {
+                    ungetlex (clex, cval);
+                    break;
+                }
+            }
+	
+            c = (WORDSZ - (unsigned) nbytes % WORDSZ) % WORDSZ;
+    	    count[segm] += nbytes + c;
+            nwords = (unsigned) (nbytes + c) / WORDSZ;
+            while (c--)
+               fputc (0, sfile[segm]);
+            while (nwords--)
+              fputrel (RABS, rfile[segm]);
+            break;
+        case LSPACE:
+            getexpr (&cval);
+            for (nbytes=0;nbytes<intval;nbytes++) {
+		fputc (0, sfile[segm]);
+            }
+            c = (WORDSZ - (unsigned) nbytes % WORDSZ) % WORDSZ;
+    	    count[segm] += nbytes + c;
+            nwords = (unsigned) (nbytes + c) / WORDSZ;
+            while (c--)
+               fputc (0, sfile[segm]);
+            while (nwords--)
+              fputrel (RABS, rfile[segm]);
+            break;
+
         case LASCII:
             makeascii ();
             break;
