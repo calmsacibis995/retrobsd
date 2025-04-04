@@ -184,6 +184,7 @@ kern_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, s
     int error, level;
     u_long longhostid;
     char bsd[10];
+    extern const char release[];
 
     /* all sysctl names at this level are terminal */
     if (namelen != 1 && !(name[0] == KERN_PROC || name[0] == KERN_PROF))
@@ -191,11 +192,10 @@ kern_sysctl(int *name, u_int namelen, void *oldp, size_t *oldlenp, void *newp, s
 
     switch (name[0]) {
     case KERN_OSTYPE:
-    case KERN_OSRELEASE:
-        /* code is cheaper than D space */
-        bsd[0]='2';bsd[1]='.';bsd[2]='1';bsd[3]='1';bsd[4]='B';
-        bsd[5]='S';bsd[6]='D';bsd[7]='\0';
+        bcopy("RetroBSD", bsd, sizeof("RetroBSD"));
         return (sysctl_rdstring(oldp, oldlenp, newp, bsd));
+    case KERN_OSRELEASE:
+        return (sysctl_rdstring(oldp, oldlenp, newp, release));
     case KERN_OSREV:
         return (sysctl_rdlong(oldp, oldlenp, newp, (long)BSD));
     case KERN_VERSION:

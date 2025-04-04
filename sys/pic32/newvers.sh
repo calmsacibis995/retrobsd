@@ -8,6 +8,7 @@ CV=`cat .compileversion`
 CV=`expr $CV + 1`
 OV=`cat .oldversion`
 GITREV=`git rev-list HEAD --count`
+GITBR=`git rev-parse --abbrev-ref HEAD`
 
 if [ "x$GITREV" = "x" ]
 then
@@ -21,15 +22,13 @@ fi
 echo $CV >.compileversion
 echo $GITREV >.oldversion
 
-echo $GITREV ${USER-root} `pwd` `date +'%Y-%m-%d'` `hostname` $CV| \
+echo $GITREV `date +'%y%m%d'` `date +'%H%M'` $GITBR $CV| \
 awk ' {
     version = $1;
-    user = $2;
-    dir = $3;
-    date = $4;
-    host = $5;
-    cv = $6;
-    printf "const char version[] = \"2.11 BSD Unix for PIC32, revision G%s build %d:\\n", version, cv;
-    printf "     Compiled %s by %s@%s:\\n", date, user, host;
-    printf "     %s\\n\";\n", dir;
+    date = $2;
+    time = $3;
+    branch = $4;
+    cv = $5
+    printf "const char version[] = \"RetroBSD 1.%s.%d.%s.%s-%s:\\n", version, cv, branch, date, time;
+    printf "const char release[] = \1.%s\";\n", version;
 }'
